@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/onboarding/main_onboarding.dart';
 
 class RoommateMatchScreen extends StatefulWidget {
   const RoommateMatchScreen({super.key});
@@ -76,31 +78,36 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
 
   final List<User> profiles = [
     User(
-      name: 'Nikki',
-      age: 22,
-      university: 'Computer Science, NYU',
+      name: 'Dhanush Vardhan',
+      age: 19,
+      university: 'Computer Science, ASU',
       bio:
-          'I\'m a final year student studying Computer Science at NYU. I\'m a quiet and tidy roommate who enjoys coding.',
-      imageUrl:
-          'https://www.geekydan.dev/_next/image?url=%2Fassets%2Fme2.png&w=1920&q=75',
+          'I\'m a sophomore studying Computer Science at ASU. I\'m a quiet and tidy roommate who enjoys coding.',
+      imageUrl: 'https://dhanush.wtf/media/9v1i1598nhf.JPG?file=',
     ),
     User(
-      name: 'Jamla',
-      age: 22,
-      university: 'Computer Science, NYU',
+      name: 'Tanu',
+      age: 19,
+      university: 'Computer Science, ASU',
       bio:
-          'I\'m a final year student studying Computer Science at NYU. I\'m a quiet and tidy roommate who enjoys coding.',
-      imageUrl:
-          'https://www.geekydan.dev/_next/image?url=%2Fassets%2Fme2.png&w=1920&q=75',
+          'I\'m a sophomore  student studying Computer Science at ASU. I prefer vegan who prefers.',
+      imageUrl: 'https://dhanush.wtf/media/bzeveb2gu0h.png?file=',
     ),
     User(
-      name: 'Dhanush',
-      age: 22,
-      university: 'Computer Science, NYU',
+      name: 'Danya',
+      age: 19,
+      university: 'Computer Science, ASU',
       bio:
-          'I\'m a final year student studying Computer Science at NYU. I\'m a quiet and tidy roommate who enjoys coding.',
-      imageUrl:
-          'https://www.geekydan.dev/_next/image?url=%2Fassets%2Fme2.png&w=1920&q=75',
+          "I am a friendly and laid-back roommate who enjoys creative projects, weekend adventures, and cozy nights in with a good book or movie",
+      imageUrl: 'https://dhanush.wtf/media/qy6ad3134ui.png?file=',
+    ),
+    User(
+      name: 'Laksh',
+      age: 19,
+      university: 'Robotics, ASU',
+      bio:
+          "I am a friendly and love making friends. I love weekend adventures, and cozy nights in with a good book or movie",
+      imageUrl: 'https://dhanush.wtf/media/856iexr7fck.jpeg?file=',
     ),
   ];
 
@@ -108,8 +115,25 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     cardHeight = MediaQuery.of(context).size.height * 0.56;
-    cards = profiles.map((profile) => buildExampleCard(profile)).toList();
+    cards = profiles.map((profile) => bulidProfileCard(profile)).toList();
   }
+
+  List<Property> properties = [
+    Property(
+      name: 'Furnished Home in Downtown',
+      imageUrl:
+          'https://bridgedalehomebuyers.ca/wp-content/uploads/2019/04/Average-time-to-sell-a-house-in-Calgary.jpg',
+      location: 'Tucson, AZ',
+      price: '450/month',
+    ),
+    Property(
+      name: 'Cozy Studio',
+      imageUrl:
+          'https://bridgedalehomebuyers.ca/wp-content/uploads/2019/04/Average-time-to-sell-a-house-in-Calgary.jpg',
+      location: 'Tucson, AZ',
+      price: '300/month',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +178,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     );
   }
 
-  Widget buildExampleCard(User profile) {
+  Widget bulidProfileCard(User profile) {
     return Listener(
       onPointerDown: (details) {
         print("The pointer is down");
@@ -204,54 +228,264 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.network(
-                    profile.imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: cardHeight,
+        child: SingleChildScrollView(
+          child: Stack(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      profile.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: cardHeight,
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${profile.name} · ${profile.age}',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${profile.name} · ${profile.age}',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        profile.university,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
+                        Text(
+                          profile.university,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        profile.bio,
-                        style: AppTextStyles.small(
-                          fontWeight: FontWeight.normal,
-                          fontSize: 14,
+                        const SizedBox(height: 10),
+                        Text(
+                          profile.bio,
+                          style: AppTextStyles.small(
+                            fontWeight: FontWeight.normal,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                    ],
+                        SizedBox(
+                          height: 15,
+                        ),
+                        Row(
+                          children: [
+                            SocialIcon(
+                                icon: "assets/icons/facebook_icon.svg",
+                                color: orangeColor),
+                            SizedBox(width: 20),
+                            SocialIcon(
+                                icon: "assets/icons/google_icon.svg",
+                                color: orangeColor),
+                            SizedBox(width: 20),
+                            SocialIcon(
+                                icon: "assets/icons/apple_icon.svg",
+                                color: orangeColor),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        Text('Interest',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor)),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 4.0,
+                          children: List<Widget>.generate(3, (index) {
+                            return Chip(
+                              label: Text('🚀 Interest $index'),
+                              backgroundColor: Colors.blue.withOpacity(0.1),
+                              labelStyle: AppTextStyles.small(
+                                  fontWeight: FontWeight.normal,
+                                  color: Colors.blue),
+                              side: BorderSide.none,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                            );
+                          }),
+                        ),
+                        SizedBox(height: 20),
+                        Text('Prefrences',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor)),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 4.0,
+                          children: List<Widget>.generate(5, (index) {
+                            return Chip(
+                              label: Text('Interest $index'),
+                              backgroundColor: Color(4293718257),
+                              labelStyle: AppTextStyles.small(
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.normal),
+                              side: BorderSide.none,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                            );
+                          }),
+                        ),
+                        SizedBox(height: 20),
+                        Text('Currently living in...',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor)),
+                        Text('(looking for a roomate for)',
+                            style: AppTextStyles.small(
+                                fontWeight: FontWeight.normal)),
+                        SizedBox(height: 15),
+                        Container(
+                          height: 400,
+                          child: ListView.separated(
+                            separatorBuilder: (ctx, i) => SizedBox(width: 10),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: properties.length,
+                            itemBuilder: (context, index) {
+                              return Container(
+                                width: 300,
+                                child: Card(
+                                  color: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15)),
+                                  elevation: 0,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(15),
+                                            topRight: Radius.circular(15),
+                                          ),
+                                          child: Image.network(
+                                            properties[index].imageUrl,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(8),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Expanded(
+                                                    flex: 1,
+                                                    child: Text(
+                                                      properties[index].name,
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Spacer(),
+                                                  Expanded(
+                                                    child: Row(
+                                                      children: [
+                                                        Image.asset(
+                                                          "assets/icons/location.png",
+                                                          width: 10,
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          properties[index]
+                                                              .location,
+                                                          style: TextStyle(
+                                                            color: Colors
+                                                                .grey[700],
+                                                            fontSize: 14,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 10),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.star,
+                                                      color: Colors.orange,
+                                                      size: 14),
+                                                  SizedBox(width: 5),
+                                                  Text(2.toString(),
+                                                      style: TextStyle(
+                                                          fontSize: 12)),
+                                                  Spacer(),
+                                                  Icon(Icons.bathtub,
+                                                      color: Colors.grey,
+                                                      size: 14),
+                                                  SizedBox(width: 5),
+                                                  Text(3.toString(),
+                                                      style: TextStyle(
+                                                          fontSize: 12)),
+                                                  Spacer(),
+                                                  Icon(Icons.bed,
+                                                      color: Colors.grey,
+                                                      size: 14),
+                                                  SizedBox(width: 5),
+                                                  Text(3.toString(),
+                                                      style: TextStyle(
+                                                          fontSize: 12)),
+                                                ],
+                                              ),
+                                              SizedBox(height: 15),
+                                              Align(
+                                                alignment: Alignment.topLeft,
+                                                child: Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                      vertical: 5,
+                                                      horizontal: 8),
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    color: Colors.blue
+                                                        .withOpacity(0.1),
+                                                  ),
+                                                  child: Text(
+                                                    "\$30/month ",
+                                                    style: AppTextStyles.small(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.blue,
+                                                      fontSize: 15,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

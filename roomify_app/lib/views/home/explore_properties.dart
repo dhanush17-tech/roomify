@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/views/home/property_details.dart';
 
 class ExplorePropertiesScreen extends StatelessWidget {
   @override
@@ -84,6 +85,12 @@ class ExplorePropertiesScreen extends StatelessWidget {
                 rating: 4.3,
                 bathrooms: 1,
                 bedrooms: 1,
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (c) => PropertyDetailsScreen()));
+                },
               ),
               SizedBox(height: 16),
               PropertyCard(
@@ -94,6 +101,12 @@ class ExplorePropertiesScreen extends StatelessWidget {
                 rating: 4.5,
                 bathrooms: 1,
                 bedrooms: 1,
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (c) => PropertyDetailsScreen()));
+                },
               ),
             ],
           ),
@@ -111,6 +124,7 @@ class PropertyCard extends StatelessWidget {
   final double rating;
   final int bathrooms;
   final int bedrooms;
+  final Function onTap;
 
   PropertyCard({
     required this.imagePath,
@@ -120,103 +134,110 @@ class PropertyCard extends StatelessWidget {
     required this.rating,
     required this.bathrooms,
     required this.bedrooms,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(15),
-              topRight: Radius.circular(15),
+    return GestureDetector(
+      onTap: () {
+        onTap();
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+              child: Image.asset(
+                imagePath,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
-            child: Image.asset(
-              imagePath,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, color: Colors.grey, size: 16),
-                    SizedBox(width: 4),
-                    Text(location, style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.orange, size: 16),
-                        SizedBox(width: 4),
-                        Text(rating.toString(), style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.bathtub, color: Colors.grey, size: 16),
-                        SizedBox(width: 4),
-                        Text(bathrooms.toString(),
-                            style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.bed, color: Colors.grey, size: 16),
-                        SizedBox(width: 4),
-                        Text(bedrooms.toString(),
-                            style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.favorite_border, color: Colors.grey),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    price,
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
                     style: TextStyle(
-                      color: Colors.blue,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, color: Colors.grey, size: 16),
+                      SizedBox(width: 4),
+                      Text(location, style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: Colors.orange, size: 16),
+                          SizedBox(width: 4),
+                          Text(rating.toString(),
+                              style: TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.bathtub, color: Colors.grey, size: 16),
+                          SizedBox(width: 4),
+                          Text(bathrooms.toString(),
+                              style: TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.bed, color: Colors.grey, size: 16),
+                          SizedBox(width: 4),
+                          Text(bedrooms.toString(),
+                              style: TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.favorite_border, color: Colors.grey),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      price,
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

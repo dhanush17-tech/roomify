@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:roomify_app/utils/text_styles.dart';
-import 'package:roomify_app/views/home/property_detais.dart';
+import 'package:roomify_app/views/home/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -153,7 +153,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      
     );
   }
 }
@@ -259,7 +258,10 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: onTap,
+          onTap: () {
+            Navigator.push(
+                context, MaterialPageRoute(builder: (c) => SearchScreen()));
+          },
           child: Text(
             "View All",
             style: TextStyle(
