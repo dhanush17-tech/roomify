@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:roomify_app/utils/text_styles.dart';
-import 'package:roomify_app/views/home/property_details.dart';
+import 'package:roomify_app/views/home/favourites.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -24,8 +25,11 @@ class HomeScreen extends StatelessWidget {
         leading: null,
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.grey),
-            onPressed: () {},
+            icon: Icon(Icons.favorite_outline_rounded, color: Colors.grey),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (c) => FavoritesScreen()));
+            },
           ),
           IconButton(
             icon: Icon(Icons.chat_bubble_outline, color: Colors.grey),

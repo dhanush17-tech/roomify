@@ -30,7 +30,7 @@ class MarketplaceScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -111,19 +111,25 @@ final List<FeaturedItemCard> items = [
     title: "Modern Desk",
     location: "Boston, MA",
     price: "\$100",
-    imagePath: 'assets/test_images/marketplace.png',
+    imagePath: 'https://dhanush.wtf/media/bzeveb2gu0h.png?file=',
   ),
   FeaturedItemCard(
     title: "Modern Desk",
     location: "Boston, MA",
     price: "\$100",
-    imagePath: 'assets/test_images/search_house.png',
+    imagePath: 'https://dhanush.wtf/media/qy6ad3134ui.png?file=',
   ),
   FeaturedItemCard(
     title: "Modern Desk",
     location: "Boston, MA",
     price: "\$100",
-    imagePath: 'assets/test_images/marketplace.png',
+    imagePath: 'https://dhanush.wtf/media/856iexr7fck.jpeg?file=',
+  ),
+  FeaturedItemCard(
+    title: "Modern Desk",
+    location: "Boston, MA",
+    price: "\$100",
+    imagePath: 'https://dhanush.wtf/media/qy6ad3134ui.png?file=',
   ),
   // Add more items as needed
 ];

@@ -17,7 +17,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-        title: Text("Details", style: AppTextStyles.title()),
+        title: Text("Details", style: AppTextStyles.title(fontWeight: FontWeight.normal)),
         actions: [
           IconButton(
             icon: Icon(Icons.favorite_border, color: Colors.grey),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
-import 'package:roomify_app/views/home/marketplace_home.dart';
-import 'package:roomify_app/views/home/property_details.dart';
-import 'package:roomify_app/views/home/explore_properties.dart';
-import 'package:roomify_app/views/home/roomate_match/roommate_match.dart';
+import 'package:roomify_app/views/marketplace/marketplace_home.dart';
+import 'package:roomify_app/views/profile/profile_home.dart';
+import 'package:roomify_app/views/property/property_details.dart';
+import 'package:roomify_app/views/property/explore_properties.dart';
+import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
 
@@ -21,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     RoommateMatchScreen(),
     ExplorePropertiesScreen(), // Placeholder for a roommate screen
     MarketplaceScreen(),
-    PropertyDetailsScreen(), // Placeholder for an apartment screen
+    ProfileScreen(), // Placeholder for an apartment screen
   ];
   @override
   Widget build(BuildContext context) {

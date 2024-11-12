@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:roomify_app/views/home/property_details.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 
 class ExplorePropertiesScreen extends StatelessWidget {
   @override

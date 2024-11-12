@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:roomify_app/utils/text_styles.dart';
 
 class PinterestGrid extends StatelessWidget {
   final List<FeaturedItemCard> items;
-
+  final ScrollPhysics physics;
   const PinterestGrid({
     Key? key,
     required this.items,
+    this.physics = const NeverScrollableScrollPhysics(),
   }) : super(key: key);
 
   @override
@@ -14,11 +16,13 @@ class PinterestGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: MasonryGridView.count(
+        padding: EdgeInsets.all(0),
+        scrollDirection: Axis.vertical,
         crossAxisCount: 2,
         mainAxisSpacing: 18,
         crossAxisSpacing: 18,
         shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+        physics: physics,
         itemCount: items.length,
         itemBuilder: (context, index) {
           return items[index];
@@ -49,17 +53,20 @@ class FeaturedItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            imagePath,
-            width: 180,
-            fit: BoxFit.cover,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Image.network(
+              imagePath,
+              width: 180,
+              fit: BoxFit.cover,
+            ),
           ),
           SizedBox(
             height: 5,
           ),
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: AppTextStyles.subtitle(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
