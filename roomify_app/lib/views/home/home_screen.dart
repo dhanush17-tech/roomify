@@ -1,160 +1,171 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
+import 'package:roomify_app/views/messaging/message_home.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
+import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  User user;
+  HomeScreen({required this.user});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Hi Anika!',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: null,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.favorite_outline_rounded, color: Colors.grey),
-            onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (c) => FavoritesScreen()));
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.chat_bubble_outline, color: Colors.grey),
-            onPressed: () {},
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search for rooms, roommates or items...",
-                prefixIcon: Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: Colors.grey.shade200,
-                contentPadding: EdgeInsets.symmetric(vertical: 15),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Recommended Section
-            SectionHeader(
-                title: "Recommended",
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => SearchScreen()));
-                }),
-            Text("based on your preferences",
-                style: TextStyle(color: Colors.grey)),
-            SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Column(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Text(
+                    'Hi Anika!',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   Row(
                     children: [
-                      ItemCard(
-                        title: "Cozy Studio Apartment",
-                        location: "Yaba, Lagos",
-                        price: "\$40/month",
-                        rating: 4.3,
-                        bathrooms: 1,
-                        bedrooms: 1,
-                        imagePath: "assets/test_images/house.png",
+                      IconButton(
+                        icon: Icon(Icons.favorite_outline_rounded,
+                            color: Colors.grey),
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (c) => FavoritesScreen()));
+                        },
                       ),
-                      SizedBox(width: 10),
-                      ItemCard(
-                        title: "Cozy Single Apartment",
-                        location: "Yaba, Lagos",
-                        price: "\$45/month",
-                        rating: 4.5,
-                        bathrooms: 1,
-                        bedrooms: 1,
-                        imagePath: "assets/test_images/house.png",
+                      IconButton(
+                        icon:
+                            Icon(Icons.chat_bubble_outline, color: Colors.grey),
+                        onPressed: () {
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (c) => MessageHome()));
+                        },
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 10,
-                  )
                 ],
               ),
-            ),
-            // SizedBox(height: 20),
-
-            // // Find Your Ideal Roommate Section
-            // SectionHeader(title: "Find Your Ideal Roommate", onTap: () {}),
-            // SizedBox(height: 20),
-            // SingleChildScrollView(
-            //   scrollDirection: Axis.horizontal,
-            //   child: Row(
-            //     children: [
-            //       RoommateCard(
-            //           name: "David E.",
-            //           age: 22,
-            //           university: "ASU",
-            //           imagePath: "assets/test_images/house.png"),
-            //       SizedBox(width: 40),
-            //       RoommateCard(
-            //           name: "Fatima K.",
-            //           age: 20,
-            //           university: "NYU",
-            //           imagePath: "assets/test_images/house.png"),
-            //     ],
-            //   ),
-            // ),
-            SizedBox(height: 20),
-
-            // Featured Items Section
-            SectionHeader(
-                title: "Featured Items",
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => SearchScreen()));
-                }),
-            SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  FeaturedItemCard(
-                    title: "Modern Desk",
-                    location: "Boston, MA",
-                    price: "\$100",
-                    imagePath: "assets/test_images/house.png",
+              // Search Bar
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Search for rooms, roommates or items...",
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  contentPadding: EdgeInsets.symmetric(vertical: 15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
                   ),
-                  SizedBox(width: 20),
-                  FeaturedItemCard(
-                    title: "Office Chair",
-                    location: "San Franc., CA",
-                    price: "\$75",
-                    imagePath: "assets/test_images/house.png",
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: 20),
+
+              // Recommended Section
+              SectionHeader(
+                  title: "Recommended",
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (c) => SearchScreen()));
+                  }),
+              Text("based on your preferences",
+                  style: TextStyle(color: Colors.grey)),
+              SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        ItemCard(
+                          title: "Cozy Studio Apartment",
+                          location: "Yaba, Lagos",
+                          price: "\$40/month",
+                          rating: 4.3,
+                          bathrooms: 1,
+                          bedrooms: 1,
+                          imagePath: "assets/test_images/house.png",
+                        ),
+                        SizedBox(width: 10),
+                        ItemCard(
+                          title: "Cozy Single Apartment",
+                          location: "Yaba, Lagos",
+                          price: "\$45/month",
+                          rating: 4.5,
+                          bathrooms: 1,
+                          bedrooms: 1,
+                          imagePath: "assets/test_images/house.png",
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 10,
+                    )
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Recommended Section
+              SectionHeader(
+                  title: "Pair up",
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (c) => SearchScreen()));
+                  }),
+              // SizedBox(height: 20),
+
+              // // Find Your Ideal Roommate Section
+              // SectionHeader(title: "Find Your Ideal Roommate", onTap: () {}),
+              // SizedBox(height: 20),
+              // SingleChildScrollView(
+              //   scrollDirection: Axis.horizontal,
+              //   child: Row(
+              //     children: [
+              //       RoommateCard(
+              //           name: "David E.",
+              //           age: 22,
+              //           university: "ASU",
+              //           imagePath: "assets/test_images/house.png"),
+              //       SizedBox(width: 40),
+              //       RoommateCard(
+              //           name: "Fatima K.",
+              //           age: 20,
+              //           university: "NYU",
+              //           imagePath: "assets/test_images/house.png"),
+              //     ],
+              //   ),
+              // ),
+
+              SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    FeaturedItemCard(
+                      title: "Modern Desk",
+                      location: "Boston, MA",
+                      price: "\$100",
+                      imagePath: "assets/test_images/house.png",
+                    ),
+                    SizedBox(width: 20),
+                    FeaturedItemCard(
+                      title: "Office Chair",
+                      location: "San Franc., CA",
+                      price: "\$75",
+                      imagePath: "assets/test_images/house.png",
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

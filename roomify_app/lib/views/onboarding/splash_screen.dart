@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
@@ -41,12 +44,42 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   delayedNavigation() {
-    Future.delayed((Duration(seconds: 3)), () {
-      return Navigator.pushAndRemoveUntil(context,
-          MaterialPageRoute(builder: (c) => MainScreen()), (route) => false);
+    Future.delayed((Duration(seconds: 3)), () async {
+      await _checkAuth();
+
+      if (isLoggedIn == true) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (c) => MainScreen()), (route) => false);
+      } else {
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (c) => SignUpLoginScreen()),
+            (route) => false);
+      }
     });
   }
 
+  Future<void> _checkAuth() async {
+    final userProvider = context.read<AuthViewModel>();
+
+    try {
+      final token = await AuthRepository().getToken();
+      if (token != null) {
+        // Get user profile using stored token
+        await userProvider.loadUserProfile();
+        setState(() {
+          isLoggedIn = true;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoggedIn = false;
+      });
+      print('Auto-login failed: $e');
+    }
+  }
+
+  bool isLoggedIn = false;
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -84,7 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
         );
       },
     );
-  } 
+  }
 }
 
 class CircleRevealClipper extends CustomClipper<Path> {

@@ -1,76 +1,178 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:roomify_app/utils/text_styles.dart'; // For iOS style icons and widgets
+import 'package:provider/provider.dart';
+import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/views/auth/login.dart';
+import 'package:roomify_app/views/profile/edit_profile.dart'; // For iOS style icons and widgets
 
 class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          children: [
-            _buildHeader(),
-            SizedBox(height: 20),
-            _buildQuickAccessSection(),
-            SizedBox(height: 20),
-            _buildSectionTitle("Account Settings"),
-            _buildListItem("Edit Account Info", Icons.account_circle_outlined),
-            _buildListItem("Preferences", Icons.tune),
-            _buildListItem("Notifications", Icons.notifications_none),
-            _buildListItem("Payment Methods", Icons.payment),
-            _buildSectionTitle("App Management"),
-            _buildListItem("Help & Support", Icons.help_outline),
-            _buildListItem(
-                "Terms of Service & Privacy Policy", Icons.article_outlined),
-            _buildListItem("Report a Problem", Icons.report_problem_outlined),
-            SizedBox(height: 20),
-            _buildLogoutButton(context),
-            SizedBox(height: 20),
-          ],
-        ),
+        child: Consumer<AuthViewModel>(builder: (context, userProvider, _) {
+          return ListView(
+            children: [
+              _buildHeader(context,userProvider),
+              SizedBox(height: 10),
+              _buildQuickAccessSection(),
+              SizedBox(height: 20),
+              _buildSectionTitle("Account Settings"),
+              _buildListItem(
+                  "Edit Account Info", Icons.account_circle_outlined),
+              _buildListItem("Preferences", Icons.tune),
+              _buildListItem("Notifications", Icons.notifications_none),
+              _buildListItem("Payment Methods", Icons.payment),
+              _buildSectionTitle("App Management"),
+              _buildListItem("Help & Support", Icons.help_outline),
+              _buildListItem(
+                  "Terms of Service & Privacy Policy", Icons.article_outlined),
+              _buildListItem("Report a Problem", Icons.report_problem_outlined),
+              SizedBox(height: 20),
+              ListTile(
+                leading: Icon(Icons.logout_rounded, color: Colors.redAccent),
+                title: Text("Logout"),
+                onTap: () async {
+                  try {
+                    await userProvider.signOut();
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => SignUpLoginScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString())),
+                    );
+                  }
+                }, // Add navigation or functionality
+              ),
+              SizedBox(height: 20),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: Colors.grey[200], // Background color
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: NetworkImage(
-                    "https://via.placeholder.com/150"), // Replace with actual image URL
-              ),
-              DropdownButton<String>(
-                value: "English",
-                icon: Icon(Icons.arrow_drop_down, color: Colors.black),
-                underline: Container(),
-                onChanged: (String? newValue) {},
-                items: <String>['English', 'Spanish', 'French']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text("Anika",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text("Computer Science, NYU",
-              style: TextStyle(color: Colors.grey[600])),
-          TextButton(
-            onPressed: () {},
-            child: Text("Edit Profile", style: TextStyle(color: Colors.orange)),
-          ),
-        ],
+  Widget _buildHeader(BuildContext context, AuthViewModel user) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Color(4281282608), // Background color
+        ),
+        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 30),
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundImage: (user.user?.profilePhotoUrl != null
+                        ? NetworkImage(user.user!.profilePhotoUrl!)
+                        : null) as ImageProvider?,
+                    child: user.user?.profilePhotoUrl == null
+                        ? Icon(Icons.person, size: 50)
+                        : null, // Replace with actual image URL
+                  ),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 30.0),
+                            child: Text("Anika",
+                                style: AppTextStyles.button(fontSize: 18)),
+                          ),
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: Container(
+                              height: 30,
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: orangeColor.withOpacity(0.1)),
+                              child: DropdownButton<String>(
+                                padding: EdgeInsets.all(0),
+                                value: "English",
+                                icon: Icon(Icons.arrow_drop_down_rounded,
+                                    color: orangeColor),
+                                underline: Container(),
+                                onChanged: (String? newValue) {},
+                                items: <String>[
+                                  'English',
+                                  'Spanish',
+                                  'French'
+                                ].map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(
+                                      value,
+                                      style: TextStyle(
+                                          color: orangeColor, fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(
+                        height: 5,
+                      ),
+                      Text("Computer Science, NYU",
+                          style: AppTextStyles.caption(color: Colors.white)),
+                      SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (c) => EditProfileScreen()));
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text("Edit Profile",
+                                style: TextStyle(color: Colors.orange)),
+                            SizedBox(
+                              width: 3,
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              color: orangeColor,
+                              size: 14,
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
+            SizedBox(
+              height: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -138,5 +240,3 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
-
-void main() => runApp(MaterialApp(home: ProfileScreen()));

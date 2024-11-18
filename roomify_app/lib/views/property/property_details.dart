@@ -17,7 +17,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-        title: Text("Details", style: AppTextStyles.title(fontWeight: FontWeight.normal)),
+        title: Text("Details", style: AppTextStyles.title()),
         actions: [
           IconButton(
             icon: Icon(Icons.favorite_border, color: Colors.grey),
@@ -85,7 +85,25 @@ class PropertyDetailsScreen extends StatelessWidget {
                 Icon(Icons.chat_bubble_outline, color: Colors.grey),
               ],
             ),
-            SizedBox(height: 16),
+            SizedBox(
+              height: 10,
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "Looking for a Roommate",
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
             Divider(),
             SizedBox(height: 8),
             Text("Property Overview",
