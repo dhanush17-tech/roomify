@@ -1,114 +1,113 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/views/home/favourites.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 
 class ExplorePropertiesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Explore Properties',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.grey),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.favorite_border, color: Colors.grey),
-            onPressed: () {},
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10, left: 16, right: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'single apartment near unilag',
-                          border: InputBorder.none,
+                    const Text('Explore Properties',
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20)),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.favorite_outline,
+                              color: Colors.black),
+                          onPressed: () {},
                         ),
-                      ),
+                      ],
                     ),
-                    Icon(Icons.search, color: Colors.grey),
                   ],
                 ),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Recommended", style: TextStyle(color: Colors.grey)),
-                  Text("New", style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text("Nearby", style: TextStyle(color: Colors.grey)),
-                  Row(
+                SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.view_list, color: Colors.grey),
-                        onPressed: () {},
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'single apartment near unilag',
+                            border: InputBorder.none,
+                          ),
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.filter_list, color: Colors.grey),
-                        onPressed: () {},
-                      ),
+                      Icon(Icons.search, color: Colors.grey),
                     ],
                   ),
-                ],
-              ),
-              SizedBox(height: 16),
-              PropertyCard(
-                imagePath: 'assets/test_images/house.png',
-                title: 'Cozy Studio Apartment',
-                location: 'Yaba, Lagos',
-                price: '\$45/month',
-                rating: 4.3,
-                bathrooms: 1,
-                bedrooms: 1,
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (c) => PropertyDetailsScreen()));
-                },
-              ),
-              SizedBox(height: 16),
-              PropertyCard(
-                imagePath: 'assets/test_images/house.png',
-                title: 'Modern Studio Apartment',
-                location: 'Ikeja, Lagos',
-                price: '\$50/month',
-                rating: 4.5,
-                bathrooms: 1,
-                bedrooms: 1,
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (c) => PropertyDetailsScreen()));
-                },
-              ),
-            ],
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Recommended", style: TextStyle(color: Colors.grey)),
+                    Text("New", style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Nearby", style: TextStyle(color: Colors.grey)),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.view_list, color: Colors.grey),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.filter_list, color: Colors.grey),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                PropertyCard(
+                  imagePath: 'assets/test_images/house.png',
+                  title: 'Cozy Studio Apartment',
+                  location: 'Yaba, Lagos',
+                  price: '\$45/month',
+                  rating: 4.3,
+                  bathrooms: 1,
+                  bedrooms: 1,
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (c) => PropertyDetailsScreen()));
+                  },
+                ),
+                SizedBox(height: 26),
+                PropertyCard(
+                  imagePath: 'assets/test_images/house.png',
+                  title: 'Modern Studio Apartment',
+                  location: 'Ikeja, Lagos',
+                  price: '\$50/month',
+                  rating: 4.5,
+                  bathrooms: 1,
+                  bedrooms: 1,
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (c) => PropertyDetailsScreen()));
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

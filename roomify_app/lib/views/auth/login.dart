@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 
@@ -14,6 +16,14 @@ class SignUpLoginScreen extends StatefulWidget {
 class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _collegeController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _loginEmailController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
+  final _ageController = TextEditingController();
 
   @override
   void initState() {
@@ -22,213 +32,226 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _collegeController.dispose();
+    _locationController.dispose();
+    _loginEmailController.dispose();
+    _loginPasswordController.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.05,
-              ),
-              Text(
-                "Let’s Get Started",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 20),
-              // Tab Bar for Sign Up / Log In
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+      body: Consumer<AuthViewModel>(
+        builder: (context, authViewModel, child) {
+          // Redirect if authenticated
+          if (authViewModel.isAuthenticated) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (c) => MainScreen()),
+                (route) => false,
+              );
+            });
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.05,
+                  ),
+                  Text(
+                    "Let's Get Started",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (authViewModel.error != null)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        authViewModel.error!,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  SizedBox(height: 20),
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: TabBar(
-                    dividerHeight: 0,
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: orangeColor,
-                      borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: TabBar(
+                        dividerHeight: 0,
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: orangeColor,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicatorColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: orangeColor,
+                        labelStyle: TextStyle(fontWeight: FontWeight.bold),
+                        tabs: [
+                          Tab(text: 'Sign Up'),
+                          Tab(text: 'Log In'),
+                        ],
+                      ),
                     ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorColor: Colors.transparent, // Removes the thin line
-                    labelColor: Colors.white,
-                    unselectedLabelColor: orangeColor,
-                    labelStyle: TextStyle(fontWeight: FontWeight.bold),
-                    tabs: [
-                      Tab(text: 'Sign Up'),
-                      Tab(text: 'Log In'),
-                    ],
                   ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Sign Up Tab
-                    ListView(
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
                       children: [
-                        InputField(label: "Name"),
-                        InputField(label: "Email"),
-                        InputField(label: "Password", obscureText: true),
-                        InputField(label: "College"),
-                        InputField(label: "Preferred Location"),
-                        SizedBox(height: 20),
-                        // Sign Up Button
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (c) => MainScreen()),
-                                (route) => false);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: orangeColor,
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        // Terms and Privacy Policy Text
-                        Center(
-                          child: Text.rich(
-                            TextSpan(
-                              text: 'By signing up, you agree to our ',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 12),
-                              children: [
-                                TextSpan(
-                                  text: 'Terms of Service',
-                                  style: TextStyle(
-                                    color: orangeColor,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                                TextSpan(text: ' and '),
-                                TextSpan(
-                                  text: 'Privacy Policy',
-                                  style: TextStyle(
-                                    color: orangeColor,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                                TextSpan(text: '.'),
-                              ],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Center(
-                          child: Text(
-                            "Join Roomify in just a few clicks",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        // Social Media Icons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        // Sign Up Tab
+                        ListView(
                           children: [
-                            SocialIcon(icon: "assets/icons/facebook_icon.svg"),
-                            SizedBox(width: 20),
-                            SocialIcon(icon: "assets/icons/google_icon.svg"),
-                            SizedBox(width: 20),
-                            SocialIcon(icon: "assets/icons/apple_icon.svg"),
+                            InputField(
+                              controller: _nameController,
+                              label: "Name",
+                            ),
+                            InputField(
+                              controller: _emailController,
+                              label: "Email",
+                            ),
+                            InputField(
+                              controller: _passwordController,
+                              label: "Password",
+                              obscureText: true,
+                            ),
+                            InputField(
+                              controller: _ageController,
+                              label: "Age",
+                              keyboardType: TextInputType.number,
+                            ),
+                            InputField(
+                              controller: _collegeController,
+                              label: "College",
+                            ),
+
+                            InputField(
+                              controller: _locationController,
+                              label: "Preferred Location",
+                            ),
+                            SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: authViewModel.isLoading
+                                  ? null
+                                  : () {
+                                      authViewModel.register(
+                                          username: _nameController.text,
+                                          email: _emailController.text,
+                                          password: _passwordController.text,
+                                          displayName: _nameController.text,
+                                          university: _collegeController.text,
+                                          location: _locationController.text,
+                                          age: int.parse(_ageController.text));
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: orangeColor,
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              child: authViewModel.isLoading
+                                  ? CircularProgressIndicator(
+                                      color: Colors.white)
+                                  : Text(
+                                      "Sign Up",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                            // Rest of your sign up UI...
+                          ],
+                        ),
+                        // Login Tab
+                        ListView(
+                          children: [
+                            InputField(
+                              controller: _loginEmailController,
+                              label: "Email",
+                            ),
+                            InputField(
+                              controller: _loginPasswordController,
+                              label: "Password",
+                              obscureText: true,
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (c) => ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
+                              child: Align(
+                                alignment: Alignment.topRight,
+                                child: Text("Forgot Password?"),
+                              ),
+                            ),
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.05,
+                            ),
+                            ElevatedButton(
+                              onPressed: authViewModel.isLoading
+                                  ? null
+                                  : () {
+                                      authViewModel.login(
+                                        _loginEmailController.text,
+                                        _loginPasswordController.text,
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: orangeColor,
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              child: authViewModel.isLoading
+                                  ? CircularProgressIndicator(
+                                      color: Colors.white)
+                                  : Text(
+                                      "Log In",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                            // Rest of your login UI...
                           ],
                         ),
                       ],
                     ),
-                    // Log In Tab
-                    ListView(
-                      children: [
-                        InputField(label: "Email"),
-                        InputField(label: "Password", obscureText: true),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (c) => ForgotPasswordScreen()));
-                          },
-                          child: Align(
-                            alignment: Alignment.topRight,
-                            child: Text("Forgot Passoword?"),
-                          ),
-                        ),
-                        SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.05),
-                        // Log In Button
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (c) => MainScreen()),
-                                (route) => false);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: orangeColor,
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            "Log In",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Center(
-                          child: Text(
-                            "Join Roomify in just a few clicks",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        // Social Media Icons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SocialIcon(icon: "assets/icons/facebook_icon.svg"),
-                            SizedBox(width: 20),
-                            SocialIcon(icon: "assets/icons/google_icon.svg"),
-                            SizedBox(width: 20),
-                            SocialIcon(icon: "assets/icons/apple_icon.svg"),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -237,14 +260,22 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
 class InputField extends StatelessWidget {
   final String label;
   final bool obscureText;
+  final TextEditingController controller;
+  final TextInputType keyboardType;
 
-  InputField({required this.label, this.obscureText = false});
+  InputField(
+      {required this.label,
+      required this.controller,
+      this.obscureText = false,
+      this.keyboardType = TextInputType.name});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
+        keyboardType: keyboardType,
+        controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
           hintText: label,

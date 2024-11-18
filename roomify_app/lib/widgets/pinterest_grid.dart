@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/marketplace/item_details.dart';
 
 class PinterestGrid extends StatelessWidget {
   final List<FeaturedItemCard> items;
@@ -37,66 +38,74 @@ class FeaturedItemCard extends StatelessWidget {
   final String location;
   final String price;
   final String imagePath;
+  final VoidCallback? onTap;
 
-  const FeaturedItemCard({
-    Key? key,
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.imagePath,
-  }) : super(key: key);
+  const FeaturedItemCard(
+      {Key? key,
+      required this.title,
+      required this.location,
+      required this.price,
+      required this.imagePath,
+      this.onTap})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 180,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              imagePath,
-              width: 180,
-              fit: BoxFit.cover,
-            ),
-          ),
-          SizedBox(
-            height: 5,
-          ),
-          Text(
-            title,
-            style: AppTextStyles.subtitle(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(
-            height: 3,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(location, style: const TextStyle(color: Colors.grey)),
-              SizedBox(
-                width: 4,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (C) => ItemDetailsScreen()));
+      },
+      child: Container(
+        width: 180,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                imagePath,
+                width: 180,
+                fit: BoxFit.cover,
               ),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Text(
+              title,
+              style: AppTextStyles.subtitle(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(
+              height: 3,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(location, style: const TextStyle(color: Colors.grey)),
+                SizedBox(
+                  width: 4,
                 ),
-                child: Text(
-                  price,
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    price,
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
