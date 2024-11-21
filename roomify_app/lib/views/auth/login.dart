@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 
@@ -48,7 +48,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Consumer<AuthViewModel>(
+      body: Consumer<UserProvider>(
         builder: (context, authViewModel, child) {
           // Redirect if authenticated
           if (authViewModel.isAuthenticated) {
@@ -154,8 +154,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                   ? null
                                   : () {
                                       authViewModel.register(
-                                          username: _nameController.text,
-                                          email: _emailController.text,
+                                           email: _emailController.text,
                                           password: _passwordController.text,
                                           displayName: _nameController.text,
                                           university: _collegeController.text,

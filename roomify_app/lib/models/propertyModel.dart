@@ -1,58 +1,87 @@
-import 'package:roomify_app/models/itemModel.dart';
-import 'package:roomify_app/models/userModel.dart';
+enum ListingType { PROPERTY, MARKETPLACE }
 
-class Property extends Listing {
-  String location;
-  int numberOfRooms;
-  List<String> amenities;
-  List<String> propertyTags;
-  List<Comment> comments;
-  List<String> imageUrls;
+class Property {
+  final int? id;
+  final String title;
+  final String description;
+  final String location;
+  final double price;
+  final int numberOfBedrooms;
+  final int numberOfBathrooms;
+  final int maxOccupancy;
+  final ListingType type;
+  final List<String> amenities;
+  final List<String> categories;
+  final List<String> imageUrls;
+  final DateTime createdAt;
 
   Property({
-    required int id,
-    required String title,
-    required String description,
-    required DateTime createdAt,
-    required String userId,
-    required double price,
-    required bool isFavorite,
-    required this.imageUrls,
-    required this.propertyTags,
+    this.id,
+    required this.title,
+    required this.description,
     required this.location,
-    required this.numberOfRooms,
+    required this.price,
+    required this.numberOfBedrooms,
+    required this.numberOfBathrooms,
+    required this.maxOccupancy,
+    required this.type,
     required this.amenities,
-    required this.comments,
-  }) : super(
-            type: ListingType.Property,
-            id: id,
-            location: location,
-            isFavourite: isFavorite,
-            price: price,
-            title: title,
-            description: description,
-            createdAt: createdAt,
-            userId: userId);
+    required this.categories,
+    this.imageUrls = const [],
+    DateTime? createdAt,
+  }) : this.createdAt = createdAt ?? DateTime.now();
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'createdAt': createdAt.toString(),
-      'location': location,
-      'numberOfRooms': numberOfRooms,
-    };
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'location': location,
+        'price': price,
+        'numberOfBedrooms': numberOfBedrooms,
+        'numberOfBathrooms': numberOfBathrooms,
+        'maxOccupancy': maxOccupancy,
+        'type': type.toString().split('.').last,
+        'amenities': amenities,
+        'categories': categories
+      };
+
+  factory Property.fromJson(Map<String, dynamic> json) {
+    return Property(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'],
+      location: json['location'],
+      price: json['price'].toDouble(),
+      numberOfBedrooms: json['number_of_bedrooms'],
+      numberOfBathrooms: json['number_of_bathrooms'],
+      maxOccupancy: json['max_occupancy'],
+      type: ListingType.PROPERTY,
+      amenities: List<String>.from(json['amenities'] ?? []),
+      categories: List<String>.from(json['categories'] ?? []),
+      imageUrls: List<String>.from(json['images'] ?? []),
+    );
   }
 }
 
-class Comment {
-  User user;
-  String comment;
+enum PropertyCategory {
+  Apartment,
+  Studio,
+  SharedHouse,
+  PrivateResidence,
+  RoomForRent,
+  Hostel,
+  StudentHousing,
+  Condo,
+  Townhouse,
+  Duplex
+}
 
-  Comment({
-    required this.user,
-    required this.comment,
-  });
+extension PropertyCategoryExtension on PropertyCategory {
+  String get displayName {
+    return this
+        .toString()
+        .split('.')
+        .last
+        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(0)}')
+        .trim();
+  }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 
 class PropertyDetailsScreen extends StatelessWidget {
+  final Property property;
+  PropertyDetailsScreen(this.property);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,7 +44,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             Text(
-              "Cozy Apartment",
+              property.title,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
@@ -49,7 +52,7 @@ class PropertyDetailsScreen extends StatelessWidget {
               children: [
                 Icon(Icons.location_on, color: Colors.grey),
                 SizedBox(width: 4),
-                Text("Tucson, AZ", style: TextStyle(color: Colors.grey)),
+                Text(property.location, style: TextStyle(color: Colors.grey)),
                 Spacer(),
                 Icon(Icons.groups, color: Colors.grey),
                 SizedBox(width: 4),
@@ -57,11 +60,11 @@ class PropertyDetailsScreen extends StatelessWidget {
                 SizedBox(width: 16),
                 Icon(Icons.bed, color: Colors.grey),
                 SizedBox(width: 4),
-                Text("2"),
+                Text(property.numberOfBedrooms.toString()),
                 SizedBox(width: 16),
                 Icon(Icons.directions_car, color: Colors.grey),
                 SizedBox(width: 4),
-                Text("4"),
+                Text(property.numberOfBathrooms.toString()),
               ],
             ),
             SizedBox(height: 16),
@@ -110,33 +113,22 @@ class PropertyDetailsScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Text(
-              "Spacious 2-bedroom apartment located 5 minutes from campus. Fully furnished with modern amenities and 24/7 security.",
+              property.description,
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildTag("15 minutes by car to campus"),
-                _buildTag("Pet-friendly"),
-                _buildTag("Furnished"),
-              ],
-            ),
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    property.categories.map((e) => _buildTag(e)).toList()),
             SizedBox(height: 16),
             Text("Amenities", style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildTag("WiFi"),
-                _buildTag("Parking"),
-                _buildTag("Laundry facilities"),
-                _buildTag("Gym"),
-                _buildTag("Security personnel"),
-              ],
-            ),
+                spacing: 8,
+                runSpacing: 8,
+                children: property.amenities.map((e) => _buildTag(e)).toList()),
             SizedBox(height: 16),
             Text("About the Roomies",
                 style: TextStyle(fontWeight: FontWeight.bold)),

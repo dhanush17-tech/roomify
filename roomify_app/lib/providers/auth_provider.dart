@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 
-class AuthViewModel extends ChangeNotifier {
+class UserProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
 
-  AuthViewModel(this._authRepository);
+  UserProvider(this._authRepository);
 
   User? _user;
   bool _isLoading = false;
@@ -68,7 +68,7 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> register(
-      {required String username,
+      {
       required String email,
       required String password,
       required String displayName,
@@ -80,14 +80,12 @@ class AuthViewModel extends ChangeNotifier {
       _setError(null);
 
       final user = await _authRepository.register(
-        username: username,
-        email: email,
-        password: password,
-        displayName: displayName,
-        age: age,
-        university: university,
-        location: location
-      );
+          displayName: displayName,
+          email: email,
+          password: password,
+           age: age,
+          university: university,
+          location: location);
 
       _setUser(user);
     } catch (e) {
@@ -126,6 +124,7 @@ class AuthViewModel extends ChangeNotifier {
       _user = updatedUser;
     } catch (e) {
       _error = e.toString();
+      
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -148,6 +147,7 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   Future<void> signOut() async {
     try {
       await _authRepository.signOut();

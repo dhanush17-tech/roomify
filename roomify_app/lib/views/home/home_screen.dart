@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
@@ -91,7 +92,7 @@ class HomeScreen extends StatelessWidget {
                           bathrooms: 1,
                           bedrooms: 1,
                           imagePath: "assets/test_images/house.png",
-                        ),
+                         ),
                         SizedBox(width: 10),
                         ItemCard(
                           title: "Cozy Single Apartment",
@@ -180,7 +181,7 @@ class ItemCard extends StatelessWidget {
   final int bathrooms;
   final int bedrooms;
   final String imagePath;
-
+ 
   ItemCard({
     required this.title,
     required this.location,
@@ -189,14 +190,14 @@ class ItemCard extends StatelessWidget {
     required this.bathrooms,
     required this.bedrooms,
     required this.imagePath,
-  });
+   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen()));
+        // Navigator.push(context,
+        //     MaterialPageRoute(builder: (c) => PropertyDetailsScreen(property)));
       },
       child: Container(
         width: 250,

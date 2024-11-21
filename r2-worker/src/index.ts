@@ -1,4 +1,4 @@
- 
+
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
@@ -34,9 +34,14 @@ export default {
 		}
 	},
 };
-
 async function handleUpload(request: Request, env: Env): Promise<Response> {
 	try {
+		const contentType = request.headers.get('Content-Type') || '';
+
+		if (!contentType.startsWith('multipart/form-data')) {
+			return new Response('Invalid content type', { status: 400 });
+		}
+
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
 
@@ -44,21 +49,17 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 			return new Response('No file provided', { status: 400 });
 		}
 
-		// Validate file type
-		if (!file.type.startsWith('image/')) {
-			return new Response('Invalid file type', { status: 400 });
-		}
+		console.log('File received:', {
+			name: file.name,
+			type: file.type,
+			size: file.size,
+		});
 
-		// Validate file size (5MB limit)
-		if (file.size > 5 * 1024 * 1024) {
-			return new Response('File too large', { status: 400 });
-		}
-
+		// Upload logic here
 		const fileExtension = file.name.split('.').pop() || '';
 		const fileName = `${crypto.randomUUID()}.${fileExtension}`;
 		const fullPath = `images/${fileName}`;
 
-		// Upload to R2
 		await env.BUCKET.put(fullPath, file.stream(), {
 			httpMetadata: {
 				contentType: file.type,
@@ -66,12 +67,12 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 		});
 
 		const imageUrl = `${env.R2_PUBLIC_URL}/${fullPath}`;
-
+		 
 		return new Response(
 			JSON.stringify({
 				success: true,
 				url: imageUrl,
-				fileName: fullPath
+				fileName: fullPath,
 			}),
 			{
 				headers: {
@@ -85,7 +86,7 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 		return new Response(
 			JSON.stringify({
 				success: false,
-				error: 'Upload failed'
+				error: 'Upload failed',
 			}),
 			{
 				status: 500,
@@ -97,7 +98,6 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 		);
 	}
 }
-
 async function handleDelete(request: Request, env: Env): Promise<Response> {
 	try {
 		const fileName = request.url.split('/delete/')[1];

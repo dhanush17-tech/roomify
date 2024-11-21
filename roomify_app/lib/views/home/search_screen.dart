@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/providers/search_provider.dart';
 import 'package:roomify_app/views/property/explore_properties.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 
 import '../../widgets/filter_bottom_sheet.dart';
+
 class SearchScreen extends StatefulWidget {
   @override
   _SearchScreenState createState() => _SearchScreenState();
@@ -51,7 +54,9 @@ class _SearchScreenState extends State<SearchScreen> {
                       Expanded(
                         child: TextField(
                           controller: _searchController,
-                          onChanged: _onSearchChanged,
+                          onChanged: (query) {
+                            _onSearchChanged(query);
+                          },
                           decoration: InputDecoration(
                             hintText: 'Search for more...',
                             prefixIcon: Icon(Icons.search),
@@ -143,6 +148,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 }
+
 Widget _buildSearchResult(dynamic item, String activeTab) {
   switch (activeTab) {
     case 'Property':
@@ -158,116 +164,129 @@ Widget _buildSearchResult(dynamic item, String activeTab) {
 
 // Property Card Widget
 class PropertyCard extends StatelessWidget {
-  final dynamic property;
+  final Property property;
 
   const PropertyCard(this.property);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.network(
-                  property.imageUrl ?? '',
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(
-                  Icons.favorite_border,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(property)));
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Text(
-                  property.title ?? '',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on_outlined,
-                        size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text(
-                      property.location ?? '',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.star, size: 16, color: Colors.amber),
-                        SizedBox(width: 4),
-                        Text(
-                          '${property.rating ?? 0.0}',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  child: property.imageUrls.isNotEmpty
+                      ? Image.network(
+                          property.imageUrls[0],
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.asset(
+                          'assets/test_images/house.png',
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
                         ),
-                      ],
-                    ),
-                    SizedBox(width: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.bed_outlined, size: 16),
-                        SizedBox(width: 4),
-                        Text('${property.bedrooms ?? 1}'),
-                      ],
-                    ),
-                    SizedBox(width: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.bathtub_outlined, size: 16),
-                        SizedBox(width: 4),
-                        Text('${property.bathrooms ?? 1}'),
-                      ],
-                    ),
-                  ],
                 ),
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '₦${property.price}/month',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Icon(
+                    Icons.favorite_border,
+                    color: Colors.white,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    property.title ?? '',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined,
+                          size: 16, color: Colors.grey),
+                      SizedBox(width: 4),
+                      Text(
+                        property.location ?? '',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.star, size: 16, color: Colors.amber),
+                          SizedBox(width: 4),
+                          Text(
+                            '${0.0}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      SizedBox(width: 16),
+                      Row(
+                        children: [
+                          Icon(Icons.bed_outlined, size: 16),
+                          SizedBox(width: 4),
+                          Text('${property.numberOfBedrooms ?? 1}'),
+                        ],
+                      ),
+                      SizedBox(width: 16),
+                      Row(
+                        children: [
+                          Icon(Icons.bathtub_outlined, size: 16),
+                          SizedBox(width: 4),
+                          Text('${property.numberOfBathrooms ?? 1}'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '₦${property.price}/month',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -275,37 +294,43 @@ class PropertyCard extends StatelessWidget {
 
 // Marketplace Card Widget
 class MarketplaceCard extends StatelessWidget {
-  final dynamic item;
+  final Property item;
 
   const MarketplaceCard(this.item);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            item.imageUrl ?? '',
-            width: 60,
-            height: 60,
-            fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(item)));
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              item.imageUrls[0] ?? '',
+              width: 60,
+              height: 60,
+              fit: BoxFit.cover,
+            ),
           ),
+          title: Text(
+            item.title ?? '',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            item.price != null ? '₦${item.price}' : '',
+            style: TextStyle(color: Colors.blue),
+          ),
+          trailing: Icon(Icons.favorite_border),
         ),
-        title: Text(
-          item.title ?? '',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          item.price != null ? '₦${item.price}' : '',
-          style: TextStyle(color: Colors.blue),
-        ),
-        trailing: Icon(Icons.favorite_border),
       ),
     );
   }

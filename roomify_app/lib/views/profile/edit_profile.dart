@@ -26,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthViewModel>().user;
+    final user = context.read<UserProvider>().user;
     if (user != null) {
       _nameController.text = user.displayName;
       _emailController.text = user.email;
@@ -57,9 +57,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: Consumer<AuthViewModel>(
-        builder: (context, AuthViewModel, child) {
-          final user = AuthViewModel.user;
+      body: Consumer<UserProvider>(
+        builder: (context, UserProvider, child) {
+          final user = UserProvider.user;
 
           return SingleChildScrollView(
             padding: EdgeInsets.all(20),
@@ -103,7 +103,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   SizedBox(height: 20),
                   if (user?.profilePhotoUrl != null)
                     TextButton(
-                      onPressed: () => AuthViewModel.deleteProfilePhoto(),
+                      onPressed: () => UserProvider.deleteProfilePhoto(),
                       child: Text('Remove Photo'),
                     ),
                   InputField(
@@ -125,7 +125,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   InputField(
                     controller: _passwordController,
-                    label: "New Password (optional)",
+                    label: "New Password",
                     obscureText: true,
                   ),
                   InputField(
@@ -163,11 +163,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   SizedBox(height: 20),
-                  if (AuthViewModel.isLoading)
+                  if (UserProvider.isLoading)
                     CircularProgressIndicator()
                   else
                     ElevatedButton(
-                      onPressed: () => _updateProfile(AuthViewModel),
+                      onPressed: () => _updateProfile(UserProvider),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: orangeColor,
                         padding: EdgeInsets.symmetric(
@@ -189,11 +189,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Future<void> _updateProfile(AuthViewModel AuthViewModel) async {
+  Future<void> _updateProfile(UserProvider UserProvider) async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      await AuthViewModel.updateProfile(
+      await UserProvider.updateProfile(
         displayName: _nameController.text,
         email: _emailController.text,
         password: _passwordController.text.isNotEmpty

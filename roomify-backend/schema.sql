@@ -120,3 +120,18 @@
 -- );
 -- CREATE INDEX IF NOT EXISTS idx_token_hash ON active_tokens(token_hash);
 -- CREATE INDEX IF NOT EXISTS idx_expires_at ON active_tokens(expires_at);
+
+
+-- -- Add this to your schema.sql file
+-- CREATE TABLE IF NOT EXISTS property_categories (
+--   property_id INTEGER,
+--   category TEXT NOT NULL,
+--   FOREIGN KEY (property_id) REFERENCES properties(listing_id),
+--   PRIMARY KEY (property_id, category)
+-- );
+
+-- -- Add an index for better performance
+-- CREATE INDEX IF NOT EXISTS idx_property_categories_property_id 
+-- ON property_categories(property_id);
+
+ SELECT * from user;

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:roomify_app/models/filterModel.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/repository/search_repo.dart';
 
 class SearchProvider extends ChangeNotifier {
   final SearchRepository _repository;
-  List<dynamic> _searchResults = [];
+  List<Property> _searchResults = [];
   bool _isLoading = false;
   String _searchQuery = '';
   FilterOptions? _filterOptions;
@@ -12,7 +13,7 @@ class SearchProvider extends ChangeNotifier {
 
   SearchProvider(this._repository);
 
-  List<dynamic> get searchResults => _searchResults;
+  List<Property> get searchResults => _searchResults;
   bool get isLoading => _isLoading;
   String get activeTab => _activeTab;
   FilterOptions? get filterOptions => _filterOptions;

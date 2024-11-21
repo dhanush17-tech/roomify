@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/providers/roommateMatch_provider.dart';
 import 'package:roomify_app/providers/search_provider.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
+import 'package:roomify_app/repository/properties_repo.dart';
 import 'package:roomify_app/repository/rommate_match_repo.dart';
 import 'package:roomify_app/repository/search_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
@@ -25,12 +27,12 @@ class MyApp extends StatelessWidget {
           Provider<AuthRepository>(
             create: (_) => AuthRepository(),
           ),
-          ChangeNotifierProxyProvider<AuthRepository, AuthViewModel>(
-            create: (context) => AuthViewModel(
+          ChangeNotifierProxyProvider<AuthRepository, UserProvider>(
+            create: (context) => UserProvider(
               context.read<AuthRepository>(),
             ),
             update: (context, authRepository, previous) =>
-                previous ?? AuthViewModel(authRepository),
+                previous ?? UserProvider(authRepository),
           ),
 
           // Roommate Match Provider
@@ -56,6 +58,16 @@ class MyApp extends StatelessWidget {
             ),
             update: (context, repository, previous) =>
                 previous ?? SearchProvider(repository),
+          ),
+          Provider<PropertyRepository>(
+            create: (_) => PropertyRepository(),
+          ),
+          ChangeNotifierProxyProvider<PropertyRepository, PropertyProvider>(
+            create: (context) => PropertyProvider(
+              context.read<PropertyRepository>(),
+            ),
+            update: (context, repository, previous) =>
+                previous ?? PropertyProvider(repository),
           ),
         ],
         child: MaterialApp(

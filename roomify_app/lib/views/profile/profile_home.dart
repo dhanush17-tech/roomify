@@ -12,10 +12,10 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Consumer<AuthViewModel>(builder: (context, userProvider, _) {
+        child: Consumer<UserProvider>(builder: (context, userProvider, _) {
           return ListView(
             children: [
-              _buildHeader(context,userProvider),
+              _buildHeader(context, userProvider),
               SizedBox(height: 10),
               _buildQuickAccessSection(),
               SizedBox(height: 20),
@@ -58,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AuthViewModel user) {
+  Widget _buildHeader(BuildContext context, UserProvider user) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Container(
@@ -69,13 +69,46 @@ class ProfileScreen extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
         child: Column(
           children: [
+            SizedBox(
+              height: 10,
+            ),
+            Align(
+              alignment: Alignment.topRight,
+              child: Container(
+                height: 30,
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: orangeColor.withOpacity(0.1)),
+                child: DropdownButton<String>(
+                  padding: EdgeInsets.all(0),
+                  value: "English",
+                  icon: Icon(Icons.arrow_drop_down_rounded, color: orangeColor),
+                  underline: Container(),
+                  onChanged: (String? newValue) {},
+                  items: <String>['English', 'Spanish', 'French']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: TextStyle(color: orangeColor, fontSize: 14),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 30),
+                  padding: const EdgeInsets.only(top: 0),
                   child: CircleAvatar(
-                    radius: 50,
+                    radius: 45,
                     backgroundImage: (user.user?.profilePhotoUrl != null
                         ? NetworkImage(user.user!.profilePhotoUrl!)
                         : null) as ImageProvider?,
@@ -91,48 +124,10 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 30.0),
-                            child: Text("Anika",
-                                style: AppTextStyles.button(fontSize: 18)),
-                          ),
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: Container(
-                              height: 30,
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: orangeColor.withOpacity(0.1)),
-                              child: DropdownButton<String>(
-                                padding: EdgeInsets.all(0),
-                                value: "English",
-                                icon: Icon(Icons.arrow_drop_down_rounded,
-                                    color: orangeColor),
-                                underline: Container(),
-                                onChanged: (String? newValue) {},
-                                items: <String>[
-                                  'English',
-                                  'Spanish',
-                                  'French'
-                                ].map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(
-                                      value,
-                                      style: TextStyle(
-                                          color: orangeColor, fontSize: 14),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Padding(
+                        padding: const EdgeInsets.only(top: 0.0),
+                        child: Text(user.user?.displayName ?? "",
+                            style: AppTextStyles.button(fontSize: 18)),
                       ),
                       SizedBox(
                         height: 5,

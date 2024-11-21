@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:roomify_app/models/roommateMatchModel.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
+import 'package:roomify_app/utils.dart';
 
 class RoommateMatchRepository {
-  final String baseUrl = 'http://10.0.2.2:8787';
-
+ 
   RoommateMatchRepository();
 
   Future<List<RoommateMatch>> getMatches() async {

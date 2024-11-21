@@ -5,6 +5,7 @@ import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/marketplace/marketplace_home.dart';
 import 'package:roomify_app/views/profile/profile_home.dart';
+import 'package:roomify_app/views/property/add_property.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/property/explore_properties.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
@@ -22,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = context.watch<AuthViewModel>();
+    final userProvider = context.watch<UserProvider>();
 
     // Check if user is null
     if (userProvider.user == null) {
@@ -37,6 +38,7 @@ class _MainScreenState extends State<MainScreen> {
       RoommateMatchScreen(),
       SearchScreen(), // Placeholder for a roommate screen
       MarketplaceScreen(),
+      // AddPropertyScreen()
       ProfileScreen(), // Placeholder for an apartment screen
     ];
     return Scaffold(
