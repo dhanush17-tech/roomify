@@ -21,7 +21,9 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 15
+          //1
+          ),
       vsync: this,
     );
 
@@ -31,7 +33,10 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Start the animation after a 2-second delay
-    Future.delayed(Duration(milliseconds: 1500), () {
+    Future.delayed(
+        Duration(milliseconds: 20
+            //1500
+            ), () {
       _controller.forward();
     });
     delayedNavigation();
@@ -44,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   delayedNavigation() {
-    Future.delayed((Duration(seconds: 3)), () async {
+    Future.delayed((Duration(seconds: 1)), () async {
       await _checkAuth();
 
       if (isLoggedIn == true) {
@@ -60,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    final userProvider = context.read<AuthViewModel>();
+    final userProvider = context.read<UserProvider>();
 
     try {
       final token = await AuthRepository().getToken();

@@ -62,6 +62,14 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen> {
                       return _buildProfileCard(provider.matches[index]);
                     },
                     onSwipe: (previousIndex, currentIndex, direction) {
+                      final match = provider.matches[previousIndex];
+                      if (direction == CardSwiperDirection.left) {
+                        provider.swipeLeft(match.id);
+                        print("left swipe");
+                      } else if (direction == CardSwiperDirection.right) {
+                        provider.swipeRight(match.id);
+                        print("right swipe");
+                      }
                       // Prevent swiping on the last card
                       if (previousIndex == provider.matches.length - 1) {
                         return false; // Stop swipe action for the last card
@@ -69,12 +77,6 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen> {
 
                       if (hasMatches &&
                           previousIndex < provider.matches.length) {
-                        final match = provider.matches[previousIndex];
-                        if (direction == CardSwiperDirection.left) {
-                          provider.swipeLeft(match.id);
-                        } else if (direction == CardSwiperDirection.right) {
-                          provider.swipeRight(match.id);
-                        }
                         provider.matches.removeAt(previousIndex);
                       }
                       return true;
@@ -161,7 +163,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${profile.username} · ${profile.age}',
+                  '${profile.displayName} · ${profile.age}',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 24,

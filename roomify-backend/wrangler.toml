@@ -33,7 +33,7 @@ binding = "BUCKET"
 # - https://developers.cloudflare.com/workers/configuration/secrets/
 [vars]
  JWT_SECRET = "ROOMIFY-DHANUSH-SECRET-MRID-06-4-2-22JDEWKJDEW*"
-    R2_PUBLIC_URL="https://pub-167ff6c23d994b42b8bae57e8cb2381f.r2.dev"
+ R2_PUBLIC_URL="https://pub-167ff6c23d994b42b8bae57e8cb2381f.r2.dev"
 # Bind the Workers AI model catalog. Run machine learning models, powered by serverless GPUs, on Cloudflare’s global network
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#workers-ai
 # [ai]

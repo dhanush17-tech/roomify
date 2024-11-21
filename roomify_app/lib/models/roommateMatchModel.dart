@@ -1,7 +1,6 @@
 class RoommateMatch {
   final String id;
-  final String username;
-  final String displayName;
+   final String displayName;
   final String? profileImageUrl;
   final String? bio;
   final String? university;
@@ -14,8 +13,7 @@ class RoommateMatch {
 
   RoommateMatch({
     required this.id,
-    required this.username,
-    required this.displayName,
+     required this.displayName,
     this.profileImageUrl,
     this.bio,
     this.university,
@@ -30,8 +28,7 @@ class RoommateMatch {
   factory RoommateMatch.fromJson(Map<String, dynamic> json) {
     return RoommateMatch(
       id: json['id'] ?? '',
-      username: json['username'] ?? '',
-      displayName: json['displayName'] ?? '',
+       displayName: json['displayName'] ?? '',
       profileImageUrl: json['profile_image_url'] ?? '',
       bio: json['bio'] ?? '',
       university: json['university'] ?? '',

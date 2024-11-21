@@ -2,9 +2,8 @@ import 'package:roomify_app/models/itemModel.dart';
 
 class User {
   final String id;
-  final String username;
   String displayName;
-   String? bio;
+  String? bio;
   final String email;
   String language;
   List<Listing> favorites;
@@ -18,9 +17,8 @@ class User {
 
   User({
     required this.id,
-    required this.username,
     required this.displayName,
-     this.bio,
+    this.bio,
     required this.email,
     this.language = 'English',
     this.favorites = const [],
@@ -36,16 +34,16 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] ?? '',
-      username: json['username'] ?? '',
-      displayName: json['display_name'] ?? 'User',
-       bio: json['bio'],
+      displayName: json['displayName'] ?? 'User',
+      bio: json['bio'],
       email: json['email'] ?? '',
       language: json['language'] ?? 'English',
       university: json['university'],
       age: json['age'],
       location: json['location'],
       gender: json['gender'],
-      profilePhotoUrl: json['profile_image_url'], // Added profilePhotoUrl to the factory constructor
+      profilePhotoUrl: json[
+          'profile_image_url'], // Added profilePhotoUrl to the factory constructor
       favorites: (json['favorites'] as List<dynamic>?)
               ?.map((item) => Item.fromJson(item))
               .toList() ??
@@ -61,9 +59,8 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'username': username,
-      'display_name': displayName,
-       'bio': bio,
+      'displayName': displayName,
+      'bio': bio,
       'email': email,
       'language': language,
       'favorites': favorites.map((item) => item.toJson()).toList(),
@@ -73,13 +70,13 @@ class User {
       'age': age,
       'location': location,
       'gender': gender,
-      'profile_image_url': profilePhotoUrl, // Added profilePhotoUrl to the toJson method
+      'profile_image_url':
+          profilePhotoUrl, // Added profilePhotoUrl to the toJson method
     };
   }
 
   User copyWith({
     String? id,
-    String? username,
     String? displayName,
     String? profileImageUrl,
     String? bio,
@@ -96,9 +93,8 @@ class User {
   }) {
     return User(
       id: id ?? this.id,
-      username: username ?? this.username,
       displayName: displayName ?? this.displayName,
-       bio: bio ?? this.bio,
+      bio: bio ?? this.bio,
       email: email ?? this.email,
       language: language ?? this.language,
       favorites: favorites ?? this.favorites,
@@ -108,7 +104,8 @@ class User {
       age: age ?? this.age,
       location: location ?? this.location,
       gender: gender ?? this.gender,
-      profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
+      profilePhotoUrl: profilePhotoUrl ??
+          this.profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
     );
   }
 
@@ -120,14 +117,17 @@ class User {
     int? age,
     String? location,
     String? gender,
-    String? profilePhotoUrl, // Added profilePhotoUrl to the updateProfile method
+    String?
+        profilePhotoUrl, // Added profilePhotoUrl to the updateProfile method
   }) {
     if (displayName != null) this.displayName = displayName;
-     if (bio != null) this.bio = bio;
+    if (bio != null) this.bio = bio;
     if (university != null) this.university = university;
     if (age != null) this.age = age;
     if (location != null) this.location = location;
     if (gender != null) this.gender = gender;
-    if (profilePhotoUrl != null) this.profilePhotoUrl = profilePhotoUrl; // Added profilePhotoUrl to the updateProfile method
+    if (profilePhotoUrl != null)
+      this.profilePhotoUrl =
+          profilePhotoUrl; // Added profilePhotoUrl to the updateProfile method
   }
 }

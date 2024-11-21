@@ -4,11 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/utils.dart';
 
 class AuthRepository {
-  static const String baseUrl = 'http://10.0.2.2:8787';
-  //  'https://roomify-backend.plain-fire-9ab3.workers.dev';
-
   final Dio _dio;
 
   AuthRepository() : _dio = Dio() {
@@ -19,7 +17,7 @@ class AuthRepository {
           // Add token to header
           final token = await getToken();
           options.headers['Authorization'] = 'Bearer $token';
-          options.headers['X-Custom-Auth-Key'] = 'roomify-secret';
+          options.headers['X-Custom-Auth-Key'] = '';
           return handler.next(options);
         },
         onError: (error, handler) {
@@ -37,7 +35,7 @@ class AuthRepository {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        Uri.parse('$baseUrl/login'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -65,7 +63,6 @@ class AuthRepository {
   }
 
   Future<User> register({
-    required String username,
     required String email,
     required String password,
     required String displayName,
@@ -75,12 +72,11 @@ class AuthRepository {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
+        Uri.parse('$baseUrl/register'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'username': username,
           'email': email,
           'password': password,
           'displayName': displayName,
@@ -114,7 +110,7 @@ class AuthRepository {
       if (token == null) return;
 
       // Blacklist token on server
-      await _dio.post('/auth/signout');
+      await _dio.post('/signout');
 
       // Clear local storage
       deleteToken();
@@ -180,8 +176,8 @@ class AuthRepository {
         if (age != null) 'age': age.toString(),
         if (gender != null) 'gender': gender!,
         if (profileImage != null)
-          'file': MultipartFile.fromFile(profileImage.path,
-              filename: "${DateTime.now()}")
+          'profilePhoto': await MultipartFile.fromFile(profileImage.path,
+              filename: "${userId}")
       });
 
       final response = await _dio.put(

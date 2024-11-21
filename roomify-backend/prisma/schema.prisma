@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+ 
+model User {
+  id                  String    @id @default(uuid())
+  displayName         String    @map("display_name")
+  profileImageUrl     String?   @map("profile_image_url")
+  bio                 String?
+  email               String    @unique
+  language            String    @default("English")
+  receiveNotifications Boolean  @default(true) @map("receive_notifications")
+  passwordHash        String    @map("password_hash")
+  university          String?
+  age                 Int?
+  gender              String?
+  location            String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  
+  swipesGiven  RoommateSwipe[] @relation("swiperUser")
+  swipesReceived RoommateSwipe[] @relation("swipedUser")
+  matches1     RoommateMatch[] @relation("user1Matches")
+  matches2     RoommateMatch[] @relation("user2Matches")
+
+  // Relations
+  listings            Listing[]
+  comments            Comment[]
+  favorites           Favorite[]
+  passwordResets      PasswordReset[]
+  activeTokens        ActiveToken[]
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id")
+  token     String
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Listing {
+  id          Int       @id @default(autoincrement())
+  type        String
+  title       String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  userId      String    @map("user_id")
+  location    String
+  price       Float
+  category    String?
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+  property    Property?
+  favorites   Favorite[]
+}
+
+model Property {
+  listingId          Int       @id @map("listing_id")
+  numberOfBedrooms   Int       @map("number_of_bedrooms")
+  numberOfBathrooms  Int       @map("number_of_bathrooms")
+  maxOccupancy       Int       @map("max_occupancy")
+  
+  // Relations
+  listing            Listing   @relation(fields: [listingId], references: [id])
+  amenities          PropertyAmenity[]
+  tags               PropertyTag[]
+  images             PropertyImage[]
+  comments           Comment[]
+  categories         PropertyCategory[]
+}
+
+model PropertyAmenity {
+  propertyId Int      @map("property_id")
+  amenity    String
+  
+  property   Property @relation(fields: [propertyId], references: [listingId])
+  
+  @@id([propertyId, amenity])
+}
+
+model PropertyTag {
+  propertyId Int      @map("property_id")
+  tag        String
+  
+  property   Property @relation(fields: [propertyId], references: [listingId])
+  
+  @@id([propertyId, tag])
+}
+
+model PropertyImage {
+  propertyId Int      @map("property_id")
+  imageUrl   String   @map("image_url")
+  
+  property   Property @relation(fields: [propertyId], references: [listingId])
+  
+  @@id([propertyId, imageUrl])
+}
+
+model PropertyCategory {
+  propertyId Int      @map("property_id")
+  category   String
+  
+  property   Property @relation(fields: [propertyId], references: [listingId])
+  
+  @@id([propertyId, category])
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  propertyId Int      @map("property_id")
+  userId     String   @map("user_id")
+  comment    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  property   Property @relation(fields: [propertyId], references: [listingId])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Favorite {
+  userId    String   @map("user_id")
+  listingId Int      @map("listing_id")
+  
+  user      User     @relation(fields: [userId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  
+  @@id([userId, listingId])
+}
+
+model ActiveToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @map("token_hash")
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+
+
+model RoommateSwipe {
+  id        String   @id @default(cuid())
+  swiperId  String
+  swipedId  String
+  direction String
+  createdAt DateTime @default(now())
+  swiper    User     @relation("swiperUser", fields: [swiperId], references: [id])
+  swiped    User     @relation("swipedUser", fields: [swipedId], references: [id])
+
+  @@unique([swiperId, swipedId])
+}
+
+model RoommateMatch {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  matchedAt DateTime @default(now())
+  user1     User     @relation("user1Matches", fields: [user1Id], references: [id])
+  user2     User     @relation("user2Matches", fields: [user2Id], references: [id])
+
+  @@unique([user1Id, user2Id])
+}
