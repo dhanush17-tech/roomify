@@ -21,7 +21,6 @@ class SearchProvider extends ChangeNotifier {
   Future<void> search(String query) async {
     try {
       _isLoading = true;
-      _searchQuery = query;
       notifyListeners();
 
       _searchResults = await _repository.search(
@@ -33,6 +32,7 @@ class SearchProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
+  
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -49,9 +49,9 @@ class SearchProvider extends ChangeNotifier {
 
   void setFilterOptions(FilterOptions options) {
     _filterOptions = options;
-    if (_searchQuery.isNotEmpty) {
-      search(_searchQuery);
-    }
+    // if (_searchQuery.isNotEmpty) {
+    search(_searchQuery);
+    // }
     notifyListeners();
   }
 }

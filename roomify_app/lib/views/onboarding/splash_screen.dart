@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   delayedNavigation() {
-    Future.delayed((Duration(seconds: 1)), () async {
+    Future.delayed((Duration(milliseconds:200)), () async {
       await _checkAuth();
 
       if (isLoggedIn == true) {

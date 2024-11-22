@@ -134,4 +134,10 @@
 -- CREATE INDEX IF NOT EXISTS idx_property_categories_property_id 
 -- ON property_categories(property_id);
 
- SELECT * from user;
+-- UPDATE user
+-- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
+
+-- UPDATE listing
+-- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
+
+select isLookingForRoomate from property;

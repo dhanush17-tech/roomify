@@ -56,13 +56,14 @@ class PropertyDetailsScreen extends StatelessWidget {
                 Spacer(),
                 Icon(Icons.groups, color: Colors.grey),
                 SizedBox(width: 4),
-                Text("3"),
+                Text(property.maxOccupancy.toString(),
+                    style: TextStyle(color: Colors.grey)),
                 SizedBox(width: 16),
                 Icon(Icons.bed, color: Colors.grey),
                 SizedBox(width: 4),
                 Text(property.numberOfBedrooms.toString()),
                 SizedBox(width: 16),
-                Icon(Icons.directions_car, color: Colors.grey),
+                Icon(Icons.bathtub_outlined, color: Colors.grey),
                 SizedBox(width: 4),
                 Text(property.numberOfBathrooms.toString()),
               ],
@@ -71,17 +72,22 @@ class PropertyDetailsScreen extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: AssetImage(
-                      'assets/test_images/person.png'), // Replace with your image path
+                  backgroundImage: property.user!.profilePhotoUrl != null
+                      ? NetworkImage(property.user!.profilePhotoUrl!)
+                      : null, // Replace with your image path
+                  child: property.user!.profilePhotoUrl == null
+                      ? Icon(Icons.person, size: 50)
+                      : null,
                   radius: 20,
                 ),
                 SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Akinola Bidemi",
+                    Text(property.user!.displayName,
                         style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text("AZU", style: TextStyle(color: Colors.grey)),
+                    Text(property.user!.university!,
+                        style: TextStyle(color: Colors.grey)),
                   ],
                 ),
                 Spacer(),
@@ -91,21 +97,22 @@ class PropertyDetailsScreen extends StatelessWidget {
             SizedBox(
               height: 10,
             ),
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                "Looking for a Roommate",
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            property.isLookingForRoomate! == true
+                ? Container(
+                    padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "Looking for a Roommate",
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ))
+                : Container(),
             SizedBox(height: 10),
             Divider(),
             SizedBox(height: 8),
@@ -138,20 +145,16 @@ class PropertyDetailsScreen extends StatelessWidget {
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 16),
-            _buildRoommateCard(
-              name: "Emily Johnson",
-              course: "Computer Science, AZ",
-              description:
-                  "Emily is a friendly Computer Science major who loves outdoor activities and is always up for a chat over coffee.",
-              imagePath: 'assets/test_images/person.png',
-              verified: true,
-            ),
-            _buildRoommateCard(
-              name: "Abdul Ibrahim",
-              course: "Physics, AZ",
-              description:
-                  "I enjoyed my time here. The facilities were in great condition.",
-              imagePath: 'assets/test_images/person.png',
+            Column(
+              children: property.comments!.map((e) {
+                return _buildRoommateCard(
+                  name: e.user!.displayName,
+                  course: e.user!.university!,
+                  description: e.comment,
+                  imagePath: e.user!.profilePhotoUrl!,
+                  verified: true,
+                );
+              }).toList(),
             ),
             SizedBox(height: 80),
           ],

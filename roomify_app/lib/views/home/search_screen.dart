@@ -47,10 +47,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                      // IconButton(
+                      //   icon: Icon(Icons.arrow_back),
+                      //   onPressed: () => Navigator.pop(context),
+                      // ),
                       Expanded(
                         child: TextField(
                           controller: _searchController,
@@ -144,6 +144,7 @@ class _SearchScreenState extends State<SearchScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => FilterBottomSheet(),
     );
   }
@@ -275,7 +276,7 @@ class PropertyCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '₦${property.price}/month',
+                      '\$ ${property.price}/month',
                       style: TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
@@ -375,7 +376,7 @@ class RoommateCard extends StatelessWidget {
             ),
           ],
         ),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        // trailing: Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
   }

@@ -17,7 +17,7 @@ class AuthRepository {
           // Add token to header
           final token = await getToken();
           options.headers['Authorization'] = 'Bearer $token';
-          options.headers['X-Custom-Auth-Key'] = '';
+          options.headers['X-Custom-Auth-Key'] = 'roomify-secret';
           return handler.next(options);
         },
         onError: (error, handler) {

@@ -16,7 +16,7 @@ async function uploadToR2(file: File): Promise<{ fileName: string; fileUrl: stri
             body: formData,
             headers: {
                 // Don't manually set the Content-Type for FormData
-                'X-Custom-Auth-Key': '',
+                'X-Custom-Auth-Key': 'roomify-secret',
             },
         });
 

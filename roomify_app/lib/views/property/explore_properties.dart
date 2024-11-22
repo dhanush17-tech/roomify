@@ -88,7 +88,7 @@
 //                         context,
 //                         MaterialPageRoute(
 //                             builder: (c) => PropertyDetailsScreen(
-                              
+                            
 //                             )));
 //                   },
 //                 ),

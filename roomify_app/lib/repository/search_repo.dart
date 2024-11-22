@@ -36,6 +36,20 @@ class SearchRepository {
       };
 
       if (filterOptions != null) {
+        if (filterOptions.rating != null) {
+          queryParams['rating'] = filterOptions.rating.toString();
+        }
+        if (filterOptions.maxOccupancy != null) {
+          queryParams['maxOccupancy'] = filterOptions.maxOccupancy.toString();
+        }
+        if (filterOptions.numberOfBedrooms != null) {
+          queryParams['numberOfBedrooms'] =
+              filterOptions.numberOfBedrooms.toString();
+        }
+        if (filterOptions.numberOfBathrooms != null) {
+          queryParams['numberOfBathrooms'] =
+              filterOptions.numberOfBathrooms.toString();
+        }
         if (filterOptions.gender != null) {
           queryParams['gender'] = filterOptions.gender;
         }

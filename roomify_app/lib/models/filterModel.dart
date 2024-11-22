@@ -7,6 +7,10 @@ class FilterOptions {
   final String? location;
   final double? minPrice;
   final double? maxPrice;
+  final int? numberOfBedrooms;
+  final int? numberOfBathrooms;
+  final int? rating;
+  final int? maxOccupancy;
   final List<String> propertyTypes;
   final List<String> amenities;
   final List<String> itemCategories;
@@ -19,6 +23,10 @@ class FilterOptions {
     this.proximity,
     this.location,
     this.minPrice,
+    this.maxOccupancy,
+    this.numberOfBedrooms,
+    this.numberOfBathrooms,
+    this.rating,
     this.maxPrice,
     this.propertyTypes = const [],
     this.amenities = const [],

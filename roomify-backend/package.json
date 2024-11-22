@@ -8,11 +8,11 @@
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
-		"migration:create": "npx wrangler d1 migrations create __YOUR_DATABASE_NAME__",
-		"migration:diff": "npx prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script --output migrations/$(ls -t migrations | head -n 1)/create_migration.sql",
-		"migration:apply:local": "npx wrangler d1 migrations apply __YOUR_DATABASE_NAME__ --local",
-		"migration:apply:remote": "npx wrangler d1 migrations apply __YOUR_DATABASE_NAME__ --remote",
-		"migration:run-all-local": "npm run migration:create && npm run migration:diff && npm run migration:apply:local"
+		"migration:create": "npx wrangler d1 migrations create roomify-backend add_fields",
+		"migration:diff": "npx prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script --output migrations/$(ls -t migrations | head -n 1).sql",
+		"migration:apply:local": "npx wrangler d1 migrations apply roomify-backend --local",
+		"migration:apply:remote": "npx wrangler d1 migrations apply roomify-backend --remote",
+		"migration:run-all-local": "npx prisma generate && npm run migration:create && npm run migration:diff && npm run migration:apply:local"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.5.2",

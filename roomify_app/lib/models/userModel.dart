@@ -14,6 +14,8 @@ class User {
   String? location;
   String? gender;
   String? profilePhotoUrl; // Added profilePhotoUrl string optional
+  double? latitude; // Added latitude double optional
+  double? longitude; // Added longitude double optional
 
   User({
     required this.id,
@@ -29,6 +31,8 @@ class User {
     this.location,
     this.gender,
     this.profilePhotoUrl, // Added profilePhotoUrl to the constructor
+    this.latitude, // Added latitude to the constructor
+    this.longitude, // Added longitude to the constructor
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -41,9 +45,13 @@ class User {
       university: json['university'],
       age: json['age'],
       location: json['location'],
+      latitude: json['latitude']
+          as double?, // Added latitude to the factory constructor
+      longitude: json['longitude']
+          as double?, // Added longitude to the factory constructor
       gender: json['gender'],
       profilePhotoUrl: json[
-          'profile_image_url'], // Added profilePhotoUrl to the factory constructor
+          'profileImageUrl'], // Added profilePhotoUrl to the factory constructor
       favorites: (json['favorites'] as List<dynamic>?)
               ?.map((item) => Item.fromJson(item))
               .toList() ??
@@ -69,8 +77,10 @@ class User {
       'university': university,
       'age': age,
       'location': location,
+      'latitude': latitude, // Added latitude to the toJson method
+      'longitude': longitude, // Added longitude to the toJson method
       'gender': gender,
-      'profile_image_url':
+      'profilePhoto':
           profilePhotoUrl, // Added profilePhotoUrl to the toJson method
     };
   }
@@ -90,6 +100,8 @@ class User {
     String? location,
     String? gender,
     String? profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
+    double? latitude, // Added latitude to the copyWith method
+    double? longitude, // Added longitude to the copyWith method
   }) {
     return User(
       id: id ?? this.id,
@@ -106,6 +118,10 @@ class User {
       gender: gender ?? this.gender,
       profilePhotoUrl: profilePhotoUrl ??
           this.profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
+      latitude:
+          latitude ?? this.latitude, // Added latitude to the copyWith method
+      longitude:
+          longitude ?? this.longitude, // Added longitude to the copyWith method
     );
   }
 
@@ -119,6 +135,8 @@ class User {
     String? gender,
     String?
         profilePhotoUrl, // Added profilePhotoUrl to the updateProfile method
+    double? latitude, // Added latitude to the updateProfile method
+    double? longitude, // Added longitude to the updateProfile method
   }) {
     if (displayName != null) this.displayName = displayName;
     if (bio != null) this.bio = bio;
@@ -129,5 +147,9 @@ class User {
     if (profilePhotoUrl != null)
       this.profilePhotoUrl =
           profilePhotoUrl; // Added profilePhotoUrl to the updateProfile method
+    if (latitude != null)
+      this.latitude = latitude; // Added latitude to the updateProfile method
+    if (longitude != null)
+      this.longitude = longitude; // Added longitude to the updateProfile method
   }
 }

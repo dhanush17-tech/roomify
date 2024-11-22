@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:roomify_app/models/filterModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/providers/search_provider.dart';
-import 'package:roomify_app/utils/text_styles.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   @override
@@ -12,189 +11,261 @@ class FilterBottomSheet extends StatefulWidget {
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   String? selectedGender;
-  RangeValues compatibilityRange = RangeValues(3, 5);
-  List<String> selectedLifestylePreferences = [];
-  double proximityValue = 3;
-  String? selectedLocation;
-  RangeValues priceRange = RangeValues(500, 1500);
+  RangeValues priceRange = RangeValues(0, 3000);
   List<String> selectedPropertyTypes = [];
   List<String> selectedAmenities = [];
-  List<String> selectedItemCategories = [];
   List<PropertyCategory> selectedCategories = [];
+  String? selectedLocation;
+  double proximityValue = 3;
 
+  int numberOfBedrooms = 0;
+  int numberOfBathrooms = 0;
+  int maxOccupancy = 0;
+  RangeValues ratingRange = RangeValues(0, 5);
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        builder: (_, controller) => Container(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 10,
+                  ),
+                ],
               ),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Filter Options",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            "Filter Options",
-                            style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.filter_list, color: Colors.grey),
-                            onPressed: () {},
-                          ),
-                        ],
+                      TextButton(
+                        onPressed: _resetFilters,
+                        child: Text("Reset"),
                       ),
-                      _buildGenderSection(),
-                      _buildDivider(),
-                      _buildCategorySection(),
-                      _buildDivider(),
-                      _buildCompatibilitySection(),
-                      _buildDivider(),
-                      _buildLifestylePreferencesSection(),
-                      _buildDivider(),
-                      _buildLocationSection(),
-                      _buildDivider(),
-                      _buildPriceSection(),
-                      _buildDivider(),
-                      _buildPropertySection(),
-                      _buildDivider(),
-                      _buildItemCategoriesSection(),
+                      IconButton(
+                        icon: Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
-                ),
+                ],
               ),
-            ));
-  }
+            ),
+            // Filter Content
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: EdgeInsets.all(16),
+                children: [
+                  // Price Range Section
+                  _buildPriceSection(),
+                  _buildDivider(),
 
-  Widget _buildGenderSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Gender',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Wrap(
-          spacing: 8,
-          children: [
-            _buildGenderChip('No Preference'),
-            _buildGenderChip('Male'),
-            _buildGenderChip('Female'),
+                  // Location Section
+                  _buildLocationSection(),
+                  _buildDivider(),
+
+                  // Property Types Section
+                  _buildPropertySection(),
+                  _buildDivider(),
+
+                  SizedBox(width: 16),
+                  Text('Rating',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                      '${ratingRange.start.round()} - ${ratingRange.end.round()} stars',
+                      style: TextStyle(color: Colors.grey)),
+                  RangeSlider(
+                    values: ratingRange,
+                    min: 0,
+                    max: 5,
+                    divisions: 5,
+                    labels: RangeLabels(
+                      ratingRange.start.round().toString(),
+                      ratingRange.end.round().toString(),
+                    ),
+                    onChanged: (values) => setState(() => ratingRange = values),
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  Text('Bathrooms'),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_circle_outline),
+                        onPressed: () {
+                          if (numberOfBathrooms > 0) {
+                            setState(() => numberOfBathrooms--);
+                          }
+                        },
+                      ),
+                      Text(
+                        numberOfBathrooms.toString(),
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add_circle_outline),
+                        onPressed: () {
+                          setState(() => numberOfBathrooms++);
+                        },
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  Text('Bedrooms'),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_circle_outline),
+                        onPressed: () {
+                          if (numberOfBedrooms > 0) {
+                            setState(() => numberOfBedrooms--);
+                          }
+                        },
+                      ),
+                      Text(
+                        numberOfBedrooms.toString(),
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add_circle_outline),
+                        onPressed: () {
+                          setState(() => numberOfBedrooms++);
+                        },
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Text('Max Occupancy'),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_circle_outline),
+                        onPressed: () {
+                          if (maxOccupancy > 0) {
+                            setState(() => maxOccupancy--);
+                          }
+                        },
+                      ),
+                      Text(
+                        maxOccupancy.toString(),
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add_circle_outline),
+                        onPressed: () {
+                          setState(() => maxOccupancy++);
+                        },
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  // Categories Section
+                  _buildCategorySection(),
+                  _buildDivider(),
+
+                  // Apply Button
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final filterOptions = FilterOptions(
+                          minPrice: priceRange.start,
+                          maxPrice: priceRange.end,
+                          location: selectedLocation,
+                          numberOfBedrooms:
+                              numberOfBedrooms > 0 ? numberOfBedrooms : null,
+                          numberOfBathrooms:
+                              numberOfBathrooms > 0 ? numberOfBathrooms : null,
+                          maxOccupancy: maxOccupancy > 0 ? maxOccupancy : null,
+                          propertyTypes: selectedPropertyTypes,
+                          amenities: selectedAmenities,
+                          rating: ratingRange.start.toInt(),
+                          itemCategories: selectedCategories
+                              .map((c) => c.displayName)
+                              .toList(),
+                        );
+
+                        context
+                            .read<SearchProvider>()
+                            .setFilterOptions(filterOptions);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: Text("Apply Filters"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildCategorySection() {
+  Widget _buildPriceSection() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Categories',
+          'Price Range',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: PropertyCategory.values.map((category) {
-            return FilterChip(
-              label: Text(category.displayName),
-              selected: selectedCategories.contains(category),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    selectedCategories.add(category);
-                  } else {
-                    selectedCategories.remove(category);
-                  }
-                });
-              },
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGenderChip(String gender) {
-    return ChoiceChip(
-      label: Text(gender),
-      selected: selectedGender == gender,
-      onSelected: (selected) {
-        setState(() {
-          selectedGender = selected ? gender : null;
-        });
-      },
-    );
-  }
-
-  Widget _buildCompatibilitySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Compatibility',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         Text(
-            'Compatibility Rating ${compatibilityRange.start.round()} - ${compatibilityRange.end.round()} stars',
-            style: TextStyle(color: Colors.grey)),
-        RangeSlider(
-          values: compatibilityRange,
-          min: 0,
-          max: 5,
-          divisions: 5,
-          labels: RangeLabels(
-            compatibilityRange.start.round().toString(),
-            compatibilityRange.end.round().toString(),
-          ),
-          onChanged: (RangeValues values) {
-            setState(() {
-              compatibilityRange = values;
-            });
-          },
+          '\$${priceRange.start.round()} - \$${priceRange.end.round()}',
+          style: TextStyle(color: Colors.grey),
         ),
-      ],
-    );
-  }
-
-  Widget _buildLifestylePreferencesSection() {
-    final preferences = [
-      'Cleanliness',
-      'Study Habits',
-      'Party',
-      'Sleeping Schedule',
-      'Smoking Habits',
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Lifestyle Preferences',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Wrap(
-          spacing: 8,
-          children: preferences.map((preference) {
-            return FilterChip(
-              label: Text(preference),
-              selected: selectedLifestylePreferences.contains(preference),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    selectedLifestylePreferences.add(preference);
-                  } else {
-                    selectedLifestylePreferences.remove(preference);
-                  }
-                });
-              },
-            );
-          }).toList(),
+        RangeSlider(
+          values: priceRange,
+          min: 0,
+          max: 3000,
+          divisions: 99,
+          labels: RangeLabels(
+            '\$${priceRange.start.round()}',
+            '\$${priceRange.end.round()}',
+          ),
+          onChanged: (values) => setState(() => priceRange = values),
         ),
       ],
     );
@@ -204,58 +275,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Location',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text('Proximity ${proximityValue.round()} miles',
-            style: TextStyle(color: Colors.grey)),
-        Slider(
-          value: proximityValue,
-          min: 1,
-          max: 10,
-          divisions: 9,
-          label: '${proximityValue.round()} miles',
-          onChanged: (value) {
-            setState(() {
-              proximityValue = value;
-            });
-          },
+        Text(
+          'Location',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        SizedBox(height: 8),
         TextField(
+          onChanged: (value) => setState(() => selectedLocation = value),
           decoration: InputDecoration(
-            hintText: 'Search for a city or neighborhood...',
+            hintText: 'Search location...',
             prefixIcon: Icon(Icons.search),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPriceSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Price',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(
-            'Range \$${priceRange.start.round()} - \$${priceRange.end.round()}',
-            style: TextStyle(color: Colors.grey)),
-        RangeSlider(
-          values: priceRange,
-          min: 100,
-          max: 10000,
-          divisions: 99,
-          labels: RangeLabels(
-            '\$${priceRange.start.round()}',
-            '\$${priceRange.end.round()}',
-          ),
-          onChanged: (RangeValues values) {
-            setState(() {
-              priceRange = values;
-            });
-          },
         ),
       ],
     );
@@ -276,87 +309,94 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       'Laundry',
       'Parking',
       'Gym',
+      'Pool',
+      'AC',
+      'Furnished',
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Property',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text('Type', style: TextStyle(color: Colors.grey)),
+        Text(
+          'Property Type',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: propertyTypes.map((type) {
-            return FilterChip(
-              label: Text(type),
-              selected: selectedPropertyTypes.contains(type),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    selectedPropertyTypes.add(type);
-                  } else {
-                    selectedPropertyTypes.remove(type);
-                  }
-                });
-              },
-            );
-          }).toList(),
+          runSpacing: 8,
+          children: propertyTypes
+              .map((type) => FilterChip(
+                    label: Text(type),
+                    selected: selectedPropertyTypes.contains(type),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          selectedPropertyTypes.add(type);
+                        } else {
+                          selectedPropertyTypes.remove(type);
+                        }
+                      });
+                    },
+                  ))
+              .toList(),
         ),
         SizedBox(height: 16),
-        Text('Amenities', style: TextStyle(color: Colors.grey)),
+        Text(
+          'Amenities',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: amenities.map((amenity) {
-            return FilterChip(
-              label: Text(amenity),
-              selected: selectedAmenities.contains(amenity),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    selectedAmenities.add(amenity);
-                  } else {
-                    selectedAmenities.remove(amenity);
-                  }
-                });
-              },
-            );
-          }).toList(),
+          runSpacing: 8,
+          children: amenities
+              .map((amenity) => FilterChip(
+                    label: Text(amenity),
+                    selected: selectedAmenities.contains(amenity),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          selectedAmenities.add(amenity);
+                        } else {
+                          selectedAmenities.remove(amenity);
+                        }
+                      });
+                    },
+                  ))
+              .toList(),
         ),
       ],
     );
   }
 
-  Widget _buildItemCategoriesSection() {
-    final categories = [
-      'Furniture',
-      'Electronics',
-      'Clothing',
-      'Books',
-    ];
-
+  Widget _buildCategorySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Item Categories',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text('Type', style: TextStyle(color: Colors.grey)),
+        Text(
+          'Categories',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: categories.map((category) {
-            return FilterChip(
-              label: Text(category),
-              selected: selectedItemCategories.contains(category),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    selectedItemCategories.add(category);
-                  } else {
-                    selectedItemCategories.remove(category);
-                  }
-                });
-              },
-            );
-          }).toList(),
+          runSpacing: 8,
+          children: PropertyCategory.values
+              .map((category) => FilterChip(
+                    label: Text(category.displayName),
+                    selected: selectedCategories.contains(category),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          selectedCategories.add(category);
+                        } else {
+                          selectedCategories.remove(category);
+                        }
+                      });
+                    },
+                  ))
+              .toList(),
         ),
       ],
     );
@@ -372,14 +412,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   void _resetFilters() {
     setState(() {
       selectedGender = null;
-      compatibilityRange = RangeValues(3, 5);
-      selectedLifestylePreferences.clear();
-      proximityValue = 3;
-      selectedLocation = null;
       priceRange = RangeValues(500, 1500);
       selectedPropertyTypes.clear();
       selectedAmenities.clear();
-      selectedItemCategories.clear();
+      selectedCategories.clear();
+      selectedLocation = null;
+      proximityValue = 3;
+      ratingRange = RangeValues(0, 5);
     });
   }
 }

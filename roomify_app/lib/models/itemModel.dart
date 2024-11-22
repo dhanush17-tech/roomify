@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:roomify_app/models/userModel.dart';
 
 enum ListingType {
   Marketplace,
@@ -11,10 +12,12 @@ abstract class Listing {
   String title;
   String? description; // Made optional
   DateTime createdAt;
-  String userId; // Changed to String to match your DB schema
+  User? user;
   String location;
-  double price;
+  int price;
   bool isFavourite;
+  double? latitude;
+  double? longitude;
 
   Listing({
     required this.type,
@@ -25,7 +28,9 @@ abstract class Listing {
     required this.location,
     required this.price,
     required this.isFavourite,
-    required this.userId,
+    required this.user,
+    this.latitude = 0.0,
+    this.longitude = 0.0,
   });
 
   String getListingTypeString() {
@@ -50,36 +55,47 @@ class Item extends Listing {
     required String title,
     String? description,
     DateTime? createdAt,
-    required String userId,
-    required double price,
+    User? user,
+    required int price,
     required String location,
     bool? isFavourite,
+    double? latitude,
+    double? longitude,
     this.category,
   }) : super(
-          type: ListingType.Marketplace,
-          id: id,
-          location: location,
-          price: price,
-          title: title,
-          description: description,
-          createdAt: createdAt ?? DateTime.now(), // Default to current time
-          isFavourite: isFavourite ?? false, // Default to false
-          userId: userId,
-        );
+            type: ListingType.Marketplace,
+            id: id,
+            location: location,
+            price: price,
+            title: title,
+            description: description,
+            createdAt: createdAt ?? DateTime.now(), // Default to current time
+            isFavourite: isFavourite ?? false, // Default to false
+            user: user,
+            latitude: latitude,
+            longitude: longitude);
 
   factory Item.fromJson(Map<String, dynamic> json) {
     return Item(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? 'Untitled',
+      id: json['id'],
+      title: json['title'],
       description: json['description'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
-          : DateTime.now(),
-      userId: json['user_id'] ?? '', // Match DB column name
-      price: (json['price'] ?? 0).toDouble(),
-      location: json['location'] ?? 'Unknown',
-      isFavourite: json['isFavorite'] ?? false,
+      createdAt: DateTime.parse(json['createdAt']),
+      // user: User.fromJson(json["user"] as Map<String, dynamic>),
+      price: json['price'],
+      location: json['location'],
+      isFavourite: json['isFavorite'],
       category: json['category'],
+      longitude: json["longitude"] != null
+          ? double.tryParse(json["longitude"].toString()) ??
+              double.tryParse(int.parse(json["longitude"]).toString()) ??
+              0.0
+          : 0.0,
+      latitude: json["latitude"] != null
+          ? double.tryParse(json["latitude"].toString()) ??
+              double.tryParse(int.parse(json["latitude"]).toString()) ??
+              0.0
+          : 0.0,
     );
   }
 
@@ -90,7 +106,7 @@ class Item extends Listing {
       'title': title,
       'description': description,
       'created_at': DateFormat('yyyy-MM-ddTHH:mm:ss').format(createdAt),
-      'user_id': userId,
+      'user': user,
       'price': price,
       'location': location,
       'isFavorite': isFavourite,
@@ -106,7 +122,7 @@ class Item extends Listing {
     String? description,
     DateTime? createdAt,
     String? userId,
-    double? price,
+    int? price,
     String? location,
     bool? isFavourite,
     String? category,
@@ -116,7 +132,7 @@ class Item extends Listing {
       title: title ?? this.title,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
-      userId: userId ?? this.userId,
+      user: user ?? this.user,
       price: price ?? this.price,
       location: location ?? this.location,
       isFavourite: isFavourite ?? this.isFavourite,

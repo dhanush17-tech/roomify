@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
 import 'package:roomify_app/views/messaging/message_home.dart';
@@ -8,9 +12,20 @@ import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   User user;
   HomeScreen({required this.user});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,49 +93,47 @@ class HomeScreen extends StatelessWidget {
               Text("based on your preferences",
                   style: TextStyle(color: Colors.grey)),
               SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        ItemCard(
-                          title: "Cozy Studio Apartment",
-                          location: "Yaba, Lagos",
-                          price: "\$40/month",
-                          rating: 4.3,
-                          bathrooms: 1,
-                          bedrooms: 1,
-                          imagePath: "assets/test_images/house.png",
-                         ),
-                        SizedBox(width: 10),
-                        ItemCard(
-                          title: "Cozy Single Apartment",
-                          location: "Yaba, Lagos",
-                          price: "\$45/month",
-                          rating: 4.5,
-                          bathrooms: 1,
-                          bedrooms: 1,
-                          imagePath: "assets/test_images/house.png",
-                        ),
-                      ],
+              Consumer<PropertyProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.error != null) {
+                    return Text(provider.error!);
+                  }
+
+                  if (provider.recommendations.isEmpty) {
+                    return Text('No recommendations found nearby');
+                  }
+
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: provider.recommendations.map((property) {
+                        return Padding(
+                          padding: EdgeInsets.only(right: 10),
+                          child: ItemCard(
+                            title: property.title,
+                            location: property.location,
+                            price: "\$${property.price}/month",
+                            rating: property.rating?.toDouble() ?? 0.0,
+                            bathrooms: property.numberOfBathrooms,
+                            bedrooms: property.numberOfBedrooms,
+                            imagePath: property.imageUrls.isNotEmpty
+                                ? property.imageUrls.first
+                                : "assets/test_images/house.png",
+                            property: property,
+                          ),
+                        );
+                      }).toList(),
                     ),
-                    SizedBox(
-                      height: 10,
-                    )
-                  ],
-                ),
+                  );
+                },
               ),
               SizedBox(height: 20),
 
               // Recommended Section
-              SectionHeader(
-                  title: "Pair up",
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (c) => SearchScreen()));
-                  }),
-              // SizedBox(height: 20),
 
               // // Find Your Ideal Roommate Section
               // SectionHeader(title: "Find Your Ideal Roommate", onTap: () {}),
@@ -143,32 +156,156 @@ class HomeScreen extends StatelessWidget {
               //     ],
               //   ),
               // ),
+              SectionHeader(
+                  title: "Pair up",
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (c) => SearchScreen()));
+                  }),
+              SizedBox(
+                height: 10,
+              ),
+              Consumer<PropertyProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return Center(child: CircularProgressIndicator());
+                  }
 
-              SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FeaturedItemCard(
-                      title: "Modern Desk",
-                      location: "Boston, MA",
-                      price: "\$100",
-                      imagePath: "assets/test_images/house.png",
-                    ),
-                    SizedBox(width: 20),
-                    FeaturedItemCard(
-                      title: "Office Chair",
-                      location: "San Franc., CA",
-                      price: "\$75",
-                      imagePath: "assets/test_images/house.png",
-                    ),
-                  ],
-                ),
+                  if (provider.error != null) {
+                    return Center(child: Text(provider.error!));
+                  }
+
+                  final matches = provider.pairUpListings;
+
+                  if (matches.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline,
+                              size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No matches found',
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    padding: EdgeInsets.all(0),
+                    itemCount: matches.length,
+                    itemBuilder: (context, index) {
+                      final match = matches[index];
+                      return MatchCard(property: match);
+                    },
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class MatchCard extends StatelessWidget {
+  final Property property;
+
+  const MatchCard({required this.property});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(property)));
+      },
+      child: Container(
+        height: 16 * 7,
+        width: 9 * 7,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        margin: EdgeInsets.only(bottom: 16),
+        child: Row(
+          children: [
+            // User Info Section
+
+            // Property Preview
+            Container(
+              width: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                image: DecorationImage(
+                  image: NetworkImage(
+                    property.imageUrls.isNotEmpty
+                        ? property.imageUrls.first
+                        : 'https://placeholder.com/300x200',
+                  ),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 20,
+            ),
+            // Property Details
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundImage: property.user?.profilePhotoUrl != null
+                      ? NetworkImage(property.user!.profilePhotoUrl!)
+                      : null,
+                  child: property.user?.profilePhotoUrl == null
+                      ? Text(
+                          property.user?.displayName
+                                  ?.substring(0, 1)
+                                  .toUpperCase() ??
+                              '?',
+                          style: TextStyle(fontSize: 24),
+                        )
+                      : null,
+                ),
+                Text(
+                  property.title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey),
+                    SizedBox(width: 4),
+                    Text(
+                      property.location,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyFeature(IconData icon, String text) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.blue),
+        SizedBox(height: 4),
+        Text(text),
+      ],
     );
   }
 }
@@ -181,7 +318,8 @@ class ItemCard extends StatelessWidget {
   final int bathrooms;
   final int bedrooms;
   final String imagePath;
- 
+  final Property property;
+
   ItemCard({
     required this.title,
     required this.location,
@@ -190,14 +328,15 @@ class ItemCard extends StatelessWidget {
     required this.bathrooms,
     required this.bedrooms,
     required this.imagePath,
-   });
+    required this.property,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigator.push(context,
-        //     MaterialPageRoute(builder: (c) => PropertyDetailsScreen(property)));
+        Navigator.push(context,
+            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(property)));
       },
       child: Container(
         width: 250,
@@ -212,8 +351,13 @@ class ItemCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.asset(imagePath,
-                  height: 120, width: double.infinity, fit: BoxFit.cover),
+              child: imagePath.contains("assets/")
+                  ? Image.asset(
+                      imagePath,
+                      height: 120,
+                    )
+                  : Image.network(imagePath,
+                      height: 120, width: double.infinity, fit: BoxFit.cover),
             ),
             SizedBox(height: 10),
             Text(title, style: TextStyle(fontWeight: FontWeight.bold)),

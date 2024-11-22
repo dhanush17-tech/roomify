@@ -68,8 +68,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> register(
-      {
-      required String email,
+      {required String email,
       required String password,
       required String displayName,
       required int age,
@@ -83,7 +82,7 @@ class UserProvider extends ChangeNotifier {
           displayName: displayName,
           email: email,
           password: password,
-           age: age,
+          age: age,
           university: university,
           location: location);
 
@@ -124,7 +123,6 @@ class UserProvider extends ChangeNotifier {
       _user = updatedUser;
     } catch (e) {
       _error = e.toString();
-      
     } finally {
       _isLoading = false;
       notifyListeners();

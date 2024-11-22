@@ -46,6 +46,9 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   image_picker:
   dio:
+  geolocator: ^13.0.2
+    
+
 
 
 dev_dependencies:

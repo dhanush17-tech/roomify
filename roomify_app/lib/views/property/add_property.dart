@@ -3,9 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
+import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/widgets/mapbox_widget.dart';
 
 class AddPropertyScreen extends StatefulWidget {
   @override
@@ -25,6 +28,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final List<File> _selectedImages = [];
   bool _isLoading = false;
   final List<PropertyCategory> _selectedCategories = [];
+  bool isLookingForRoomate = false;
+  final _addressController = TextEditingController();
+  double? latitude;
+  double? longitude;
 
   @override
   void dispose() {
@@ -49,8 +56,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     }
   }
 
-
-  Future<void> _handleSubmit() async {
+  Future<void> _handleSubmit(User user) async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,16 +75,20 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     try {
       final property = Property(
+        createdAt: DateTime.now(),
         title: _titleController.text,
         description: _descriptionController.text,
         location: _locationController.text,
-        price: double.parse(_priceController.text),
+        price: int.parse(_priceController.text),
         numberOfBathrooms: int.parse(_bedroomsController.text),
         numberOfBedrooms: int.parse(_bathroomsController.text),
         amenities: _selectedAmenities,
+        latitude: latitude,
+        longitude: longitude,
         categories: _selectedCategories.map((c) => c.displayName).toList(),
-        // userId: context.read<UserProvider>().user!.id,
-        type: ListingType.PROPERTY,
+        type: ListingType.Property,
+        user: user,
+        isLookingForRoomate: isLookingForRoomate,
         maxOccupancy: int.parse(_maxOccController.text),
       );
 
@@ -213,8 +223,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
               ],
             ),
 
-            SizedBox(height: 16),
-
             // Number of Rooms
             Row(
               children: [
@@ -325,6 +333,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             SizedBox(height: 20),
 
             // Categories Section
+            _buildAddressField(),
+            SizedBox(
+              height: 20,
+            ),
             Text(
               'Categories',
               style: TextStyle(
@@ -352,11 +364,36 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 );
               }).toList(),
             ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Text(
+                  'Will you be living with the roommate',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Checkbox(
+                  value: isLookingForRoomate,
+                  onChanged: (value) {
+                    setState(() {
+                      isLookingForRoomate = value!;
+                    });
+                  },
+                ),
+              ],
+            ),
+
+            SizedBox(height: 16),
 
             SizedBox(height: 24),
-
             ElevatedButton(
-              onPressed: _isLoading ? null : _handleSubmit,
+              onPressed: _isLoading
+                  ? null
+                  : () => _handleSubmit(context.read<UserProvider>().user!),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -368,6 +405,60 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                   : Text('Add Property'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Address',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        MapBoxAutoCompleteWidget(
+          apiKey:
+              "pk.eyJ1IjoiZGhhbnVzaC0xNyIsImEiOiJja2JzN3dhOWQwMTBpMnRvZDhuOHpjcmZmIn0.QP0KthFBt-DSqq918As-Gg",
+          hint: "Enter property address",
+          onSelect: (place) {
+            setState(() {
+              _addressController.text = place.placeName;
+              latitude = place.geometry.coordinates[1];
+              longitude = place.geometry.coordinates[0];
+              // Update location with city and state
+              _locationController.text =
+                  '${place.city ?? ''}, ${place.state ?? ''}'.trim();
+            });
+          },
+          limit: 5,
+        ),
+      ],
+    );
+  }
+
+  void _showAddressSearch(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MapBoxAutoCompleteWidget(
+          apiKey:
+              "pk.eyJ1IjoiZGhhbnVzaC0xNyIsImEiOiJja2JzN3dhOWQwMTBpMnRvZDhuOHpjcmZmIn0.QP0KthFBt-DSqq918As-Gg",
+          hint: "Search address",
+          onSelect: (place) {
+            setState(() {
+              _addressController.text = place.placeName;
+              latitude = place.geometry.coordinates[1];
+              longitude = place.geometry.coordinates[0];
+              _locationController.text = place.context
+                  .firstWhere((item) => item.id.startsWith('place'))
+                  .text;
+            });
+            Navigator.pop(context);
+          },
+          limit: 10,
         ),
       ),
     );
