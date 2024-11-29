@@ -6,9 +6,10 @@ import { sign } from "hono/jwt";
 import { PrismaClient } from '@prisma/client';
 import { PrismaD1 } from '@prisma/adapter-d1';
  
-async function uploadToR2(file: File): Promise<{ fileName: string; fileUrl: string }> {
+async function uploadToR2(file: File,uploadType:string): Promise<{ fileName: string; fileUrl: string }> {
     try {
         const formData = new FormData();
+        formData.append('uploadType',uploadType)
         formData.append('file', new Blob([file], { type: 'image/png' }), file.name);
 
         const response = await fetch('http://r2-worker.plain-fire-9ab3.workers.dev/upload', {

@@ -3,9 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
+import 'package:uni_links/uni_links.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -49,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   delayedNavigation() {
-    Future.delayed((Duration(milliseconds:200)), () async {
+    Future.delayed((Duration(milliseconds: 200)), () async {
       await _checkAuth();
 
       if (isLoggedIn == true) {
@@ -65,8 +68,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    final userProvider = context.read<UserProvider>();
-
+    final userProvider = context.read<AuthProvider>();
+    _handleIncomingLinks();
     try {
       final token = await AuthRepository().getToken();
       if (token != null) {
@@ -82,6 +85,23 @@ class _SplashScreenState extends State<SplashScreen>
       });
       print('Auto-login failed: $e');
     }
+  }
+
+  void _handleIncomingLinks() {
+    uriLinkStream.listen((Uri? uri) {
+      if (uri != null && uri.host == 'reset-password') {
+        final token = uri.queryParameters['token'];
+        if (token != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(token: token),
+            ),
+          );
+        }
+      }
+    }, onError: (err) {
+      print('Error handling incoming links: $err');
+    });
   }
 
   bool isLoggedIn = false;

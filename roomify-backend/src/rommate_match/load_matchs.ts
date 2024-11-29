@@ -79,7 +79,50 @@ app.get('/', async (c) => {
                 age: true,
                 gender: true,
                 location: true,
-                language: true
+                language: true,
+                interests: true,
+                preferences: true,
+                socialLinks: true,
+                listings: {
+                    select: {
+                        id: true,
+                        type: true,
+                        title: true,
+
+                        description: true,
+                        createdAt: true,
+                        user: {
+                            select: {
+                                id: true,
+                                displayName: true,
+                                profileImageUrl: true,
+                                email: true,
+                            }
+                        },
+                        location: true,
+                        price: true,
+                        isFavorite: true,
+                        latitude: true,
+                        longitude: true,
+                        property: {
+                            select: {
+                                numberOfBedrooms: true,
+                                numberOfBathrooms: true,
+                                maxOccupancy: true,
+                                isLookingForRoomate: true,
+                                rating: true,
+                                amenities: true,
+                                tags: true,
+                                comments: true,
+                                images: {
+                                    select: {
+                                        imageUrl: true
+                                    }
+                                }
+                            }
+                        },
+                    }
+                },
             },
             orderBy: [
                 { university: currentUser.university ? 'asc' : undefined },
@@ -91,16 +134,29 @@ app.get('/', async (c) => {
 
         const matches = potentialMatches.map((user: any) => ({
             ...user,
-            matchPercentage: calculateMatchPercentage(currentUser, user)
+            matchPercentage: calculateMatchPercentage(currentUser, user),
+            listings: user.listings.map((listing: any) => ({
+                ...listing,
+                property: listing.property ? {
+                    ...listing.property,
+                    amenities: listing.property.amenities.map((a: any) => a.amenity),
+                    tags: listing.property.tags.map((t: any) => t.tag),
+                    imageUrls: listing.property.images.map((i: any) => i.imageUrl)
+                } : null
+            })),
+            amenities: user.listings
+                .map((listing: any) => listing.property?.amenities?.map((amenity: any) => amenity.amenity))
+                .flat()
+                .join(', ')
         }));
 
+
+        console.log(matches.map((match: any) => match.listings.map((listing: any) => listing.property.amenities)));
         return c.json({ matches });
     } catch (error) {
         console.error('Roommate match error:', error);
         return c.json({
             error: 'Failed to fetch matches',
-            //@ts-ignore
-
             details: error.message
         }, 500);
     }

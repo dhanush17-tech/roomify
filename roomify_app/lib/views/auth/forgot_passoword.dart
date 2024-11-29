@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
 
@@ -13,181 +14,146 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  TextEditingController emailController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: MediaQuery.of(context).size.height * 0.05),
-              Text(
-                "Forgot Password?",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                "No worries! Enter your email address or phone number below and we'll send you a code to reset your password.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              SizedBox(
-                  height: MediaQuery.of(context).size.height *
-                      0.05), // Tab Bar for Email / Phone
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(30),
+      body: Consumer<AuthProvider>(builder: (context, provider, w) {
+        if (provider.error == "Email Failed") {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Failed to send email")));
+        }
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+                Text(
+                  "Forgot Password?",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: TabBar(
-                    controller: _tabController,
-                    dividerHeight: 0,
-                    indicator: BoxDecoration(
-                      color: orangeColor,
+                ),
+                SizedBox(height: 10),
+                Text(
+                  "No worries! Enter your email address or phone number below and we'll send you a code to reset your password.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                SizedBox(
+                    height: MediaQuery.of(context).size.height *
+                        0.05), // Tab Bar for Email / Phone
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorColor: Colors.transparent, // Removes the thin line
-                    labelColor: Colors.white,
-                    unselectedLabelColor: orangeColor,
-                    labelStyle: TextStyle(fontWeight: FontWeight.bold),
-                    tabs: [
-                      Tab(text: 'Email'),
-                      Tab(text: 'Phone'),
+                    child: TabBar(
+                      controller: _tabController,
+                      dividerHeight: 0,
+                      indicator: BoxDecoration(
+                        color: orangeColor,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicatorColor:
+                          Colors.transparent, // Removes the thin line
+                      labelColor: Colors.white,
+                      unselectedLabelColor: orangeColor,
+                      labelStyle: TextStyle(fontWeight: FontWeight.bold),
+                      tabs: [
+                        Tab(text: 'Email'),
+                        // Tab(text: 'Phone'),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Email Tab
+                      ListView(
+                        children: [
+                          InputField(
+                              controller: emailController, label: "Email"),
+                          SizedBox(height: 20),
+                          // Recover Password Button
+                          ElevatedButton(
+                            onPressed: () {
+                              provider.requestPassswordReset(
+                                  emailController.text, () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            "Check your email for the link")));
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: orangeColor,
+                              padding: EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: provider.isLoading
+                                ? CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : Text(
+                                    "Recover Password",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                          SizedBox(height: 10),
+                          Center(
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Navigate back to Login screen
+                              },
+                              child: Text(
+                                "Back to Login",
+                                style: TextStyle(
+                                  color: orangeColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Phone Tab
                     ],
                   ),
                 ),
-              ),
-              SizedBox(height: MediaQuery.of(context).size.height * 0.05),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Email Tab
-                    ListView(
-                      children: [
-                        InputField(
-                            controller: TextEditingController(),
-                            label: "Email"),
-                        SizedBox(height: 20),
-                        // Recover Password Button
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (c) => ForgotPasswordScreen()));
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: orangeColor,
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            "Recover Password",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Center(
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Navigate back to Login screen
-                            },
-                            child: Text(
-                              "Back to Login",
-                              style: TextStyle(
-                                color: orangeColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Phone Tab
-                    ListView(
-                      children: [
-                        InputField(
-                            controller: TextEditingController(),
-                            label: "Phone Number"),
-                        SizedBox(height: 20),
-                        // Recover Password Button
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (c) => ForgotPasswordScreen()));
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: orangeColor,
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            "Recover Password",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Center(
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Navigate back to Login screen
-                            },
-                            child: Text(
-                              "Back to Login",
-                              style: TextStyle(
-                                color: orangeColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

@@ -2,14 +2,14 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:roomify_app/models/roommateMatchModel.dart';
+import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils.dart';
 
 class RoommateMatchRepository {
- 
   RoommateMatchRepository();
 
-  Future<List<RoommateMatch>> getMatches() async {
+  Future<List<User>> getMatches() async {
     try {
       final token = await AuthRepository().getToken();
       final response =
@@ -19,7 +19,7 @@ class RoommateMatchRepository {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body)['matches'];
-        return data.map((json) => RoommateMatch.fromJson(json)).toList();
+        return data.map((json) => User.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load matches');
       }

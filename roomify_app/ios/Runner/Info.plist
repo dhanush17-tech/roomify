@@ -2,6 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+<key>UIFileSharingEnabled</key>
+<true/>
+<key>LSSupportsOpeningDocumentsInPlace</key>
+<true/>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Roomify needs access to your photo library to upload files.</string>
+<key>NSDocumentDirectoryUsageDescription</key>
+<string>Roomify needs access to your documents to pick files.</string>
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>roomify</string>
+        </array>
+        <key>CFBundleURLName</key>
+        <string>com.yourdomain.roomify</string>
+    </dict>
+</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 <string>Roomify needs access to location to curate the best results.</string>
 	<key>CFBundleDevelopmentRegion</key>

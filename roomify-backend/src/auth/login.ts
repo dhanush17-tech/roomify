@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import * as crypto from "crypto";
 import { hashToken, signAndStoreToken, verifyPassword } from '../helper/helper';
-import prismaClients from '../prisma';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -28,8 +27,12 @@ app.post('/login', async (c) => {
             },
         });
 
-        if (!user || !verifyPassword(password, user.passwordHash)) {
-            return c.json({ error: 'Invalid credentials' }, 401);
+        if (!user) {
+            throw new Error('Account not found');
+        }
+
+        if (!verifyPassword(password, user.passwordHash)) {
+            throw new Error('Invalid email or password');
         }
 
         const token = await signAndStoreToken({ sub: user.id }, c);
@@ -37,7 +40,8 @@ app.post('/login', async (c) => {
         return c.json({ token });
     } catch (error) {
         console.error('Login error:', error);
-        return c.json({ error: 'Failed to login' }, 500);
+        const statusCode = error.message === 'Account not found' ? 404 : 401;
+        return c.json({ error: error.message }, statusCode);
     }
 });
 

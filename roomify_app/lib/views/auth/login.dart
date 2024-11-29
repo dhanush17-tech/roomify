@@ -44,22 +44,29 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     super.dispose();
   }
 
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Consumer<UserProvider>(
+      body: Consumer<AuthProvider>(
         builder: (context, authViewModel, child) {
           // Redirect if authenticated
-          if (authViewModel.isAuthenticated) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (c) => MainScreen()),
-                (route) => false,
-              );
-            });
-          }
 
           return SafeArea(
             child: Padding(
@@ -79,11 +86,27 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                     ),
                   ),
                   if (authViewModel.error != null)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        authViewModel.error!,
-                        style: TextStyle(color: Colors.red),
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 10),
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              authViewModel.error!,
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   SizedBox(height: 20),
@@ -143,7 +166,6 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                               controller: _collegeController,
                               label: "College",
                             ),
-
                             InputField(
                               controller: _locationController,
                               label: "Preferred Location",
@@ -154,12 +176,20 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                   ? null
                                   : () {
                                       authViewModel.register(
-                                           email: _emailController.text,
+                                          email: _emailController.text,
                                           password: _passwordController.text,
                                           displayName: _nameController.text,
                                           university: _collegeController.text,
                                           location: _locationController.text,
-                                          age: int.parse(_ageController.text));
+                                          age: int.parse(_ageController.text),
+                                          onSuccess: () {
+                                            Navigator.pushAndRemoveUntil(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (c) => MainScreen()),
+                                              (route) => false,
+                                            );
+                                          });
                                     },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: orangeColor,
@@ -180,7 +210,6 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                       ),
                                     ),
                             ),
-                            // Rest of your sign up UI...
                           ],
                         ),
                         // Login Tab
@@ -216,9 +245,25 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                               onPressed: authViewModel.isLoading
                                   ? null
                                   : () {
+                                      if (_loginEmailController.text.isEmpty ||
+                                          _loginPasswordController
+                                              .text.isEmpty) {
+                                        _showErrorDialog(
+                                            'Please fill in all fields');
+                                        return;
+                                      }
+
                                       authViewModel.login(
                                         _loginEmailController.text,
                                         _loginPasswordController.text,
+                                        () {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (c) => MainScreen()),
+                                            (route) => false,
+                                          );
+                                        },
                                       );
                                     },
                               style: ElevatedButton.styleFrom(
@@ -266,7 +311,7 @@ class InputField extends StatelessWidget {
       {required this.label,
       required this.controller,
       this.obscureText = false,
-      this.keyboardType = TextInputType.name});
+      this.keyboardType = TextInputType.emailAddress});
 
   @override
   Widget build(BuildContext context) {

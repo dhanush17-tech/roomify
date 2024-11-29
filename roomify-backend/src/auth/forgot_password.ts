@@ -3,7 +3,6 @@ import nodemailer from 'nodemailer';
 import { Hono } from 'hono';
 import { scryptSync, randomBytes } from 'crypto';
 import { hashPassword, verifyPassword } from '../helper/helper';
-import prismaClients from '../prisma';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -40,6 +39,7 @@ app.post('/', async (c) => {
                 expiresAt: new Date(Date.now() + 3600000), // 1 hour
             }
         });
+        console.log("This is the resetToken: ", resetToken);
 
         await sendResetEmail(email, resetToken);
 
@@ -102,26 +102,35 @@ app.post('/confirm', async (c) => {
     }
 });
 
-async function sendResetEmail(email: string, resetLink: string) {
-    const transporter = nodemailer.createTransport(
-        {
-            // Configure your email service
-            service: 'gmail',
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false, // true for 465, false for other ports
-            auth: {
-                user: 'dhanush.kalaiselvan@gmail.com',
-                pass: 'fkmcvdhjdimwdlmw' // Use App Password generated from Google Account
-            }
-        });
-
-    await transporter.sendMail({
-        from: 'dhanush.kalaiselvan@gmail.com',
+async function sendResetEmail(email: string, resetToken: string) {
+    const frontendUrl = `https://reset-password?token=${resetToken}`;
+    const payload = {
+        from: 'hi@geekydan.dev',
         to: email,
         subject: 'Password Reset Request',
-        html: `Click <a href="${resetLink}">here</a> to reset your password.`,
+        html: `Click <a href="${frontendUrl}">here</a> to reset your password.`,
+    };
+
+    console.log('Email payload:', payload);
+
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer re_hUWMWbHL_MZf3ckdjYypRLvCi76Bm3iae`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Email API failed:', errorText);
+        throw new Error(`Failed to send email: ${errorText}`);
+    }
+
+    console.log('Email sent successfully.');
 }
+
+
 
 export default app;

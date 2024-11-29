@@ -44,6 +44,7 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 
 		const formData = await request.formData();
 		const file = formData.get('file') as File;
+		const uploadType = formData.get("uploadType") as string;
 
 		if (!file) {
 			return new Response('No file provided', { status: 400 });
@@ -58,7 +59,7 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 		// Upload logic here
 		const fileExtension = file.name.split('.').pop() || '';
 		const fileName = `${crypto.randomUUID()}.${fileExtension}`;
-		const fullPath = `images/${fileName}`;
+		const fullPath = `${uploadType}/${fileName}`;
 
 		await env.BUCKET.put(fullPath, file.stream(), {
 			httpMetadata: {
@@ -67,7 +68,7 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 		});
 
 		const imageUrl = `${env.R2_PUBLIC_URL}/${fullPath}`;
-		 
+
 		return new Response(
 			JSON.stringify({
 				success: true,
@@ -100,17 +101,34 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 }
 async function handleDelete(request: Request, env: Env): Promise<Response> {
 	try {
-		const fileName = request.url.split('/delete/')[1];
-		if (!fileName) {
-			return new Response('No file name provided', { status: 400 });
+		// Ensure the request has a valid JSON body
+		const contentType = request.headers.get('Content-Type') || '';
+		if (!contentType.includes('application/json')) {
+			return new Response('Invalid content type. Expected application/json.', { status: 400 });
 		}
 
-		await env.BUCKET.delete(`images/${fileName}`);
+		// Parse the JSON body
+		const { fileName, uploadType }: { fileName: string, uploadType: string } = await request.json();
+
+		// Validate the required fields
+		if (!fileName || !uploadType) {
+			return new Response(
+				JSON.stringify({ success: false, error: 'fileName and uploadType are required.' }),
+				{
+					status: 400,
+					headers: {
+						'Content-Type': 'application/json',
+						...corsHeaders,
+					},
+				}
+			);
+		}
+
+		// Delete the file from the bucket
+		await env.BUCKET.delete(`${uploadType}/${fileName}`);
 
 		return new Response(
-			JSON.stringify({
-				success: true
-			}),
+			JSON.stringify({ success: true, message: 'File deleted successfully.' }),
 			{
 				headers: {
 					'Content-Type': 'application/json',
@@ -120,10 +138,12 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 		);
 	} catch (error) {
 		console.error('Delete error:', error);
+
 		return new Response(
 			JSON.stringify({
 				success: false,
-				error: 'Delete failed'
+				error: 'Delete operation failed.',
+				details: error.message || 'Unknown error',
 			}),
 			{
 				status: 500,

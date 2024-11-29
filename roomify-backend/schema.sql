@@ -139,5 +139,4 @@
 
 -- UPDATE listing
 -- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
-
-select isLookingForRoomate from property;
+Select "status" from user 

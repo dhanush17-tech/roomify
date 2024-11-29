@@ -8,6 +8,7 @@ import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/utils.dart';
 import 'package:roomify_app/widgets/mapbox_widget.dart';
 
 class AddPropertyScreen extends StatefulWidget {
@@ -33,15 +34,25 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   double? latitude;
   double? longitude;
 
+  String capitalizeWords(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   @override
   void dispose() {
+    // Dispose all TextEditingControllers
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
     _priceController.dispose();
-    _bedroomsController.dispose();
+    _bathroomsController.dispose();
     _bedroomsController.dispose();
     _maxOccController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -58,56 +69,86 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
   Future<void> _handleSubmit(User user) async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validation checks
     if (_selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please add at least one image')),
-      );
+      _showErrorSnackBar('Please add at least one image');
       return;
     }
     if (_selectedCategories.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select at least one category')),
-      );
+      _showErrorSnackBar('Please select at least one category');
+      return;
+    }
+    if (latitude == null || longitude == null) {
+      _showErrorSnackBar('Please select a valid address');
+      return;
+    }
+    if (_selectedAmenities.isEmpty) {
+      _showErrorSnackBar('Please select at least one amenity');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final property = Property(
+      final listing = Listing(
         createdAt: DateTime.now(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        location: _locationController.text,
+        title: capitalizeWords(_titleController.text.trim()),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
         price: int.parse(_priceController.text),
-        numberOfBathrooms: int.parse(_bedroomsController.text),
-        numberOfBedrooms: int.parse(_bathroomsController.text),
-        amenities: _selectedAmenities,
+        property: Property(
+          numberOfBathrooms: int.parse(_bathroomsController.text),
+          numberOfBedrooms: int.parse(_bedroomsController.text),
+          amenities: _selectedAmenities,
+          isLookingForRoomate: isLookingForRoomate,
+          maxOccupancy: int.parse(_maxOccController.text),
+        ),
         latitude: latitude,
         longitude: longitude,
-        categories: _selectedCategories.map((c) => c.displayName).toList(),
         type: ListingType.Property,
         user: user,
-        isLookingForRoomate: isLookingForRoomate,
-        maxOccupancy: int.parse(_maxOccController.text),
+        isFavourite: false,
+        imageUrls: [],
+        id: DateTime.now().millisecondsSinceEpoch + DateTime.now().millisecond,
       );
 
       await context.read<PropertyProvider>().createProperty(
-            property,
+            listing,
             _selectedImages,
           );
-      print(property.toJson());
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Property added successfully')),
-      );
+      _showSuccessSnackBar('Property added successfully');
+      Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add property: $e')),
-      );
+      _showErrorSnackBar(e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -146,10 +187,17 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                hintText: 'Enter property title',
               ),
               validator: (value) {
-                if (value?.isEmpty ?? true) {
+                if (value == null || value.isEmpty) {
                   return 'Please enter a title';
+                }
+                if (value.length < 5) {
+                  return 'Title must be at least 5 characters long';
+                }
+                if (value.length > 100) {
+                  return 'Title must be less than 100 characters';
                 }
                 return null;
               },
@@ -166,10 +214,17 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                hintText: 'Describe your property',
               ),
               validator: (value) {
-                if (value?.isEmpty ?? true) {
+                if (value == null || value.isEmpty) {
                   return 'Please enter a description';
+                }
+                if (value.length < 20) {
+                  return 'Description must be at least 20 characters long';
+                }
+                if (value.length > 1000) {
+                  return 'Description must be less than 1000 characters';
                 }
                 return null;
               },
@@ -178,51 +233,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             SizedBox(height: 16),
 
             // Location and Price
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _locationController,
-                    decoration: InputDecoration(
-                      labelText: 'Location',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Price/month',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixText: '\$',
-                    ),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) {
-                        return 'Required';
-                      }
-                      if (double.tryParse(value!) == null) {
-                        return 'Invalid price';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
 
+            SizedBox(
+              height: 10,
+            ),
             // Number of Rooms
             Row(
               children: [
@@ -235,13 +249,21 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      hintText: 'Enter number of bedrooms',
                     ),
                     validator: (value) {
-                      if (value?.isEmpty ?? true) {
+                      if (value == null || value.isEmpty) {
                         return 'Required';
                       }
-                      if (int.tryParse(value!) == null) {
-                        return 'Invalid number';
+                      final bedrooms = int.tryParse(value);
+                      if (bedrooms == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (bedrooms <= 0) {
+                        return 'Must have at least 1 bedroom';
+                      }
+                      if (bedrooms > 20) {
+                        return 'Number seems too high';
                       }
                       return null;
                     },
@@ -257,13 +279,21 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      hintText: 'Enter number of bathrooms',
                     ),
                     validator: (value) {
-                      if (value?.isEmpty ?? true) {
+                      if (value == null || value.isEmpty) {
                         return 'Required';
                       }
-                      if (int.tryParse(value!) == null) {
-                        return 'Invalid number';
+                      final bathrooms = int.tryParse(value);
+                      if (bathrooms == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (bathrooms <= 0) {
+                        return 'Must have at least 1 bathroom';
+                      }
+                      if (bathrooms > 20) {
+                        return 'Number seems too high';
                       }
                       return null;
                     },
@@ -281,13 +311,21 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                hintText: 'Enter maximum number of occupants',
               ),
               validator: (value) {
-                if (value?.isEmpty ?? true) {
+                if (value == null || value.isEmpty) {
                   return 'Required';
                 }
-                if (int.tryParse(value!) == null) {
-                  return 'Invalid number';
+                final occupancy = int.tryParse(value);
+                if (occupancy == null) {
+                  return 'Please enter a valid number';
+                }
+                if (occupancy <= 0) {
+                  return 'Must allow at least 1 occupant';
+                }
+                if (occupancy > 50) {
+                  return 'Number seems too high';
                 }
                 return null;
               },
@@ -336,6 +374,61 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             _buildAddressField(),
             SizedBox(
               height: 20,
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _locationController,
+                    decoration: InputDecoration(
+                      labelText: 'Location',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _priceController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Price/month',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixText: '\$',
+                      hintText: 'Enter monthly rent',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a price';
+                      }
+                      final price = int.tryParse(value);
+                      if (price == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (price <= 0) {
+                        return 'Price must be greater than 0';
+                      }
+                      if (price > 1000000) {
+                        return 'Price seems too high';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
             ),
             Text(
               'Categories',
@@ -393,7 +486,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             ElevatedButton(
               onPressed: _isLoading
                   ? null
-                  : () => _handleSubmit(context.read<UserProvider>().user!),
+                  : () => _handleSubmit(context.read<AuthProvider>().user!),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -420,8 +513,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         ),
         SizedBox(height: 8),
         MapBoxAutoCompleteWidget(
-          apiKey:
-              "pk.eyJ1IjoiZGhhbnVzaC0xNyIsImEiOiJja2JzN3dhOWQwMTBpMnRvZDhuOHpjcmZmIn0.QP0KthFBt-DSqq918As-Gg",
+          apiKey: mapboxToken,
           hint: "Enter property address",
           onSelect: (place) {
             setState(() {
@@ -444,8 +536,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => MapBoxAutoCompleteWidget(
-          apiKey:
-              "pk.eyJ1IjoiZGhhbnVzaC0xNyIsImEiOiJja2JzN3dhOWQwMTBpMnRvZDhuOHpjcmZmIn0.QP0KthFBt-DSqq918As-Gg",
+          apiKey: mapboxToken,
           hint: "Search address",
           onSelect: (place) {
             setState(() {

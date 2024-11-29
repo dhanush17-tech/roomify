@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 
 class ItemDetailsScreen extends StatelessWidget {
+  final Listing item;
+
+  ItemDetailsScreen({required this.item});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,8 +25,12 @@ class ItemDetailsScreen extends StatelessWidget {
         title: Text("Details", style: AppTextStyles.title()),
         actions: [
           IconButton(
-            icon: Icon(Icons.favorite_border, color: Colors.grey),
-            onPressed: () {},
+            icon: Icon(context.read<PropertyProvider>().isFavorite(item.id)
+                ? Icons.favorite_rounded
+                : Icons.favorite_border),
+            onPressed: () {
+              context.read<PropertyProvider>().toggleFavorite(item);
+            },
           ),
         ],
       ),

@@ -32,4 +32,23 @@ class FilterOptions {
     this.amenities = const [],
     this.itemCategories = const [],
   });
+
+  factory FilterOptions.defaultValues() {
+    return FilterOptions(
+        gender: null,
+        minCompatibility: 0,
+        maxCompatibility: 100,
+        lifestylePreferences: [],
+        proximity: 3.0,
+        location: null,
+        minPrice: 0,
+        maxPrice: 3000,
+        numberOfBedrooms: null,
+        numberOfBathrooms: null,
+        rating: 0,
+        maxOccupancy: null,
+        propertyTypes: [],
+        amenities: [],
+        itemCategories: []);
+  }
 }

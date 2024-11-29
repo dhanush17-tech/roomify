@@ -5,4 +5,5 @@ interface Env {
 	R2_PUBLIC_URL: string;
 	DB: D1Database;
 	BUCKET: R2Bucket;
+	CHATROOM:DurableObject
 } 

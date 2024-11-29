@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = context.watch<UserProvider>();
+    final userProvider = context.watch<AuthProvider>();
 
     // Check if user is null
     if (userProvider.user == null) {
@@ -38,7 +38,7 @@ class _MainScreenState extends State<MainScreen> {
       RoommateMatchScreen(),
       SearchScreen(), // Placeholder for a roommate screen
       MarketplaceScreen(),
-      // AddPropertyScreen()
+      // AddPropertyScreen(),
       ProfileScreen(), // Placeholder for an apartment screen
     ];
     return Scaffold(

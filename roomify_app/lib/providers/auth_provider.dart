@@ -3,11 +3,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
+import 'package:roomify_app/views/home/bottom_nav.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/providers/marketplace_provider.dart';
+import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/providers/search_provider.dart';
 
-class UserProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
+  BuildContext context;
 
-  UserProvider(this._authRepository);
+  AuthProvider(this._authRepository, this.context);
 
   User? _user;
   bool _isLoading = false;
@@ -24,6 +31,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   void _setError(String? error) {
+    _error = error;
     notifyListeners();
   }
 
@@ -32,10 +40,14 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String email, String password, Function onSuccess) async {
     try {
       _setLoading(true);
       _setError(null);
+
+      if (email.isEmpty || password.isEmpty) {
+        throw Exception('Please fill in all fields');
+      }
 
       final user = await _authRepository.login(
         email: email,
@@ -43,11 +55,17 @@ class UserProvider extends ChangeNotifier {
       );
 
       _setUser(user);
+      onSuccess();
     } catch (e) {
-      _setError(e.toString());
+      _setError(e.toString().replaceAll('Exception: ', ''));
     } finally {
       _setLoading(false);
     }
+  }
+
+  void updateUser(User newUser) {
+    _user = newUser;
+    notifyListeners();
   }
 
   Future<void> loadUserProfile() async {
@@ -73,7 +91,8 @@ class UserProvider extends ChangeNotifier {
       required String displayName,
       required int age,
       required String university,
-      required String location}) async {
+      required String location,
+      required Function onSuccess}) async {
     try {
       _setLoading(true);
       _setError(null);
@@ -87,6 +106,7 @@ class UserProvider extends ChangeNotifier {
           location: location);
 
       _setUser(user);
+      onSuccess();
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -95,6 +115,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> updateProfile({
+    String? status,
     String? displayName,
     String? email,
     String? password,
@@ -112,6 +133,7 @@ class UserProvider extends ChangeNotifier {
       final updatedUser = await _authRepository.updateProfile(
           userId: _user!.id,
           displayName: displayName,
+          status: status,
           email: email,
           password: password,
           university: university,
@@ -121,6 +143,10 @@ class UserProvider extends ChangeNotifier {
           profileImage: profileImage);
 
       _user = updatedUser;
+
+      // Refresh all providers
+      await refreshAllProviders(context);
+      
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -137,7 +163,8 @@ class UserProvider extends ChangeNotifier {
 
       await _authRepository.deleteProfilePhoto();
 
-      _user = _user!.copyWith(profileImageUrl: null);
+      _user = _user!.copyWith(profilePhotoUrl: null);
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -153,6 +180,68 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       throw Exception('Failed to sign out: $e');
+    }
+  }
+
+  Future<void> requestPassswordReset(String email, Function onSent) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _authRepository.requestPasswordReset(email: email);
+      onSent;
+    } catch (e) {
+      print(e.toString());
+      _error = "Email Failed";
+    } finally {
+      _isLoading = false;
+      _error = "";
+      notifyListeners();
+    }
+  }
+
+  Future<void> resetPassword(
+      String? token, String password, Function onSuccess) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      if (token != null) {
+        await _authRepository.resetPassword(token: token, password: password);
+        onSuccess;
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshAllProviders(BuildContext context) async {
+    try {
+      // Refresh user profile
+      await loadUserProfile();
+
+      // Refresh PropertyProvider
+      final propertyProvider = Provider.of<PropertyProvider>(context, listen: false);
+      await propertyProvider.fetchRecommendations();
+      await propertyProvider.loadFavorites();
+      await propertyProvider.fetchPairUpListings();
+
+      // Refresh MarketplaceProvider
+      final marketplaceProvider = Provider.of<MarketplaceProvider>(context, listen: false);
+      await marketplaceProvider.loadItems();
+
+      // Refresh ProfileProvider
+      final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+      await profileProvider.loadUserListings();
+
+      // Refresh SearchProvider
+      final searchProvider = Provider.of<SearchProvider>(context, listen: false);
+      await searchProvider.fetchRecommendations();
+
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
     }
   }
 }

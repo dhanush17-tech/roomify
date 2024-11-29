@@ -48,17 +48,28 @@ class AuthRepository {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
-
-        // Save token to secure storage
         await saveToken(token);
-
         final userProfile = await getUserProfile(token);
         return User.fromJson(userProfile);
       } else {
-        throw Exception('Invalid credentials');
+        final errorData = jsonDecode(response.body);
+        // Handle specific error cases
+        switch (response.statusCode) {
+          case 401:
+            throw Exception('Invalid email or password');
+          case 404:
+            throw Exception('Account not found');
+          case 403:
+            throw Exception('Account is locked. Please contact support');
+          default:
+            throw Exception(errorData['error'] ?? 'Login failed');
+        }
       }
     } catch (e) {
-      throw Exception('Login failed: $e');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Network error. Please check your connection');
     }
   }
 
@@ -139,22 +150,6 @@ class AuthRepository {
     }
   }
 
-  Future<void> requestPasswordReset({required String email}) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/password-reset'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception(jsonDecode(response.body)['error']);
-      }
-    } catch (e) {
-      throw Exception('Failed to send reset link: $e');
-    }
-  }
-
   Future<User> updateProfile({
     required String userId,
     String? displayName,
@@ -164,6 +159,7 @@ class AuthRepository {
     String? bio,
     int? age,
     String? gender,
+    String? status,
     File? profileImage,
   }) async {
     try {
@@ -175,6 +171,7 @@ class AuthRepository {
         if (bio != null) 'bio': bio!,
         if (age != null) 'age': age.toString(),
         if (gender != null) 'gender': gender!,
+        if (status != null) 'status': status!,
         if (profileImage != null)
           'profilePhoto': await MultipartFile.fromFile(profileImage.path,
               filename: "${userId}")
@@ -208,7 +205,7 @@ class AuthRepository {
   // Delete profile photo
   Future<User> deleteProfilePhoto() async {
     try {
-      final response = await _dio.delete('/api/user/profile-photo');
+      final response = await _dio.delete('/api/user/profile/profile-photo');
 
       if (response.statusCode == 200) {
         return User.fromJson(response.data);
@@ -234,6 +231,22 @@ class AuthRepository {
 
   Future<void> deleteToken() async {
     await _secureStorage.delete(key: 'auth_token');
+  }
+
+  Future<void> requestPasswordReset({required String email}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/password-reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['error']);
+      }
+    } catch (e) {
+      throw Exception('Failed to send reset link: $e');
+    }
   }
 
   Future<void> resetPassword({

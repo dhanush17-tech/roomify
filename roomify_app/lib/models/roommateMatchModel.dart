@@ -1,19 +1,21 @@
+import 'package:roomify_app/models/userModel.dart';
+
 class RoommateMatch {
   final String id;
-   final String displayName;
+  final String displayName;
   final String? profileImageUrl;
   final String? bio;
   final String? university;
   final int? age;
   final String? gender;
   final String? location;
-  final List<String> interests;
-  final List<String> preferences;
+  final List<UserInterest> interests;
+  final List<UserPreference> preferences;
   final double compatibilityScore;
 
   RoommateMatch({
     required this.id,
-     required this.displayName,
+    required this.displayName,
     this.profileImageUrl,
     this.bio,
     this.university,
@@ -28,16 +30,18 @@ class RoommateMatch {
   factory RoommateMatch.fromJson(Map<String, dynamic> json) {
     return RoommateMatch(
       id: json['id'] ?? '',
-       displayName: json['displayName'] ?? '',
-      profileImageUrl: json['profile_image_url'] ?? '',
+      displayName: json['displayName'] ?? '',
+      profileImageUrl: json['profileImageUrl'] ?? '',
       bio: json['bio'] ?? '',
       university: json['university'] ?? '',
       age: json['age'] ?? 0,
       gender: json['gender'] ?? '',
       location: json['location'] ?? '',
-      interests: List<String>.from(json['interests'] ?? []),
-      preferences: List<String>.from(json['preferences'] ?? []),
-      compatibilityScore: json['compatibility_score']?.toDouble() ?? 0,
+      interests: List<UserInterest>.from(
+          json['interests'].map((e) => UserInterest.fromJson(e))),
+      preferences: List<UserPreference>.from(
+          json['preferences'].map((e) => UserPreference.fromJson(e))),
+      compatibilityScore: json['compatibilityScore']?.toDouble() ?? 0,
     );
   }
 }

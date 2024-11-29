@@ -13,114 +13,261 @@ const app = new Hono<{
     }
 }>();
 
+
 app.post('/', async (c) => {
     try {
         const payload = c.get('jwtPayload');
-        if (!payload) {
-            return c.json({ error: 'Unauthorized' }, 401);
-        }
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
         const userId = payload.sub;
         const formData = await c.req.formData();
+        const listingData = JSON.parse(formData.get('listing') as string);
+
+        // Handle image uploads
+        const images = formData.getAll('images') as File[];
+        const imageUrls: string[] = [];
+
+        // Upload each image to R2
+        for (const image of images) {
+            const { fileUrl } = await uploadToR2(image, "propertyImages");
+            imageUrls.push(fileUrl);
+        }
+
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Extract property data
-        const data = {
-            title: formData.get('title'),
-            description: formData.get('description'),
-            location: formData.get('location'),
-            price: Number(formData.get('price')),
-            numberOfBedrooms: Number(formData.get('numberOfBedrooms')),
-            numberOfBathrooms: Number(formData.get('numberOfBathrooms')),
-            maxOccupancy: Number(formData.get('maxOccupancy')),
-            amenities: formData.get('amenities')?.toString().split(',') || [],
-            categories: formData.get('categories')?.toString().split(',') || [],
-            type: formData.get('type'),
-            longitude: Number(formData.get('longitude')),
-            latitude: Number(formData.get('latitude')),
-            isLookingForRoomate: formData.get("isLookingForRoomate") === 'true'
-        };
+        // Check for existing property
+        const existingListing = await prisma.listing.findFirst({
+            where: {
+                AND: [
+                    { title: listingData.title },
+                    { location: listingData.location },
+                    { type: 'Property' }
+                ]
+            }
+        });
 
-        // Get images
-        const images = formData.getAll('images') as File[];
+        if (existingListing) {
+            return c.json({
+                error: 'A property with this title and location already exists'
+            }, 400);
+        }
 
-        // Create listing
+        // Create listing with uploaded image URLs
         const listing = await prisma.listing.create({
             data: {
                 type: 'Property',
-                title: data.title as string,
-                description: data.description as string,
-                userId: userId,
-                location: data.location as string,
-                price: data.price,
-                latitude: data.latitude,
-                longitude: data.longitude
-
-
-            },
-        });
-
-        // Create property
-        const property = await prisma.property.create({
-            data: {
-                listingId: listing.id,
-                isLookingForRoomate: data.isLookingForRoomate,
-                numberOfBedrooms: data.numberOfBedrooms,
-                numberOfBathrooms: data.numberOfBathrooms,
-                maxOccupancy: data.maxOccupancy,
-            },
-        });
-
-        // Create amenities
-        const amenityPromises = data.amenities.map(amenity =>
-            prisma.propertyAmenity.create({
-                data: {
-                    propertyId: property.listingId,
-                    amenity: amenity
-                }
-            })
-        );
-        await Promise.all(amenityPromises);
-
-        // Create categories
-        const categoryPromises = data.categories.map(category =>
-            prisma.propertyCategory.create({
-                data: {
-                    propertyId: property.listingId,
-                    category: category
-                }
-            })
-        );
-        await Promise.all(categoryPromises);
-
-        // Handle image uploads
-        if (images.length) {
-            const imagePromises = images.map(async (image) => {
-                const { fileUrl } = await uploadToR2(image);
-                return prisma.propertyImage.create({
-                    data: {
-                        propertyId: property.listingId,
-                        imageUrl: fileUrl
+                title: listingData.title,
+                description: listingData.description,
+                price: listingData.price,
+                location: listingData.location,
+                latitude: listingData.latitude,
+                longitude: listingData.longitude,
+                userId,
+                isFavorite: false,
+                property: {
+                    create: {
+                        numberOfBedrooms: listingData.property.numberOfBedrooms,
+                        numberOfBathrooms: listingData.property.numberOfBathrooms,
+                        maxOccupancy: listingData.property.maxOccupancy,
+                        isLookingForRoomate: listingData.property.isLookingForRoomate,
+                        rating: 0,
+                        amenities: {
+                            create: listingData.property.amenities?.map((amenity: string) => ({
+                                amenity
+                            })) || []
+                        },
+                        ...(listingData.property.tags && {
+                            tags: {
+                                create: listingData.property.tags.map((tag: string) => ({
+                                    tag
+                                }))
+                            }
+                        }),
+                        images: {
+                            create: imageUrls.map(url => ({
+                                imageUrl: url
+                            }))
+                        }
                     }
-                });
-            });
-            await Promise.all(imagePromises);
-        }
-
-        return c.json({
-            success: true,
-            propertyId: property.listingId
+                }
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        profileImageUrl: true,
+                        email: true,
+                    }
+                },
+                property: {
+                    include: {
+                        amenities: true,
+                        tags: true,
+                        images: true,
+                        comments: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        displayName: true,
+                                        profileImageUrl: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                favorites: true,
+            }
         });
 
+        const formattedListing = {
+            id: listing.id,
+            type: 'Property',
+            title: listing.title,
+            description: listing.description,
+            createdAt: listing.createdAt.toISOString(),
+            user: {
+                id: listing.user.id,
+                displayName: listing.user.displayName,
+                profileImageUrl: listing.user.profileImageUrl,
+                email: listing.user.email,
+            },
+            location: listing.location,
+            price: listing.price,
+            isFavorite: false,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
+            property: {
+                numberOfBedrooms: listing.property!.numberOfBedrooms,
+                numberOfBathrooms: listing.property!.numberOfBathrooms,
+                maxOccupancy: listing.property!.maxOccupancy,
+                isLookingForRoomate: listing.property!.isLookingForRoomate,
+                rating: listing.property!.rating,
+                amenities: listing.property!.amenities.map(a => a.amenity),
+                tags: listing.property!.tags?.map(t => t.tag) ?? [],
+                comments: []
+            },
+            marketplaceItem: null
+        };
+        return c.json({ listing: formattedListing });
     } catch (error) {
         console.error('Create property error:', error);
+        if (error instanceof SyntaxError) {
+            return c.json({
+                error: 'Invalid JSON format',
+                details: error.message
+            }, 400);
+        }
         return c.json({
             error: 'Failed to create property',
-            details: error instanceof Error ? error.message : 'Unknown error',
+            details: error.message
         }, 500);
     }
 });
+
+app.get('/', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+        const userId = payload.sub;
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        const listings = await prisma.listing.findMany({
+            where: {
+                type: 'Property',
+                NOT: { userId },
+            },
+
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        profileImageUrl: true,
+                        email: true,
+                    }
+                },
+                property: {
+                    include: {
+                        amenities: true,
+                        tags: true,
+                        comments: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        displayName: true,
+                                        profileImageUrl: true,
+                                    }
+                                }
+                            }
+                        },
+                        images: true,
+                    }
+                },
+                favorites: true,
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        const formattedListings = listings.map(listing => ({
+            id: listing.id,
+            type: 'Property',
+            title: listing.title,
+            description: listing.description,
+            createdAt: listing.createdAt.toISOString(),
+            user: {
+                id: listing.user.id,
+                displayName: listing.user.displayName,
+                profileImageUrl: listing.user.profileImageUrl,
+                email: listing.user.email,
+            },
+            location: listing.location,
+            price: listing.price,
+            isFavorite: listing.favorites.length > 0,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
+            property: listing.property ? {
+                numberOfBedrooms: listing.property.numberOfBedrooms,
+                numberOfBathrooms: listing.property.numberOfBathrooms,
+                maxOccupancy: listing.property.maxOccupancy,
+                isLookingForRoomate: listing.property.isLookingForRoomate,
+                rating: listing.property.rating,
+                amenities: listing.property.amenities.map(a => a.amenity),
+                tags: listing.property.tags.map(t => t.tag),
+                comments: listing.property.comments.map(comment => ({
+                    id: comment.id,
+                    propertyId: comment.propertyId,
+                    userId: comment.userId,
+                    comment: comment.comment,
+                    createdAt: comment.createdAt.toISOString(),
+                    user: {
+                        id: comment.user.id,
+                        displayName: comment.user.displayName,
+                        profileImageUrl: comment.user.profileImageUrl,
+                    }
+                }))
+            } : null,
+            marketplaceItem: null
+        }));
+
+        return c.json({ listings: formattedListings });
+    } catch (error) {
+        console.error('Get properties error:', error);
+        return c.json({ error: 'Failed to fetch properties' }, 500);
+    }
+});
+
+
 app.get('/recommended-listings', async (c) => {
     try {
         const payload = c.get('jwtPayload');
@@ -140,7 +287,9 @@ app.get('/recommended-listings', async (c) => {
         const currentUser = await prisma.user.findUnique({
             where: { id: userId },
             select: {
-                university: true,
+                university: true, interests: true,
+                preferences: true,
+                socialLinks: true,
             }
         });
 
@@ -159,21 +308,40 @@ app.get('/recommended-listings', async (c) => {
                         amenities: true,
                         categories: true,
                         images: true,
+
                     }
                 },
-                user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                        university: true
-                    }
-                }
+                user: true
             },
             orderBy: {
                 createdAt: 'desc'
             }
         });
+
+        const formattedListings = listings.map(listing => ({
+            id: listing.id,
+            type: 'Property',
+            title: listing.title,
+            description: listing.description,
+            createdAt: listing.createdAt.toISOString(),
+            user: listing.user,
+            location: listing.location,
+            price: listing.price,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
+            property: listing.property ? {
+                numberOfBedrooms: listing.property.numberOfBedrooms,
+                numberOfBathrooms: listing.property.numberOfBathrooms,
+                maxOccupancy: listing.property.maxOccupancy,
+                isLookingForRoomate: listing.property.isLookingForRoomate,
+                rating: listing.property.rating,
+
+
+            } : null,
+            marketplaceItem: null
+        }));
+        console.log(formattedListings)
 
         // Calculate distances and sort
         const recommendedListings = listings
@@ -198,24 +366,7 @@ app.get('/recommended-listings', async (c) => {
         // });
 
         return c.json({
-            results: recommendedListings.map(listing => ({
-                id: listing.id,
-                title: listing.title,
-                description: listing.description,
-                location: listing.location,
-                price: listing.price,
-                distance: listing.distance,
-                numberOfBedrooms: listing.property?.numberOfBedrooms,
-                numberOfBathrooms: listing.property?.numberOfBathrooms,
-                maxOccupancy: listing.property?.maxOccupancy,
-                amenities: listing.property?.amenities.map(a => a.amenity) || [],
-                categories: listing.property?.categories.map(c => c.category) || [],
-                images: listing.property?.images.map(i => i.imageUrl) || [],
-                isLookingForRoomate: listing.property?.isLookingForRoomate,
-                user: listing.user,
-                createdAt: listing.createdAt,
-                universityMatch: listing.user.university === currentUser?.university
-            }))
+            results: formattedListings
         });
 
     } catch (error) {
@@ -268,43 +419,48 @@ app.get('/pair-up', async (c) => {
                         amenities: true,
                         categories: true,
                         images: true,
+
                     }
                 },
-                user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                        university: true,
-                        age: true,
-                        gender: true,
-                        bio: true,
-                    }
-                }
+                user: true
+
             },
             orderBy: {
                 createdAt: 'desc'
             }
         });
 
+
+        const formattedListings = pairUps.map(listing => ({
+            id: listing.id,
+            type: 'Property',
+            title: listing.title,
+            description: listing.description,
+            createdAt: listing.createdAt.toISOString(),
+            user: listing.user,
+            location: listing.location,
+            price: listing.price,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
+            property: listing.property ? {
+                numberOfBedrooms: listing.property.numberOfBedrooms,
+                numberOfBathrooms: listing.property.numberOfBathrooms,
+                maxOccupancy: listing.property.maxOccupancy,
+                isLookingForRoomate: listing.property.isLookingForRoomate,
+                rating: listing.property.rating,
+                amenities: listing.property.amenities.map(a => a.amenity),
+
+            } : null,
+            marketplaceItem: null
+
+        })
+
+        );
+
+
         return c.json({
-            results: pairUps.map(listing => ({
-                id: listing.id,
-                title: listing.title,
-                description: listing.description,
-                location: listing.location,
-                price: listing.price,
-                numberOfBedrooms: listing.property?.numberOfBedrooms,
-                numberOfBathrooms: listing.property?.numberOfBathrooms,
-                maxOccupancy: listing.property?.maxOccupancy,
-                amenities: listing.property?.amenities.map(a => a.amenity) || [],
-                categories: listing.property?.categories.map(c => c.category) || [],
-                images: listing.property?.images.map(i => i.imageUrl) || [],
-                user: listing.user,
-                createdAt: listing.createdAt,
-                isLookingForRoomate: listing.property?.isLookingForRoomate,
-                universityMatch: listing.user.university === currentUser?.university
-            }))
+            results: formattedListings
         });
 
     } catch (error) {
@@ -315,6 +471,107 @@ app.get('/pair-up', async (c) => {
         }, 500);
     }
 });
+app.get('/favorites', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        const favorites = await prisma.favorite.findMany({
+            where: { userId },
+            include: {
+                listing: {
+                    include: {
+                        marketplace: {
+                            include: {
+                                images: true,
+                            }
+                        },
+                        property: {
+                            include: {
+                                amenities: true,
+                                tags: true,
+                                images: true
+                            }
+                        },
+                        user: true
+
+                    }
+                }
+            }
+        });
+
+        return c.json({
+            favorites: favorites.map(f => ({
+                ...f.listing,
+                property: f.listing.property ? {
+                    ...f.listing.property,
+                    amenities: f.listing.property.amenities.map(a => a.amenity),
+                    tags: f.listing.property.tags.map(t => t.tag),
+                    imageUrls: f.listing.property.images.map(i => i.imageUrl)
+                } : null
+            }))
+        });
+    } catch (error) {
+        return c.json({ error: 'Failed to fetch favorites' }, 500);
+    }
+});
+
+// Add favorite
+app.post('/favorites', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const { listingId } = await c.req.json();
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        await prisma.favorite.create({
+            data: {
+                userId,
+                listingId
+            }
+        });
+
+        return c.json({ success: true });
+    } catch (error) {
+        return c.json({ error: 'Failed to add favorite' }, 500);
+    }
+});
+
+// Remove favorite
+app.delete('/favorites/:listingId', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const listingId = parseInt(c.req.param('listingId'));
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        await prisma.favorite.delete({
+            where: {
+                userId_listingId: {
+                    userId,
+                    listingId
+                }
+            }
+        });
+
+        return c.json({ success: true });
+    } catch (error) {
+        return c.json({ error: 'Failed to remove favorite' }, 500);
+    }
+});
+
 
 // Helper function to calculate distance between two points
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/widgets/input_field.dart';
@@ -21,12 +22,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _bioController = TextEditingController();
   final _ageController = TextEditingController();
   String? _selectedGender;
+  String? _selectedStatus;
   File? _profileImage;
 
   @override
   void initState() {
     super.initState();
-    final user = context.read<UserProvider>().user;
+    final user = context.read<AuthProvider>().user;
     if (user != null) {
       _nameController.text = user.displayName;
       _emailController.text = user.email;
@@ -34,6 +36,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _bioController.text = user.bio ?? '';
       _ageController.text = user.age?.toString() ?? '';
       _selectedGender = user.gender;
+      _selectedStatus = user.status;
+      
     }
   }
 
@@ -48,6 +52,88 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Widget _buildInputFieldWithIndicator({
+    required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+    bool obscureText = false,
+    int? maxLines,
+    TextInputType? keyboardType,
+  }) {
+    bool isEmpty = controller.text.isEmpty;
+
+    return Stack(
+      children: [
+        InputField(
+          controller: controller,
+          label: label,
+          validator: validator,
+          obscureText: obscureText,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+        ),
+        if (isEmpty)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildProfileCompletion(User? user) {
+    if (user == null) return SizedBox();
+
+    double completion = user.getProfileCompletion();
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Profile Completion',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: completion / 100,
+            backgroundColor: Colors.grey[300],
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '${completion.toStringAsFixed(0)}% Complete',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,9 +141,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         title: Text('Edit Profile'),
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: Consumer<UserProvider>(
+      body: Consumer<AuthProvider>(
         builder: (context, UserProvider, child) {
           final user = UserProvider.user;
 
@@ -106,7 +198,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       onPressed: () => UserProvider.deleteProfilePhoto(),
                       child: Text('Remove Photo'),
                     ),
-                  InputField(
+                  _buildProfileCompletion(user),
+                  _buildInputFieldWithIndicator(
                     controller: _nameController,
                     label: "Full Name",
                     validator: (value) {
@@ -163,6 +256,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value: _selectedStatus,
+                    decoration: InputDecoration(
+                      labelText: 'Status',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    items:
+                        ["I'm looking for a room", "I'm looking for a roommate"]
+                            .map((status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(status),
+                                ))
+                            .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedStatus = value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 20),
                   if (UserProvider.isLoading)
                     CircularProgressIndicator()
                   else
@@ -189,11 +304,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Future<void> _updateProfile(UserProvider UserProvider) async {
+  Future<void> _updateProfile(AuthProvider UserProvider) async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
       await UserProvider.updateProfile(
+        status: _selectedStatus,
         displayName: _nameController.text,
         email: _emailController.text,
         password: _passwordController.text.isNotEmpty

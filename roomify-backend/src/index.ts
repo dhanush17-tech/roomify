@@ -10,6 +10,10 @@ import password_reset from './auth/forgot_password'
 import roomate_match from "./rommate_match/load_matchs"
 import search from './search/search_property'
 import properties from './property/property'
+import prefrences from './profile/prefrences'
+import chat from "./chat/chat";
+import marketplace from "./marketplace/marketplace";
+export { ChatRoom } from './chat/durable_objects';
 
 const app = new Hono<{
 	Bindings: Env,
@@ -19,7 +23,6 @@ const app = new Hono<{
 }>();
 
 // Middleware
-app.use(cors());
 app.use('/api/*', async (c, next) => {
 
 	validateToken(c, next);
@@ -37,7 +40,9 @@ app.route('/api/user/profile', profile)
 app.route("/api/roommate-match", roomate_match)
 app.route("/api/search", search)
 app.route("/api/properties", properties)
-
+app.route("/api/user", prefrences)
+app.route("/api/chat", chat)
+app.route("/api/marketplace", marketplace)
 
 // Error handling
 app.onError((err, c) => {
@@ -46,4 +51,3 @@ app.onError((err, c) => {
 });
 
 export default app;
- 

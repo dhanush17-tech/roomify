@@ -1,90 +1,60 @@
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 
-class Property extends Listing {
-  final String title;
-  final String description;
-  final String location;
-  final int price;
+class Property {
   final int numberOfBedrooms;
   final int numberOfBathrooms;
   final int maxOccupancy;
+  final bool isLookingForRoomate;
+  final double? rating;
   final List<String> amenities;
-  final List<String> categories;
-  final List<String> imageUrls;
-  final DateTime createdAt;
+  final List<String>? tags;
   final List<Comment>? comments;
-  final int? rating;
-  final bool? isLookingForRoomate;
+  List<String>? imageUrls;
 
   Property({
-    required this.createdAt,
-    int? id,
-    required this.title,
-    required this.description,
-    required this.location,
-    required this.price,
     required this.numberOfBedrooms,
     required this.numberOfBathrooms,
     required this.maxOccupancy,
-    ListingType? type,
+    required this.isLookingForRoomate,
+    this.rating,
     required this.amenities,
-    required this.categories,
-    User? user,
-    double? latitude,
-    double? longitude,
-    bool? isFavourite,
-    this.imageUrls = const [],
-    this.comments = const [],
-    this.rating = 0,
-    this.isLookingForRoomate = false,
-  }) : super(
-            type: ListingType.Property,
-            id: id = 1,
-            location: location,
-            price: price,
-            user: user,
-            title: title,
-            description: description,
-            createdAt: createdAt ?? DateTime.now(), // Default to current time
-            isFavourite: isFavourite ?? false, // Default to false
-            latitude: latitude,
-            longitude: longitude);
-  Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'location': location,
-        'price': price,
-        'numberOfBedrooms': numberOfBedrooms,
-        'numberOfBathrooms': numberOfBathrooms,
-        'maxOccupancy': maxOccupancy,
-        'type': type.toString().split('.').last,
-        'amenities': amenities,
-        'categories': categories,
-        'user': user,
-      };
+    this.tags,
+    this.imageUrls,
+    this.comments,
+  });
+  Map<String, dynamic> toJson() {
+    return {
+      'numberOfBedrooms': numberOfBedrooms,
+      'numberOfBathrooms': numberOfBathrooms,
+      'maxOccupancy': maxOccupancy,
+      'isLookingForRoomate': isLookingForRoomate,
+      'rating': rating,
+      'amenities': amenities,
+      'tags': tags,
+    };
+  }
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-        id: json['id'],
-        title: json['title'],
-        description: json['description'],
-        location: json['location'],
-        price: json['price'],
-        numberOfBedrooms: json['numberOfBedrooms'] ?? 0,
-        numberOfBathrooms: json['numberOfBathrooms'] ?? 0,
-        maxOccupancy: json['maxOccupancy']??0,
-        type: ListingType.Property,
-        user: User.fromJson(json["user"]),
-        amenities: List<String>.from(json['amenities'] ?? []),
-        categories: List<String>.from(json['categories'] ?? []),
-        imageUrls: List<String>.from(json['images'] ?? []),
-        rating: json["rating"]??0,
-        longitude: json["longitude"],
-        latitude: json["latitude"],
-        isLookingForRoomate: json["isLookingForRoomate"],
-        comments: List<Comment>.from(json["comments"] ?? []),
-        createdAt: DateTime.parse(json["createdAt"]));
+      numberOfBedrooms: json['numberOfBedrooms'] ?? 0,
+      numberOfBathrooms: json['numberOfBathrooms'] ?? 0,
+      maxOccupancy: json['maxOccupancy'] ?? 0,
+      isLookingForRoomate: json['isLookingForRoomate'] ?? false,
+      rating: (json['rating'] ?? 0).toDouble(),
+      amenities: json["amenities"] != null
+          ? (json["amenities"] is List<String>
+              ? List<String>.from(json["amenities"])
+              : (json["amenities"] is Map<String, dynamic>
+                  ? json["amenities"].values.toList().cast<String>()
+                  : []))
+          : [],
+      tags: List<String>.from(json['tags'] ?? []),
+      imageUrls: List<String>.from(json['imageUrls'] ?? []),
+      comments: json['comments'] != null
+          ? List<Comment>.from(json['comments'].map((x) => Comment.fromJson(x)))
+          : null,
+    );
   }
 }
 

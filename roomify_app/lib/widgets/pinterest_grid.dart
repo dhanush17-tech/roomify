@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/marketplace/item_details.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 
 class PinterestGrid extends StatelessWidget {
-  final List<FeaturedItemCard> items;
+  final List<Listing> items;
   final ScrollPhysics physics;
+  final bool showDeleteIcon;
+  final Function(Listing item)? onTapDelete;
+
   const PinterestGrid({
     Key? key,
     required this.items,
     this.physics = const NeverScrollableScrollPhysics(),
+    this.onTapDelete,
+    this.showDeleteIcon = false,
   }) : super(key: key);
 
   @override
@@ -17,7 +25,7 @@ class PinterestGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: MasonryGridView.count(
-        padding: EdgeInsets.all(0),
+        padding: const EdgeInsets.all(0),
         scrollDirection: Axis.vertical,
         crossAxisCount: 2,
         mainAxisSpacing: 18,
@@ -26,7 +34,26 @@ class PinterestGrid extends StatelessWidget {
         physics: physics,
         itemCount: items.length,
         itemBuilder: (context, index) {
-          return items[index];
+          return FeaturedItemCard(
+            item: items[index],
+            onTap: () {
+              if (items[index].property is Property) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PropertyDetailsScreen(items[index]),
+                  ),
+                );
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ItemDetailsScreen(item: items[index]),
+                  ),
+                );
+              }
+            },
+            showDeleteIcon: showDeleteIcon,
+            onTapDelete: onTapDelete,
+          );
         },
       ),
     );
@@ -34,79 +61,109 @@ class PinterestGrid extends StatelessWidget {
 }
 
 class FeaturedItemCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String price;
-  final String imagePath;
   final VoidCallback? onTap;
+  final Listing item;
+  final bool showDeleteIcon;
+  final Function(Listing item)? onTapDelete;
 
-  const FeaturedItemCard(
-      {Key? key,
-      required this.title,
-      required this.location,
-      required this.price,
-      required this.imagePath,
-      this.onTap})
-      : super(key: key);
+  const FeaturedItemCard({
+    Key? key,
+    required this.item,
+    this.onTap,
+    this.onTapDelete,
+    this.showDeleteIcon = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-            context, MaterialPageRoute(builder: (C) => ItemDetailsScreen()));
-      },
-      child: Container(
-        width: 180,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Image.network(
-                imagePath,
-                width: 180,
-                fit: BoxFit.cover,
-              ),
-            ),
-            SizedBox(
-              height: 5,
-            ),
-            Text(
-              title,
-              style: AppTextStyles.subtitle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(
-              height: 3,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 180,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(location, style: const TextStyle(color: Colors.grey)),
-                SizedBox(
-                  width: 4,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.network(
+                    item.property?.imageUrls?.isNotEmpty == true
+                        ? item.property!.imageUrls!.first
+                        : 'https://via.placeholder.com/180',
+                    width: 180,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 180,
+                        height: 120,
+                        color: Colors.grey[200],
+                        child: Icon(Icons.error),
+                      );
+                    },
+                  ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    price,
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(height: 5),
+                Text(
+                  item.title,
+                  style: AppTextStyles.subtitle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.location,
+                        style: const TextStyle(color: Colors.grey),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 5,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '\$${item.price}',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
+        if (showDeleteIcon)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: () => onTapDelete?.call(item),
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.delete, color: Colors.red, size: 20),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

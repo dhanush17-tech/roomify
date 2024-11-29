@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
-import 'package:roomify_app/views/messaging/message_home.dart';
+import 'package:roomify_app/views/messaging/chat_home.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
+import 'package:roomify_app/widgets/location_picker.dart';
 
 class HomeScreen extends StatefulWidget {
   User user;
@@ -35,14 +38,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Hi Anika!',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                  Container(width: 170, child: LocationSelector()),
+                  // const Text(
+                  //   'Hi Anika!',
+                  //   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  // ),
                   Row(
                     children: [
                       IconButton(
@@ -59,28 +64,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon:
                             Icon(Icons.chat_bubble_outline, color: Colors.grey),
                         onPressed: () {
-                          Navigator.push(context,
-                              MaterialPageRoute(builder: (c) => MessageHome()));
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (c) => ChatListScreen()));
                         },
                       ),
                     ],
                   ),
                 ],
               ),
-              // Search Bar
-              TextField(
-                decoration: InputDecoration(
-                  hintText: "Search for rooms, roommates or items...",
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.grey.shade200,
-                  contentPadding: EdgeInsets.symmetric(vertical: 15),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
+
               SizedBox(height: 20),
 
               // Recommended Section
@@ -99,9 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Center(child: CircularProgressIndicator());
                   }
 
-                  if (provider.error != null) {
-                    return Text(provider.error!);
-                  }
+                  // if (provider.error != null) {
+                  //   return Text(provider.error!);
+                  // }
 
                   if (provider.recommendations.isEmpty) {
                     return Text('No recommendations found nearby');
@@ -110,20 +104,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: provider.recommendations.map((property) {
+                      children: provider.recommendations.map((listing) {
                         return Padding(
                           padding: EdgeInsets.only(right: 10),
                           child: ItemCard(
-                            title: property.title,
-                            location: property.location,
-                            price: "\$${property.price}/month",
-                            rating: property.rating?.toDouble() ?? 0.0,
-                            bathrooms: property.numberOfBathrooms,
-                            bedrooms: property.numberOfBedrooms,
-                            imagePath: property.imageUrls.isNotEmpty
-                                ? property.imageUrls.first
+                            title: listing.title,
+                            location: listing.location,
+                            price: "\$${listing.price}/month",
+                            rating: listing.property!.rating?.toDouble() ?? 0.0,
+                            bathrooms: listing.property!.numberOfBathrooms,
+                            bedrooms: listing.property!.numberOfBedrooms,
+                            imagePath: listing.imageUrls.isNotEmpty
+                                ? listing.imageUrls.first
                                 : "assets/test_images/house.png",
-                            property: property,
+                            listing: listing,
                           ),
                         );
                       }).toList(),
@@ -171,9 +165,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Center(child: CircularProgressIndicator());
                   }
 
-                  if (provider.error != null) {
-                    return Center(child: Text(provider.error!));
-                  }
+
+                  // if (provider.error != null) {
+                  //   return Center(child: Text(provider.error!));
+                  // }
 
                   final matches = provider.pairUpListings;
 
@@ -215,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class MatchCard extends StatelessWidget {
-  final Property property;
+  final Listing property;
 
   const MatchCard({required this.property});
 
@@ -318,7 +313,7 @@ class ItemCard extends StatelessWidget {
   final int bathrooms;
   final int bedrooms;
   final String imagePath;
-  final Property property;
+  final Listing listing;
 
   ItemCard({
     required this.title,
@@ -328,7 +323,7 @@ class ItemCard extends StatelessWidget {
     required this.bathrooms,
     required this.bedrooms,
     required this.imagePath,
-    required this.property,
+    required this.listing,
   });
 
   @override
@@ -336,7 +331,7 @@ class ItemCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(property)));
+            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(listing)));
       },
       child: Container(
         width: 250,

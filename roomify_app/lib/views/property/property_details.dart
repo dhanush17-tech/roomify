@@ -1,11 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
+import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/chat_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
 
 class PropertyDetailsScreen extends StatelessWidget {
-  final Property property;
-  PropertyDetailsScreen(this.property);
+  final Listing listing;
+  PropertyDetailsScreen(this.listing);
+
+  void navigateToChat(BuildContext context, User propertyOwner) async {
+    try {
+      // Get or create chat room with property owner
+      final chatRoom = await context.read<ChatProvider>().createOrGetChatRoom(
+            propertyOwner.id,
+          );
+
+      // Navigate to chat screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatMessageScreen(room: chatRoom),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to open chat: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,10 +50,16 @@ class PropertyDetailsScreen extends StatelessWidget {
         ),
         title: Text("Details", style: AppTextStyles.title()),
         actions: [
-          IconButton(
-            icon: Icon(Icons.favorite_border, color: Colors.grey),
-            onPressed: () {},
-          ),
+          Consumer<PropertyProvider>(builder: (ctx, provider, g) {
+            return IconButton(
+              icon: Icon(provider.isFavorite(listing.id)
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border),
+              onPressed: () {
+                provider.toggleFavorite(listing);
+              },
+            );
+          })
         ],
       ),
       body: SingleChildScrollView(
@@ -35,8 +69,11 @@ class PropertyDetailsScreen extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.asset(
-                'assets/test_images/house.png', // Replace with your image path
+              child: Image.network(
+                listing.property!.imageUrls!.isEmpty
+                    ? listing.imageUrls![0]
+                    : listing.property!
+                        .imageUrls![0], // Replace with your image path
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -44,7 +81,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             Text(
-              property.title,
+              listing.title,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
@@ -52,31 +89,31 @@ class PropertyDetailsScreen extends StatelessWidget {
               children: [
                 Icon(Icons.location_on, color: Colors.grey),
                 SizedBox(width: 4),
-                Text(property.location, style: TextStyle(color: Colors.grey)),
+                Text(listing.location, style: TextStyle(color: Colors.grey)),
                 Spacer(),
                 Icon(Icons.groups, color: Colors.grey),
                 SizedBox(width: 4),
-                Text(property.maxOccupancy.toString(),
+                Text(listing.property!.maxOccupancy.toString(),
                     style: TextStyle(color: Colors.grey)),
                 SizedBox(width: 16),
                 Icon(Icons.bed, color: Colors.grey),
                 SizedBox(width: 4),
-                Text(property.numberOfBedrooms.toString()),
+                Text(listing.property!.numberOfBedrooms.toString()),
                 SizedBox(width: 16),
                 Icon(Icons.bathtub_outlined, color: Colors.grey),
                 SizedBox(width: 4),
-                Text(property.numberOfBathrooms.toString()),
+                Text(listing.property!.numberOfBathrooms.toString()),
               ],
             ),
             SizedBox(height: 16),
             Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: property.user!.profilePhotoUrl != null
-                      ? NetworkImage(property.user!.profilePhotoUrl!)
+                  backgroundImage: listing.user!.profilePhotoUrl != null
+                      ? NetworkImage(listing.user!.profilePhotoUrl!)
                       : null, // Replace with your image path
-                  child: property.user!.profilePhotoUrl == null
-                      ? Icon(Icons.person, size: 50)
+                  child: listing.user!.profilePhotoUrl == null
+                      ? Icon(Icons.person, size: 25)
                       : null,
                   radius: 20,
                 ),
@@ -84,9 +121,12 @@ class PropertyDetailsScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(property.user!.displayName,
+                    Text(listing.user!.displayName,
                         style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(property.user!.university!,
+                    Text(
+                        listing.user!.university == null
+                            ? ""
+                            : listing.user!.university!,
                         style: TextStyle(color: Colors.grey)),
                   ],
                 ),
@@ -97,7 +137,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             SizedBox(
               height: 10,
             ),
-            property.isLookingForRoomate! == true
+            listing.user!.status == "I'm looking for a roommate"
                 ? Container(
                     padding: EdgeInsets.symmetric(vertical: 5, horizontal: 12),
                     decoration: BoxDecoration(
@@ -120,7 +160,7 @@ class PropertyDetailsScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Text(
-              property.description,
+              listing.description!,
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 8),
@@ -128,14 +168,16 @@ class PropertyDetailsScreen extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children:
-                    property.categories.map((e) => _buildTag(e)).toList()),
+                    listing.property!.tags!.map((e) => _buildTag(e)).toList()),
             SizedBox(height: 16),
             Text("Amenities", style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: property.amenities.map((e) => _buildTag(e)).toList()),
+                children: listing.property!.amenities
+                    .map((e) => _buildTag(e))
+                    .toList()),
             SizedBox(height: 16),
             Text("About the Roomies",
                 style: TextStyle(fontWeight: FontWeight.bold)),
@@ -145,17 +187,17 @@ class PropertyDetailsScreen extends StatelessWidget {
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 16),
-            Column(
-              children: property.comments!.map((e) {
-                return _buildRoommateCard(
-                  name: e.user!.displayName,
-                  course: e.user!.university!,
-                  description: e.comment,
-                  imagePath: e.user!.profilePhotoUrl!,
-                  verified: true,
-                );
-              }).toList(),
-            ),
+            // Column(
+            //   children: listing.comments!.map((e) {
+            //     return _buildRoommateCard(
+            //       name: e.user!.displayName,
+            //       course: e.user!.university!,
+            //       description: e.comment,
+            //       imagePath: e.user!.profilePhotoUrl!,
+            //       verified: true,
+            //     );
+            //   }).toList(),
+            // ),
             SizedBox(height: 80),
           ],
         ),
@@ -166,12 +208,14 @@ class PropertyDetailsScreen extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              "\$100",
+              "\$ ${listing.price}",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             Spacer(),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                navigateToChat(context, listing.user!);
+              },
               style: TextButton.styleFrom(
                 backgroundColor: orangeColor,
                 padding: EdgeInsets.symmetric(vertical: 15),

@@ -46,7 +46,13 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   image_picker:
   dio:
-  geolocator: ^13.0.2
+  geolocator: ^10.0.0
+  web_socket_channel: ^3.0.1
+  timeago: ^3.7.0
+  uni_links: ^0.5.1
+  url_launcher: ^6.3.1
+  mapbox_maps_flutter: ^2.4.1
+  permission_handler: ^11.0.0
     
 
 

@@ -5,6 +5,8 @@ import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/providers/search_provider.dart';
 
 class FilterBottomSheet extends StatefulWidget {
+  final String query;
+  FilterBottomSheet({required this.query});
   @override
   _FilterBottomSheetState createState() => _FilterBottomSheetState();
 }
@@ -22,6 +24,44 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   int numberOfBathrooms = 0;
   int maxOccupancy = 0;
   RangeValues ratingRange = RangeValues(0, 5);
+
+  late FilterOptions _filters;
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with current filters or default values
+    _filters = context.read<SearchProvider>().currentFilters ??
+        FilterOptions.defaultValues();
+
+    // Set initial values based on current filters
+    priceRange = RangeValues(_filters.minPrice ?? 0, _filters.maxPrice ?? 3000);
+    selectedPropertyTypes = _filters.propertyTypes;
+    selectedAmenities = _filters.amenities;
+    selectedCategories = _filters.itemCategories
+        .map((c) =>
+            PropertyCategory.values.firstWhere((e) => e.displayName == c))
+        .toList();
+    numberOfBedrooms = _filters.numberOfBedrooms ?? 0;
+    numberOfBathrooms = _filters.numberOfBathrooms ?? 0;
+    maxOccupancy = _filters.maxOccupancy ?? 0;
+    ratingRange = RangeValues(_filters.rating?.toDouble() ?? 0, 5);
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _filters = FilterOptions.defaultValues();
+      // Reset all local state variables
+      priceRange = RangeValues(0, 3000);
+      selectedPropertyTypes = [];
+      selectedAmenities = [];
+      selectedCategories = [];
+      numberOfBedrooms = 0;
+      numberOfBathrooms = 0;
+      maxOccupancy = 0;
+      ratingRange = RangeValues(0, 5);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -85,7 +125,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   _buildDivider(),
 
                   // Location Section
-                  _buildLocationSection(),
                   _buildDivider(),
 
                   // Property Types Section
@@ -223,6 +262,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         context
                             .read<SearchProvider>()
                             .setFilterOptions(filterOptions);
+                        context.read<SearchProvider>().search(widget.query);
+
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -266,29 +307,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             '\$${priceRange.end.round()}',
           ),
           onChanged: (values) => setState(() => priceRange = values),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Location',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 8),
-        TextField(
-          onChanged: (value) => setState(() => selectedLocation = value),
-          decoration: InputDecoration(
-            hintText: 'Search location...',
-            prefixIcon: Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
         ),
       ],
     );
@@ -407,18 +425,5 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Divider(),
     );
-  }
-
-  void _resetFilters() {
-    setState(() {
-      selectedGender = null;
-      priceRange = RangeValues(500, 1500);
-      selectedPropertyTypes.clear();
-      selectedAmenities.clear();
-      selectedCategories.clear();
-      selectedLocation = null;
-      proximityValue = 3;
-      ratingRange = RangeValues(0, 5);
-    });
   }
 }

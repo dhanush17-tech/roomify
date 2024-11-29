@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/filterModel.dart';
+import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/providers/search_provider.dart';
@@ -78,7 +81,49 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 _buildTabBar(searchProvider),
                 if (searchProvider.isLoading)
-                  CircularProgressIndicator()
+                  Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (searchProvider.noResults)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            searchProvider.searchResults.isEmpty
+                                ? Icons.location_off
+                                : Icons.search_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            searchProvider.searchResults.isEmpty
+                                ? 'No listings found in your area'
+                                : 'No results found for "${_searchController.text}"',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          if (searchProvider.searchResults.isNotEmpty) ...[
+                            SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your search or filters',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  )
                 else
                   Expanded(
                     child: ListView.builder(
@@ -105,7 +150,6 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildTab('Roommate', provider),
           _buildTab('Property', provider),
           _buildTab('Marketplace', provider),
           IconButton(
@@ -145,19 +189,18 @@ class _SearchScreenState extends State<SearchScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => FilterBottomSheet(),
+      builder: (context) => FilterBottomSheet(query: _searchController.text),
     );
   }
 }
 
-Widget _buildSearchResult(dynamic item, String activeTab) {
+Widget _buildSearchResult(Listing item, String activeTab) {
   switch (activeTab) {
     case 'Property':
       return PropertyCard(item);
     case 'Marketplace':
       return MarketplaceCard(item);
-    case 'Roommate':
-      return RoommateCard(item);
+
     default:
       return SizedBox.shrink();
   }
@@ -165,16 +208,16 @@ Widget _buildSearchResult(dynamic item, String activeTab) {
 
 // Property Card Widget
 class PropertyCard extends StatelessWidget {
-  final Property property;
+  final Listing listing;
 
-  const PropertyCard(this.property);
+  const PropertyCard(this.listing);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.push(context,
-            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(property)));
+            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(listing)));
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 16),
@@ -189,9 +232,9 @@ class PropertyCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                  child: property.imageUrls.isNotEmpty
+                  child: listing.property!.imageUrls!.isNotEmpty
                       ? Image.network(
-                          property.imageUrls[0],
+                          listing.property!.imageUrls![0],
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
@@ -219,7 +262,7 @@ class PropertyCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    property.title ?? '',
+                    listing.title ?? '',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -232,7 +275,7 @@ class PropertyCard extends StatelessWidget {
                           size: 16, color: Colors.grey),
                       SizedBox(width: 4),
                       Text(
-                        property.location ?? '',
+                        listing.location ?? '',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ],
@@ -255,7 +298,7 @@ class PropertyCard extends StatelessWidget {
                         children: [
                           Icon(Icons.bed_outlined, size: 16),
                           SizedBox(width: 4),
-                          Text('${property.numberOfBedrooms ?? 1}'),
+                          Text('${listing.property!.numberOfBedrooms ?? 1}'),
                         ],
                       ),
                       SizedBox(width: 16),
@@ -263,7 +306,7 @@ class PropertyCard extends StatelessWidget {
                         children: [
                           Icon(Icons.bathtub_outlined, size: 16),
                           SizedBox(width: 4),
-                          Text('${property.numberOfBathrooms ?? 1}'),
+                          Text('${listing.property!.numberOfBathrooms ?? 1}'),
                         ],
                       ),
                     ],
@@ -276,7 +319,7 @@ class PropertyCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '\$ ${property.price}/month',
+                      '\$ ${listing.price}/month',
                       style: TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
@@ -295,16 +338,16 @@ class PropertyCard extends StatelessWidget {
 
 // Marketplace Card Widget
 class MarketplaceCard extends StatelessWidget {
-  final Property item;
+  final Listing listing;
 
-  const MarketplaceCard(this.item);
+  const MarketplaceCard(this.listing);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(item)));
+            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(listing)));
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 16),
@@ -316,67 +359,28 @@ class MarketplaceCard extends StatelessWidget {
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              item.imageUrls[0] ?? '',
+              listing.imageUrls[0] ?? '',
               width: 60,
               height: 60,
               fit: BoxFit.cover,
             ),
           ),
           title: Text(
-            item.title ?? '',
+            listing.title ?? '',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           subtitle: Text(
-            item.price != null ? '₦${item.price}' : '',
+            listing.price != null ? '₦${listing.price}' : '',
             style: TextStyle(color: Colors.blue),
           ),
-          trailing: Icon(Icons.favorite_border),
+          trailing: IconButton(
+              onPressed: () {
+                context.read<PropertyProvider>().toggleFavorite(listing);
+              },
+              icon: Icon(context.read<PropertyProvider>().isFavorite(listing.id)
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border)),
         ),
-      ),
-    );
-  }
-}
-
-// Roommate Card Widget
-class RoommateCard extends StatelessWidget {
-  final dynamic roommate;
-
-  const RoommateCard(this.roommate);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 30,
-          backgroundImage: NetworkImage(roommate.profileImage ?? ''),
-        ),
-        title: Text(
-          roommate.name ?? '',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(roommate.university ?? ''),
-            Row(
-              children: [
-                Icon(Icons.star, size: 16, color: Colors.amber),
-                SizedBox(width: 4),
-                Text(
-                  '${roommate.compatibility ?? 0}% Match',
-                  style: TextStyle(color: Colors.green),
-                ),
-              ],
-            ),
-          ],
-        ),
-        // trailing: Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
   }
