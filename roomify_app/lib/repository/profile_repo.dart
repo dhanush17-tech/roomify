@@ -31,7 +31,6 @@ class ProfileUpdateRepo {
   }
 
   Future<User> updatePreferences({
-    required List<String> interests,
     required List<String> preferences,
     required Map<String, String> socialLinks,
   }) async {
@@ -39,7 +38,6 @@ class ProfileUpdateRepo {
       final response = await _dio.put(
         '/api/user/preferences',
         data: {
-          'interests': interests,
           'preferences': preferences,
           'socialLinks': socialLinks,
         },

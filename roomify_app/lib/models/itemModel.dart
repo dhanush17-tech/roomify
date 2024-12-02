@@ -105,11 +105,13 @@ class MarketplaceItem {
   final List<String> categories;
   final String? condition;
   final String? brand;
+  final List<String> imageUrls;
 
   MarketplaceItem({
     required this.categories,
     this.condition,
     this.brand,
+    required this.imageUrls,
   });
 
   factory MarketplaceItem.fromJson(Map<String, dynamic> json) {
@@ -117,6 +119,10 @@ class MarketplaceItem {
       categories: List<String>.from(json['categories'] ?? []),
       condition: json['condition'],
       brand: json['brand'],
+      imageUrls: json["images"]
+          .map((e) => e["imageUrl"].toString())
+          .cast<String>()
+          .toList(),
     );
   }
 }

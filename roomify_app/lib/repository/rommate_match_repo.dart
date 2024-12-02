@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:roomify_app/models/roommateMatchModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils.dart';

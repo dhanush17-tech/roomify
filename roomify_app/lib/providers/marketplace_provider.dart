@@ -1,11 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/repository/marketplace_repo.dart';
-import 'package:provider/provider.dart';
-import 'package:roomify_app/providers/auth_provider.dart';
 
 class MarketplaceProvider extends ChangeNotifier {
   final MarketplaceRepository _repository;
@@ -38,25 +34,39 @@ class MarketplaceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> createItem(Listing item, List<File> images) async {
+  Future<void> createMarketplaceItem({
+    required String title,
+    required String description,
+    required double price,
+    required String location,
+    required double latitude,
+    required double longitude,
+    required List<String> categories,
+    required List<File> images,
+  }) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final newItem = await _repository.createMarketplaceItem(item, images);
+      final newItem = await _repository.createMarketplaceItem(
+        title: title,
+        description: description,
+        price: price,
+        location: location,
+        latitude: latitude,
+        longitude: longitude,
+        categories: categories,
+        images: images,
+      );
+
       _items.insert(0, newItem);
-
-      // Refresh all providers
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
-
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      throw e;
     }
   }
 }
- 

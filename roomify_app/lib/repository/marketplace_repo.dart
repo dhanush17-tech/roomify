@@ -6,19 +6,41 @@ import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils.dart';
 
 class MarketplaceRepository {
-  Future<Listing> createMarketplaceItem(Listing item, List<File> images) async {
+  Future<Listing> createMarketplaceItem(
+      {required String title,
+      required String description,
+      required double price,
+      required String location,
+      required double latitude,
+      required double longitude,
+      required List<String> categories,
+      required List<File> images}) async {
     try {
-       final token = await AuthRepository().getToken();
-      final _headers = {
-        'Content-Type': 'application/json',
+      final token = await AuthRepository().getToken();
+      final headers = {
         'Authorization': 'Bearer $token',
       };
+
       var request =
           http.MultipartRequest('POST', Uri.parse('$baseUrl/api/marketplace'));
-      request.headers.addAll(_headers);
+      request.headers.addAll(headers);
 
-      request.fields['listing'] = jsonEncode(item.toJson());
+      // Create the listing object
+      final listingData = {
+        'title': title,
+        'description': description,
+        'price': price,
+        'location': location,
+        'latitude': latitude,
+        'longitude': longitude,
+        'categories': categories,
+        'type': 'Marketplace'
+      };
 
+      // Add the listing data as a field
+      request.fields['listing'] = jsonEncode(listingData);
+
+      // Add all images
       for (var image in images) {
         final fileName = image.path.split('/').last;
         final stream = http.ByteStream(image.openRead());
@@ -40,8 +62,7 @@ class MarketplaceRepository {
         final data = json.decode(responseData)['listing'];
         return Listing.fromJson(data);
       } else {
-        throw Exception(
-            'Failed to create marketplace item: ${response.statusCode}');
+        throw Exception('Failed to create marketplace item');
       }
     } catch (e) {
       throw Exception('Failed to create marketplace item: $e');

@@ -2,16 +2,15 @@ import 'package:dio/dio.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:roomify_app/utils.dart';
 
 class MapBoxAutoCompleteWidget extends StatefulWidget {
-  final String apiKey;
-  final String hint;
+   final String hint;
   final Function(Place) onSelect;
   final int limit;
 
   const MapBoxAutoCompleteWidget({
-    required this.apiKey,
-    required this.hint,
+     required this.hint,
     required this.onSelect,
     this.limit = 5,
   });
@@ -64,7 +63,7 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
       final response = await _dio.get(
         endpoint,
         queryParameters: {
-          'access_token': widget.apiKey,
+          'access_token': mapboxToken,
           'limit': widget.limit,
         },
       );

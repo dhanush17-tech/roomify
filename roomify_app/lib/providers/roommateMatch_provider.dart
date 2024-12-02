@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:roomify_app/models/roommateMatchModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/repository/rommate_match_repo.dart';
 

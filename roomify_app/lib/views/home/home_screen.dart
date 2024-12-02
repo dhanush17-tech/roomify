@@ -6,6 +6,7 @@ import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
 import 'package:roomify_app/views/messaging/chat_home.dart';
@@ -26,8 +27,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    // Load favorites when screen is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PropertyProvider>().loadFavorites();
+    });
   }
 
   @override
@@ -38,165 +42,144 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Title and Profile
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(width: 170, child: LocationSelector()),
-                  // const Text(
-                  //   'Hi Anika!',
-                  //   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  // ),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.favorite_outline_rounded,
-                            color: Colors.grey),
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (c) => FavoritesScreen()));
-                        },
+                      Text(
+                        'Find Your Best',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      IconButton(
-                        icon:
-                            Icon(Icons.chat_bubble_outline, color: Colors.grey),
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (c) => ChatListScreen()));
-                        },
+                      Text(
+                        'Real Estate',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
+                  ),
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey[200],
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ChatListScreen()));
+                      },
+                      child: Icon(Icons.message_rounded, color: Colors.grey),
+                    ),
                   ),
                 ],
               ),
 
               SizedBox(height: 20),
 
-              // Recommended Section
-              SectionHeader(
-                  title: "Recommended",
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (c) => SearchScreen()));
-                  }),
-              Text("based on your preferences",
-                  style: TextStyle(color: Colors.grey)),
-              SizedBox(height: 10),
-              Consumer<PropertyProvider>(
-                builder: (context, provider, child) {
-                  if (provider.isLoading) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  // if (provider.error != null) {
-                  //   return Text(provider.error!);
-                  // }
-
-                  if (provider.recommendations.isEmpty) {
-                    return Text('No recommendations found nearby');
-                  }
-
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: provider.recommendations.map((listing) {
-                        return Padding(
-                          padding: EdgeInsets.only(right: 10),
-                          child: ItemCard(
-                            title: listing.title,
-                            location: listing.location,
-                            price: "\$${listing.price}/month",
-                            rating: listing.property!.rating?.toDouble() ?? 0.0,
-                            bathrooms: listing.property!.numberOfBathrooms,
-                            bedrooms: listing.property!.numberOfBedrooms,
-                            imagePath: listing.imageUrls.isNotEmpty
-                                ? listing.imageUrls.first
-                                : "assets/test_images/house.png",
-                            listing: listing,
-                          ),
-                        );
-                      }).toList(),
+              // Search Bar
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search location',
+                          border: InputBorder.none,
+                          hintStyle: TextStyle(color: Colors.grey),
+                        ),
+                      ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
+
               SizedBox(height: 20),
 
-              // Recommended Section
-
-              // // Find Your Ideal Roommate Section
-              // SectionHeader(title: "Find Your Ideal Roommate", onTap: () {}),
-              // SizedBox(height: 20),
-              // SingleChildScrollView(
-              //   scrollDirection: Axis.horizontal,
-              //   child: Row(
-              //     children: [
-              //       RoommateCard(
-              //           name: "David E.",
-              //           age: 22,
-              //           university: "ASU",
-              //           imagePath: "assets/test_images/house.png"),
-              //       SizedBox(width: 40),
-              //       RoommateCard(
-              //           name: "Fatima K.",
-              //           age: 20,
-              //           university: "NYU",
-              //           imagePath: "assets/test_images/house.png"),
-              //     ],
-              //   ),
-              // ),
-              SectionHeader(
-                  title: "Pair up",
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (c) => SearchScreen()));
-                  }),
-              SizedBox(
-                height: 10,
+              // Property Type Filter
+              Row(
+                children: [
+                  FilterChip(
+                    selected: false,
+                    label: Text('Home'),
+                    onSelected: (_) {},
+                    backgroundColor: Colors.transparent,
+                    labelStyle: TextStyle(color: Colors.black),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Colors.grey.withOpacity(0.4)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  FilterChip(
+                    selected: false,
+                    label: Text('Villa'),
+                    onSelected: (_) {},
+                    backgroundColor: Colors.transparent,
+                    labelStyle: TextStyle(color: Colors.black),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Colors.grey.withOpacity(0.4)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  FilterChip(
+                    selected: true,
+                    showCheckmark: false,
+                    label: Text('Apartment'),
+                    onSelected: (_) {},
+                    selectedColor: orangeColor,
+                    backgroundColor: Colors.grey[200],
+                    labelStyle: TextStyle(color: Colors.white),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ],
               ),
+
+              SizedBox(height: 20),
+
+              // Popular Section
+              Text(
+                'Popular',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              SizedBox(height: 16),
+
+              // Property Cards
               Consumer<PropertyProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoading) {
                     return Center(child: CircularProgressIndicator());
                   }
 
-
-                  // if (provider.error != null) {
-                  //   return Center(child: Text(provider.error!));
-                  // }
-
-                  final matches = provider.pairUpListings;
-
-                  if (matches.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline,
-                              size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No matches found',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    physics: NeverScrollableScrollPhysics(),
+                  return ListView.separated(
+                    separatorBuilder: (context, index) => SizedBox(height: 20),
                     shrinkWrap: true,
-                    padding: EdgeInsets.all(0),
-                    itemCount: matches.length,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: provider.pairUpListings.length,
                     itemBuilder: (context, index) {
-                      final match = matches[index];
-                      return MatchCard(property: match);
+                      final listing = provider.pairUpListings[index];
+                      return PropertyCard(listing: listing);
                     },
                   );
                 },
@@ -209,306 +192,232 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class MatchCard extends StatelessWidget {
-  final Listing property;
+// New Property Card Widget
+class PropertyCard extends StatelessWidget {
+  final Listing listing;
 
-  const MatchCard({required this.property});
+  const PropertyCard({required this.listing});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(property)));
-      },
-      child: Container(
-        height: 16 * 7,
-        width: 9 * 7,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        margin: EdgeInsets.only(bottom: 16),
-        child: Row(
-          children: [
-            // User Info Section
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PropertyDetailsScreen(listing),
+            ),
+          );
+        },
+        child: Container(
+          margin: EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Property Image
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      listing.property!.imageUrls!.isEmpty
+                          ? listing.imageUrls![0]
+                          : listing.property!.imageUrls![0],
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Consumer<PropertyProvider>(
+                      builder: (context, provider, child) {
+                        if (provider.isLoading) {
+                          return Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.grey),
+                              ),
+                            ),
+                          );
+                        }
 
-            // Property Preview
-            Container(
-              width: 150,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(
-                    property.imageUrls.isNotEmpty
-                        ? property.imageUrls.first
-                        : 'https://placeholder.com/300x200',
+                        return FavoriteButton(
+                          isFavorite: provider.isFavorite(listing.id),
+                          onTap: () => provider.toggleFavorite(listing),
+                        );
+                      },
+                    ),
                   ),
-                  fit: BoxFit.cover,
-                ),
+                ],
               ),
-            ),
-            SizedBox(
-              width: 20,
-            ),
-            // Property Details
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundImage: property.user?.profilePhotoUrl != null
-                      ? NetworkImage(property.user!.profilePhotoUrl!)
-                      : null,
-                  child: property.user?.profilePhotoUrl == null
-                      ? Text(
-                          property.user?.displayName
-                                  ?.substring(0, 1)
-                                  .toUpperCase() ??
-                              '?',
-                          style: TextStyle(fontSize: 24),
-                        )
-                      : null,
-                ),
-                Text(
-                  property.title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Row(
+
+              SizedBox(height: 8),
+
+              // Property Details
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
                     Text(
-                      property.location,
-                      style: TextStyle(color: Colors.grey),
+                      '\$${listing.price}/year',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amber, size: 18),
+                        Text(' ${listing.property?.rating ?? 4.0}',
+                            style: TextStyle(color: Colors.amber)),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            )
-          ],
+              ),
+
+              SizedBox(height: 4),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  listing.title,
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 4),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.grey, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      listing.location,
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                    Spacer(),
+                    Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
+                    SizedBox(width: 4),
+                    Text('${listing.property?.numberOfBedrooms}'),
+                    SizedBox(width: 16),
+                    Icon(Icons.bathtub_outlined, color: Colors.grey, size: 20),
+                    SizedBox(width: 4),
+                    Text('${listing.property?.numberOfBathrooms}'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-
-  Widget _buildPropertyFeature(IconData icon, String text) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.blue),
-        SizedBox(height: 4),
-        Text(text),
-      ],
-    );
-  }
 }
 
-class ItemCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String price;
-  final double rating;
-  final int bathrooms;
-  final int bedrooms;
-  final String imagePath;
-  final Listing listing;
+class FavoriteButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback onTap;
 
-  ItemCard({
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.rating,
-    required this.bathrooms,
-    required this.bedrooms,
-    required this.imagePath,
-    required this.listing,
+  const FavoriteButton({
+    required this.isFavorite,
+    required this.onTap,
   });
+
+  @override
+  _FavoriteButtonState createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<FavoriteButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+    _animateIconChange();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _animateIconChange() {
+    _controller.forward().then((_) {
+      _controller.reverse();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(listing)));
+        widget.onTap();
+        _animateIconChange();
       },
-      child: Container(
-        width: 250,
-        padding: EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: imagePath.contains("assets/")
-                  ? Image.asset(
-                      imagePath,
-                      height: 120,
-                    )
-                  : Image.network(imagePath,
-                      height: 120, width: double.infinity, fit: BoxFit.cover),
-            ),
-            SizedBox(height: 10),
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                Text(location, style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.orange, size: 14),
-                SizedBox(width: 5),
-                Text(rating.toString(), style: TextStyle(fontSize: 12)),
-                Spacer(),
-                Icon(Icons.bathtub, color: Colors.grey, size: 14),
-                SizedBox(width: 5),
-                Text(bathrooms.toString(), style: TextStyle(fontSize: 12)),
-                Spacer(),
-                Icon(Icons.bed, color: Colors.grey, size: 14),
-                SizedBox(width: 5),
-                Text(bedrooms.toString(), style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 10),
-            Container(
-                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.blue.withOpacity(0.1)),
-                child: Text(price,
-                    style: AppTextStyles.small(
-                      color: Colors.blue,
-                    ))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onTap;
-
-  SectionHeader({required this.title, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-                context, MaterialPageRoute(builder: (c) => SearchScreen()));
-          },
-          child: Text(
-            "View All",
-            style: TextStyle(
-              color: Colors.blue,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class RoommateCard extends StatelessWidget {
-  final String name;
-  final int age;
-  final String university;
-  final String imagePath;
-
-  RoommateCard({
-    required this.name,
-    required this.age,
-    required this.university,
-    required this.imagePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 70,
-          height: 60,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.all(6),
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              image: DecorationImage(
-                fit: BoxFit.cover,
-                image: AssetImage(imagePath),
-              )),
-        ),
-        SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('$age', style: TextStyle(color: Colors.grey)),
-            Text(university, style: TextStyle(color: Colors.grey)),
-          ],
-        )
-      ],
-    );
-  }
-}
-
-class FeaturedItemCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String price;
-  final String imagePath;
-
-  FeaturedItemCard({
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.imagePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.asset(imagePath,
-                height: 100, width: double.infinity, fit: BoxFit.cover),
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-          SizedBox(height: 8),
-          Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-          Text(location, style: TextStyle(color: Colors.grey)),
-          Text(price,
-              style:
-                  TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-        ],
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 100),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(
+                scale: animation,
+                child: child,
+              );
+            },
+            child: Icon(
+              widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+              key: ValueKey<bool>(widget.isFavorite),
+              color: widget.isFavorite ? Colors.red : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }

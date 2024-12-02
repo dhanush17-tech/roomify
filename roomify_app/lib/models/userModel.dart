@@ -13,10 +13,9 @@ class User {
   int? age;
   String? location;
   String? gender;
-  String? profilePhotoUrl; // Added profilePhotoUrl string optional
-  double? latitude; // Added latitude double optional
-  double? longitude; // Added longitude double optional
-  final List<UserInterest> interests;
+  String? profilePhotoUrl;
+  double? latitude;
+  double? longitude;
   final List<UserPreference> preferences;
   final List<UserSocialLink> socialLinks;
   String? status;
@@ -34,10 +33,9 @@ class User {
     this.age,
     this.location,
     this.gender,
-    this.profilePhotoUrl, // Added profilePhotoUrl to the constructor
-    this.latitude, // Added latitude to the constructor
-    this.longitude, // Added longitude to the constructor
-    this.interests = const [],
+    this.profilePhotoUrl,
+    this.latitude,
+    this.longitude,
     this.preferences = const [],
     this.socialLinks = const [],
     this.status,
@@ -53,13 +51,10 @@ class User {
       university: json['university'],
       age: json['age'],
       location: json['location'],
-      latitude: json['latitude']
-          as double?, // Added latitude to the factory constructor
-      longitude: json['longitude']
-          as double?, // Added longitude to the factory constructor
+      latitude: json['latitude'] as double?,
+      longitude: json['longitude'] as double?,
       gender: json['gender'],
-      profilePhotoUrl: json[
-          'profileImageUrl'], // Added profilePhotoUrl to the factory constructor
+      profilePhotoUrl: json['profileImageUrl'],
       favorites: json["favorites"] != null
           ? (json["favorites"] as List<dynamic>)
               .map((c) => Listing.fromJson(c["listing"]))
@@ -72,10 +67,6 @@ class User {
               .cast<Listing>() ??
           [],
       receiveNotifications: json['receive_notifications'] == 1,
-      interests: (json['interests'] as List<dynamic>?)
-              ?.map((i) => UserInterest.fromJson(i))
-              .toList() ??
-          [],
       preferences: (json['preferences'] as List<dynamic>?)
               ?.map((p) => UserPreference.fromJson(p))
               .toList() ??
@@ -103,11 +94,10 @@ class User {
       'university': university,
       'age': age,
       'location': location,
-      'latitude': latitude, // Added latitude to the toJson method
-      'longitude': longitude, // Added longitude to the toJson method
+      'latitude': latitude,
+      'longitude': longitude,
       'gender': gender,
-      'profilePhoto':
-          profilePhotoUrl, // Added profilePhotoUrl to the toJson method
+      'profilePhoto': profilePhotoUrl,
       'status': status,
     };
   }
@@ -125,9 +115,9 @@ class User {
     int? age,
     String? location,
     String? gender,
-    String? profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
-    double? latitude, // Added latitude to the copyWith method
-    double? longitude, // Added longitude to the copyWith method
+    String? profilePhotoUrl,
+    double? latitude,
+    double? longitude,
     String? status,
   }) {
     return User(
@@ -143,12 +133,9 @@ class User {
       age: age ?? this.age,
       location: location ?? this.location,
       gender: gender ?? this.gender,
-      profilePhotoUrl:
-          profilePhotoUrl, // Added profilePhotoUrl to the copyWith method
-      latitude:
-          latitude ?? this.latitude, // Added latitude to the copyWith method
-      longitude:
-          longitude ?? this.longitude, // Added longitude to the copyWith method
+      profilePhotoUrl: profilePhotoUrl,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       status: status ?? this.status,
     );
   }
@@ -161,10 +148,6 @@ class User {
     int? age,
     String? location,
     String? gender,
-    String?
-        profilePhotoUrl, // Added profilePhotoUrl to the updateProfile method
-    double? latitude, // Added latitude to the updateProfile method
-    double? longitude, // Added longitude to the updateProfile method
     String? status,
   }) {
     if (displayName != null) this.displayName = displayName;
@@ -173,23 +156,16 @@ class User {
     if (age != null) this.age = age;
     if (location != null) this.location = location;
     if (gender != null) this.gender = gender;
-    if (profilePhotoUrl != null)
-      this.profilePhotoUrl =
-          profilePhotoUrl; // Added profilePhotoUrl to the updateProfile method
-    if (latitude != null)
-      this.latitude = latitude; // Added latitude to the updateProfile method
-    if (longitude != null)
-      this.longitude = longitude; // Added longitude to the updateProfile method
+    if (profileImageUrl != null) this.profilePhotoUrl = profileImageUrl;
     if (status != null) this.status = status;
   }
 
   double getProfileCompletion() {
-    int totalFields = 8; // Total number of required fields
+    int totalFields = 7; // Adjusted total number of required fields
     int completedFields = 0;
 
     if (bio != null && bio!.isNotEmpty) completedFields++;
     if (preferences.isNotEmpty) completedFields++;
-    if (interests.isNotEmpty) completedFields++;
     if (profilePhotoUrl != null) completedFields++;
     if (gender != null) completedFields++;
     if (status != null) completedFields++;
@@ -200,24 +176,13 @@ class User {
   }
 
   bool isProfileComplete() {
-    return bio != null && 
-           bio!.isNotEmpty && 
-           preferences.isNotEmpty && 
-           interests.isNotEmpty && 
-           profilePhotoUrl != null && 
-           gender != null && 
+    return bio != null &&
+           bio!.isNotEmpty &&
+           preferences.isNotEmpty &&
+           profilePhotoUrl != null &&
+           gender != null &&
            status != null &&
            age != null;
-  }
-}
-
-class UserInterest {
-  final String interest;
-
-  UserInterest({required this.interest});
-
-  factory UserInterest.fromJson(Map<String, dynamic> json) {
-    return UserInterest(interest: json['interest']);
   }
 }
 

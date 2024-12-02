@@ -29,7 +29,6 @@ model User {
   longitude            Float?
   status               String?
 
-  interests        UserInterest[]
   preferences      UserPreference[]
   socialLinks      UserSocialLink[]
   chatParticipants ChatParticipant[]
@@ -88,6 +87,9 @@ model Property {
   maxOccupancy        Int                @map("max_occupancy")
   isLookingForRoomate Boolean            @default(false)
   rating              Float              @default(0.0)
+  moveInDate         String?          @map("move_in_date")
+  moveOutDate        String?          @map("move_out_date")
+  
   // Relations
   listing             Listing            @relation(fields: [listingId], references: [id])
   amenities           PropertyAmenity[]
@@ -227,13 +229,6 @@ model RoommateMatch {
   @@unique([user1Id, user2Id])
 }
 
-model UserInterest {
-  userId   String @map("user_id")
-  interest String
-  user     User   @relation(fields: [userId], references: [id])
-
-  @@id([userId, interest])
-}
 
 model UserPreference {
   userId     String @map("user_id")

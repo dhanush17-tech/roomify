@@ -28,6 +28,7 @@ app.get('/', async (c) => {
                         profileImageUrl: true,
                     }
                 },
+                
                 marketplace: {
                     include: {
                         images: true
@@ -39,12 +40,13 @@ app.get('/', async (c) => {
                 createdAt: 'desc'
             }
         });
-
+        console.log(items);
         return c.json({ items });
     } catch (error) {
         return c.json({ error: 'Failed to fetch marketplace items' }, 500);
     }
 });
+
 
 // Create marketplace item
 app.post('/', async (c) => {

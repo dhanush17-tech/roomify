@@ -139,4 +139,8 @@
 
 -- UPDATE listing
 -- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
-Select "status" from user 
+SELECT mi.image_url
+FROM listing l
+JOIN marketplace_items m ON l.id = m.listing_id
+JOIN marketplace_image mi ON m.listing_id = mi.item_id
+WHERE l.type = 'Marketplace';

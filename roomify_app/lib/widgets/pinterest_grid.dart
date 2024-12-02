@@ -88,9 +88,13 @@ class FeaturedItemCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(15),
                   child: Image.network(
-                    item.property?.imageUrls?.isNotEmpty == true
-                        ? item.property!.imageUrls!.first
-                        : 'https://via.placeholder.com/180',
+                    item.type == ListingType.Property
+                        ? item.property?.imageUrls?.isNotEmpty == true
+                            ? item.property!.imageUrls!.first
+                            : 'https://via.placeholder.com/180'
+                        : item.marketplaceItem?.imageUrls?.isNotEmpty == true
+                            ? item.marketplaceItem!.imageUrls!.first
+                            : 'https://via.placeholder.com/180',
                     width: 180,
                     height: 120,
                     fit: BoxFit.cover,

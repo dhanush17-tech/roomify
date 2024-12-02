@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
-import 'package:roomify_app/models/roommateMatchModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/roommateMatch_provider.dart';
@@ -417,13 +416,12 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                     SizedBox(
                       height: 20,
                     ),
-                    // Add interests section
-                    if (profile.interests.isNotEmpty)
-                      _buildInterestsSection(profile.interests),
-                    // Add preferences section
+                    SizedBox(height: 20),
+                    Text('Preferences',
+                        style: AppTextStyles.title(
+                            fontSize: 15, color: orangeColor)),
                     if (profile.preferences.isNotEmpty)
-                      _buildPreferencesSection(profile.preferences),
-
+                      buildPreferencesSection(profile.preferences),
                     if (profile.preferences.isNotEmpty) SizedBox(height: 20),
                     profile.listings
                                 .where((listing) =>
@@ -594,63 +592,33 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
       ],
     );
   }
-
-  Widget _buildInterestsSection(List<UserInterest> interests) {
-    final interestsList = interests ?? [];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Interests',
-            style: AppTextStyles.title(fontSize: 15, color: orangeColor)),
-        if (interestsList.isNotEmpty)
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 4.0,
-            children: List<Widget>.generate(interestsList.length, (index) {
-              return Chip(
-                label: Text(' ${interestsList[index].interest}'),
-                backgroundColor: Colors.blue.withOpacity(0.1),
-                labelStyle: AppTextStyles.small(
-                    fontWeight: FontWeight.normal, color: Colors.blue),
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              );
-            }),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPreferencesSection(List<UserPreference> preferences) {
-    final preferencesList = preferences ?? [];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 20),
-        Text('Preferences',
-            style: AppTextStyles.title(fontSize: 15, color: orangeColor)),
-        if (preferencesList.isNotEmpty)
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 4.0,
-            children: List<Widget>.generate(preferencesList.length, (index) {
-              return Chip(
-                label: Text('${preferencesList[index].preference}'),
-                backgroundColor: Color(4293718257),
-                labelStyle: AppTextStyles.small(
-                    color: Colors.grey, fontWeight: FontWeight.normal),
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              );
-            }),
-          ),
-      ],
-    );
-  }
 }
 
 extension on String {
   String capitalize() => "${this[0].toUpperCase()}${this.substring(1)}";
+}
+
+Widget buildPreferencesSection(List<UserPreference> preferences) {
+  final preferencesList = preferences ?? [];
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (preferencesList.isNotEmpty)
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          children: List<Widget>.generate(preferencesList.length, (index) {
+            return Chip(
+              label: Text('${preferencesList[index].preference}'),
+              backgroundColor: Color(4293718257),
+              labelStyle: AppTextStyles.small(
+                  color: Colors.grey, fontWeight: FontWeight.normal),
+              side: BorderSide.none,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+            );
+          }),
+        ),
+    ],
+  );
 }

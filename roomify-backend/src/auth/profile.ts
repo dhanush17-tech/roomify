@@ -26,8 +26,7 @@ app.get('/', async (c) => {
                     }
                 },
                 listings: true,
-                interests: true,
-                preferences: true,
+                 preferences: true,
                 socialLinks: true,
             }
         });
@@ -145,6 +144,9 @@ app.put('/', async (c) => {
         );
     }
 });
+
+
+
 app.delete('/profile-photo', async (c) => {
     try {
         const payload = c.get('jwtPayload');

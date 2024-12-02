@@ -16,13 +16,13 @@ class PropertyProvider extends ChangeNotifier {
   double _latitude = 0.0;
   double _longitude = 0.0;
   List<Listing> _pairUpListings = [];
+  List<Listing> _favorites = [];
 
   double get latitude => _latitude;
   double get longitude => _longitude;
   List<Listing> get pairUpListings => _pairUpListings;
 
   List<Listing> get favorites => _favorites;
-  List<Listing> _favorites = [];
 
   void setCoordinates(double latitude, double longitude) async {
     _latitude = latitude;
@@ -51,6 +51,7 @@ class PropertyProvider extends ChangeNotifier {
   PropertyProvider(this._repository, this.context) {
     initializeLocation();
     fetchPairUpListings();
+    loadFavorites();
   }
 
   bool get isLoading => _isLoading;
@@ -126,10 +127,14 @@ class PropertyProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+      
+      // Get favorites from repository
       _favorites = await _repository.getFavorites();
+      
       _isLoading = false;
       notifyListeners();
     } catch (e) {
+      _error = e.toString();
       _isLoading = false;
       notifyListeners();
     }
@@ -138,25 +143,33 @@ class PropertyProvider extends ChangeNotifier {
   Future<void> toggleFavorite(Listing listing) async {
     try {
       final isFavorite = _favorites.any((item) => item.id == listing.id);
+      
       if (isFavorite) {
+        // Remove from favorites
         await _repository.removeFavorite(listing.id);
         _favorites.removeWhere((item) => item.id == listing.id);
       } else {
+        // Add to favorites
         await _repository.addFavorite(listing.id);
         _favorites.add(listing);
       }
 
-      // Refresh all providers
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
-
       notifyListeners();
     } catch (e) {
-      print('Error toggling favorite: $e');
+      _error = e.toString();
+      notifyListeners();
+      // Optionally show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating favorite: ${e.toString()}')),
+      );
     }
   }
 
   bool isFavorite(int listingId) {
     return _favorites.any((item) => item.id == listingId);
+  }
+
+  Future<void> refreshFavorites() async {
+    await loadFavorites();
   }
 }

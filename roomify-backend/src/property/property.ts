@@ -67,6 +67,8 @@ app.post('/', async (c) => {
                 isFavorite: false,
                 property: {
                     create: {
+                        moveInDate: listingData.property.moveInDate,
+                        moveOutDate: listingData.property.moveOutDate,
                         numberOfBedrooms: listingData.property.numberOfBedrooms,
                         numberOfBathrooms: listingData.property.numberOfBathrooms,
                         maxOccupancy: listingData.property.maxOccupancy,
@@ -142,7 +144,9 @@ app.post('/', async (c) => {
             longitude: listing.longitude,
             imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
             property: {
-                numberOfBedrooms: listing.property!.numberOfBedrooms,
+                moveInDate: listing.property!.moveInDate, // Add this line
+                moveOutDate: listing.property!.moveOutDate, // Add this line
+          numberOfBedrooms: listing.property!.numberOfBedrooms,
                 numberOfBathrooms: listing.property!.numberOfBathrooms,
                 maxOccupancy: listing.property!.maxOccupancy,
                 isLookingForRoomate: listing.property!.isLookingForRoomate,
@@ -239,7 +243,9 @@ app.get('/', async (c) => {
             property: listing.property ? {
                 numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
-                maxOccupancy: listing.property.maxOccupancy,
+                moveInDate: listing.property!.moveInDate, // Add this line
+                moveOutDate: listing.property!.moveOutDate, // Add this line
+             maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
                 rating: listing.property.rating,
                 amenities: listing.property.amenities.map(a => a.amenity),
@@ -287,7 +293,7 @@ app.get('/recommended-listings', async (c) => {
         const currentUser = await prisma.user.findUnique({
             where: { id: userId },
             select: {
-                university: true, interests: true,
+                university: true,
                 preferences: true,
                 socialLinks: true,
             }
@@ -331,7 +337,9 @@ app.get('/recommended-listings', async (c) => {
             longitude: listing.longitude,
             imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
             property: listing.property ? {
-                numberOfBedrooms: listing.property.numberOfBedrooms,
+                moveInDate: listing.property!.moveInDate, // Add this line
+                moveOutDate: listing.property!.moveOutDate, // Add this line
+            numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
                 maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
@@ -446,7 +454,9 @@ app.get('/pair-up', async (c) => {
             property: listing.property ? {
                 numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
-                maxOccupancy: listing.property.maxOccupancy,
+                moveInDate: listing.property!.moveInDate, // Add this line
+                moveOutDate: listing.property!.moveOutDate, // Add this line
+            maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
                 rating: listing.property.rating,
                 amenities: listing.property.amenities.map(a => a.amenity),
@@ -532,6 +542,23 @@ app.post('/favorites', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
+        // Check if favorite already exists
+        const existingFavorite = await prisma.favorite.findUnique({
+            where: {
+                userId_listingId: {
+                    userId,
+                    listingId
+                }
+            }
+        });
+
+        if (existingFavorite) {
+            return c.json({
+                error: 'Listing is already in favorites'
+            }, 400);
+        }
+
+        // Create favorite if it doesn't exist
         await prisma.favorite.create({
             data: {
                 userId,
@@ -541,7 +568,11 @@ app.post('/favorites', async (c) => {
 
         return c.json({ success: true });
     } catch (error) {
-        return c.json({ error: 'Failed to add favorite' }, 500);
+        console.error('Add favorite error:', error);
+        return c.json({
+            error: 'Failed to add favorite',
+            details: error.message
+        }, 500);
     }
 });
 

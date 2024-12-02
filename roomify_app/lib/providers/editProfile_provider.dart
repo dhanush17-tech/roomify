@@ -20,13 +20,11 @@ class ProfileProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _error;
-  List<String> _interests = [];
   List<String> _preferences = [];
   Map<String, String> _socialLinks = {};
   List<Listing> _properties = [];
   List<Listing> _marketplaceItems = [];
 
-  List<String> get interests => _interests;
   List<String> get preferences => _preferences;
   Map<String, String> get socialLinks => _socialLinks;
   List<Listing> get properties => _properties;
@@ -167,19 +165,16 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> updatePreferences({
-    required List<String> interests,
     required List<String> preferences,
     required Map<String, String> socialLinks,
   }) async {
     try {
       final updatedUser = await _repository.updatePreferences(
-        interests: interests,
         preferences: preferences,
         socialLinks: socialLinks,
       );
 
       Provider.of<AuthProvider>(context, listen: false).updateUser(updatedUser);
-
       notifyListeners();
     } catch (e) {
       rethrow;

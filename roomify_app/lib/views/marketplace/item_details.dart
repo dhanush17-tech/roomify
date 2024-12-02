@@ -4,158 +4,243 @@ import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 
 class ItemDetailsScreen extends StatelessWidget {
   final Listing item;
 
   ItemDetailsScreen({required this.item});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text("Details", style: AppTextStyles.title()),
-        actions: [
-          IconButton(
-            icon: Icon(context.read<PropertyProvider>().isFavorite(item.id)
-                ? Icons.favorite_rounded
-                : Icons.favorite_border),
-            onPressed: () {
-              context.read<PropertyProvider>().toggleFavorite(item);
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Image.asset(
-                'assets/test_images/marketplace.png', // Replace with your image path
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              "Cozy Apartment",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.grey),
-                SizedBox(width: 4),
-                Text("Tucson, AZ", style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildTag("New"),
-                _buildTag("120cm x 60cm"),
-                _buildTag("Laundry facilities"),
-                _buildTag("New"),
-                _buildTag("Security personnel"),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: AssetImage(
-                      'assets/test_images/person.png'), // Replace with your image path
-                  radius: 20,
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // App Bar with image
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 400,
+                backgroundColor: Colors.white,
+                leading: IconButton(
+                  icon: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.arrow_back, color: Colors.black),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.only(left: 13),
                 ),
-                SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Akinola Bidemi",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text("AZU", style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-                Spacer(),
-                Icon(Icons.chat_bubble_outline, color: Colors.grey),
-              ],
-            ),
-            SizedBox(height: 16),
-            Divider(),
-            SizedBox(height: 8),
-            Text("Item Description",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text(
-              "A wooden study desk, perfect for dorm rooms. In good condition, used for one semester.",
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding:
-            const EdgeInsets.only(left: 30, right: 30, bottom: 26.0, top: 26),
-        child: Row(
-          children: [
-            Text(
-              "\$100",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            Spacer(),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                backgroundColor: orangeColor,
-                padding: EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Text(
-                  "Contact Now",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                actions: [
+                  Consumer<PropertyProvider>(
+                    builder: (ctx, provider, _) => IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          provider.isFavorite(item.id)
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: Colors.black,
+                        ),
+                      ),
+                      onPressed: () => provider.toggleFavorite(item),
+                    ),
+                  ),
+                  SizedBox(width: 13),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(40),
+                          bottomRight: Radius.circular(40),
+                        ),
+                        child: Image.network(
+                          item.marketplaceItem?.imageUrls?.isNotEmpty == true
+                              ? item.marketplaceItem!.imageUrls!.first
+                              : 'https://via.placeholder.com/180',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                      // Small images on the right
+                      if (item.imageUrls!.length > 1)
+                        Positioned(
+                          right: 16,
+                          bottom: 16,
+                          child: Column(
+                            children: [
+                              Container(
+                                margin: EdgeInsets.only(bottom: 8),
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.9),
+                                    width: 3,
+                                  ),
+                                  image: DecorationImage(
+                                    image: NetworkImage(item.imageUrls![1]),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              if (item.imageUrls!.length > 2)
+                                Container(
+                                  margin: EdgeInsets.only(bottom: 8),
+                                  width: 60,
+                                  height: 60,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.9),
+                                      width: 3,
+                                    ),
+                                    color: Colors.black.withOpacity(0.4),
+                                  ),
+                                  child: Text(
+                                    '+${item.imageUrls!.length - 2}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildTag(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.blue, fontSize: 12),
+              // Content
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Rating and Title section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined,
+                                        color: Colors.grey, size: 20),
+                                    SizedBox(width: 4),
+                                    Container(
+                                      width: 150,
+                                      child: Text(
+                                        item.location,
+                                        style: TextStyle(color: Colors.grey),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                "\$${item.price}",
+                                style: TextStyle(
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // Description
+                      Text(
+                        'Description',
+                        style: AppTextStyles.title(
+                            fontSize: 15, color: orangeColor),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        item.description ?? '',
+                        style: AppTextStyles.small(
+                          fontWeight: FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // Tags/Categories
+                      Text(
+                        'Categories',
+                        style: AppTextStyles.title(
+                            fontSize: 15, color: orangeColor),
+                      ),
+                      SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: (item.marketplaceItem?.categories ?? [])
+                            .map((category) => Chip(
+                                  label: Text(category),
+                                  backgroundColor: Color(4293718257),
+                                  labelStyle: AppTextStyles.small(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+
+                      SizedBox(height: 130),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // User card at bottom
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ExpandableUserCard(user: item.user!),
+          ),
+        ],
       ),
     );
   }

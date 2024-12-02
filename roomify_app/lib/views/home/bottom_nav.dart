@@ -3,6 +3,7 @@ import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
+import 'package:roomify_app/views/marketplace/add_marketplace.dart';
 import 'package:roomify_app/views/marketplace/marketplace_home.dart';
 import 'package:roomify_app/views/profile/profile_home.dart';
 import 'package:roomify_app/views/property/add_property.dart';
@@ -21,6 +22,48 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
+  void _showAddItemDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('What would you like to add?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.home, color: Colors.orange),
+                title: Text('Property'),
+                onTap: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => AddPropertyScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.shopping_bag, color: Colors.orange),
+                title: Text('Marketplace Item'),
+                onTap: () {
+                  Navigator.pop(context); // Close dialog
+                  // Navigate to add marketplace item screen
+                  // TODO: Replace with actual marketplace add screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => AddMarketplaceScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<AuthProvider>();
@@ -36,25 +79,43 @@ class _MainScreenState extends State<MainScreen> {
         user: userProvider.user!,
       ),
       RoommateMatchScreen(),
-      SearchScreen(), // Placeholder for a roommate screen
+      Container(), // Empty container for center button
       MarketplaceScreen(),
-      // AddPropertyScreen(),
-      ProfileScreen(), // Placeholder for an apartment screen
+      ProfileScreen(),
     ];
+
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+          if (index == 2) {
+            _showAddItemDialog();
+          } else {
+            setState(() {
+              _currentIndex = index;
+            });
+          }
         },
         items: [
           _buildBottomNavItem("assets/icons/home.png", 0),
           _buildBottomNavItem("assets/icons/roommate.png", 1),
-          _buildBottomNavItem("assets/icons/property.png", 2),
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            label: '',
+          ),
           _buildBottomNavItem("assets/icons/marketplace.png", 3),
           _buildBottomNavItem("assets/icons/profile.png", 4),
         ],

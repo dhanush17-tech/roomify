@@ -68,22 +68,11 @@ class PropertyRepository {
 
   Future<List<Listing>> getFavorites() async {
     try {
-      final response = await _dio.get(
-        '$baseUrl/api/properties/favorites',
-      );
-
+      final response = await _dio.get('$baseUrl/api/properties/favorites');
+      
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['favorites'];
-
-        final favorites = data
-            .map((c) {
-              final fav = Listing.fromJson(c);
-
-              return fav;
-            })
-            .cast<Listing>()
-            .toList();
-        return favorites;
+        return data.map((json) => Listing.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load favorites');
       }

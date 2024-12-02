@@ -10,6 +10,7 @@ import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils.dart';
 import 'package:roomify_app/widgets/mapbox_widget.dart';
+import 'package:intl/intl.dart';
 
 class AddPropertyScreen extends StatefulWidget {
   @override
@@ -33,6 +34,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final _addressController = TextEditingController();
   double? latitude;
   double? longitude;
+  DateTime? _moveInDate;
+  DateTime? _moveOutDate;
+  String? moveInDate;
+  String? moveOutDate;
 
   String capitalizeWords(String text) {
     if (text.isEmpty) return text;
@@ -103,6 +108,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           amenities: _selectedAmenities,
           isLookingForRoomate: isLookingForRoomate,
           maxOccupancy: int.parse(_maxOccController.text),
+          moveInDate: moveInDate,
+          moveOutDate: moveOutDate,
         ),
         latitude: latitude,
         longitude: longitude,
@@ -148,6 +155,111 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 3),
       ),
+    );
+  }
+
+  Future<void> _selectDate(BuildContext context, bool isMoveIn) async {
+    final DateTime? picked = await showMonthYearPicker(
+      context: context,
+      initialDate: isMoveIn
+          ? (_moveInDate ?? DateTime.now())
+          : (_moveOutDate ?? DateTime.now()),
+      firstDate:
+          DateTime.now().subtract(Duration(days: 365 * 10)), // 10 years ago
+      lastDate: DateTime.now()
+          .add(Duration(days: 365 * 10)), // 10 years in the future
+    );
+    if (picked != null) {
+      setState(() {
+        String formattedDate = DateFormat('yyyy-MM').format(picked);
+        if (isMoveIn) {
+          _moveInDate = picked;
+          // Store the formatted date as a string
+          moveInDate = formattedDate;
+        } else {
+          _moveOutDate = picked;
+          // Store the formatted date as a string
+          moveOutDate = formattedDate;
+        }
+      });
+    }
+  }
+
+  Future<DateTime?> showMonthYearPicker({
+    required BuildContext context,
+    required DateTime initialDate,
+    required DateTime firstDate,
+    required DateTime lastDate,
+  }) {
+    return showDialog<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        DateTime selectedDate = initialDate;
+        int selectedYear = selectedDate.year;
+        int selectedMonth = selectedDate.month;
+
+        return AlertDialog(
+          title: Text('Select Month and Year'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Year Picker
+                DropdownButton<int>(
+                  value: selectedYear,
+                  items: List.generate(
+                    lastDate.year - firstDate.year + 1,
+                    (index) => DropdownMenuItem(
+                      value: firstDate.year + index,
+                      child: Text((firstDate.year + index).toString()),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedYear = value;
+                      });
+                    }
+                  },
+                ),
+                // Month Picker
+                DropdownButton<int>(
+                  value: selectedMonth,
+                  items: List.generate(12, (index) {
+                    return DropdownMenuItem(
+                      value: index + 1,
+                      child: Text(
+                          DateFormat('MMMM').format(DateTime(0, index + 1))),
+                    );
+                  }),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedMonth = value;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context)
+                    .pop(DateTime(selectedYear, selectedMonth));
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -482,6 +594,48 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
             SizedBox(height: 16),
 
+            // Move In Date Picker
+            TextFormField(
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'Move In Date',
+                hintText:
+                    moveInDate != null ? moveInDate : 'Select Move In Date',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onTap: () => _selectDate(context, true),
+              validator: (value) {
+                if (moveInDate == null) {
+                  return 'Please select a move-in date'; // Validation message
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+
+            // Move Out Date Picker
+            TextFormField(
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'Move Out Date',
+                hintText:
+                    moveOutDate != null ? moveOutDate : 'Select Move Out Date',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onTap: () => _selectDate(context, false),
+              validator: (value) {
+                if (moveOutDate == null) {
+                  return 'Please select a move-out date'; // Validation message
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+
             SizedBox(height: 24),
             ElevatedButton(
               onPressed: _isLoading
@@ -513,7 +667,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         ),
         SizedBox(height: 8),
         MapBoxAutoCompleteWidget(
-          apiKey: mapboxToken,
           hint: "Enter property address",
           onSelect: (place) {
             setState(() {
@@ -536,7 +689,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => MapBoxAutoCompleteWidget(
-          apiKey: mapboxToken,
           hint: "Search address",
           onSelect: (place) {
             setState(() {

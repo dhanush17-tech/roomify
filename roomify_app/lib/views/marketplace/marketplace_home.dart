@@ -17,7 +17,7 @@ class MarketplaceScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(top: 10, left: 16, right: 16),
             child: Consumer<MarketplaceProvider>(
-              builder: (context, provider,widget) {
+              builder: (context, provider, widget) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

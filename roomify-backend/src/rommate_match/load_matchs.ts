@@ -80,7 +80,6 @@ app.get('/', async (c) => {
                 gender: true,
                 location: true,
                 language: true,
-                interests: true,
                 preferences: true,
                 socialLinks: true,
                 listings: {

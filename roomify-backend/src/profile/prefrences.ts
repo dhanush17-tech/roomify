@@ -22,15 +22,13 @@ app.put('/preferences', async (c) => {
         }
 
         const userId = payload.sub;
-        const { interests, preferences, socialLinks } = await c.req.json();
+        const { preferences, socialLinks } = await c.req.json();
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
         // Delete existing preferences
-        await prisma.userInterest.deleteMany({
-            where: { userId }
-        });
+       
 
         await prisma.userPreference.deleteMany({
             where: { userId }
@@ -40,17 +38,7 @@ app.put('/preferences', async (c) => {
             where: { userId }
         });
 
-        // Create new interests
-        if (interests?.length) {
-            for (const interest of interests) {
-                await prisma.userInterest.create({
-                    data: {
-                        userId,
-                        interest
-                    }
-                });
-            }
-        }
+        
 
         // Create new preferences
         if (preferences?.length) {
@@ -81,7 +69,6 @@ app.put('/preferences', async (c) => {
         const updatedUser = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                interests: true,
                 preferences: true,
                 socialLinks: true
             }
@@ -104,16 +91,12 @@ app.put('/api/user/preferences', async (c) => {
         }
 
         const userId = payload.sub;
-        const { interests, preferences, socialLinks } = await c.req.json();
+        const {  preferences, socialLinks } = await c.req.json();
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Delete existing preferences
-        await prisma.userInterest.deleteMany({
-            where: { userId }
-        });
-
+ 
         await prisma.userPreference.deleteMany({
             where: { userId }
         });
@@ -121,18 +104,7 @@ app.put('/api/user/preferences', async (c) => {
         await prisma.userSocialLink.deleteMany({
             where: { userId }
         });
-
-        // Create new interests
-        if (interests?.length) {
-            for (const interest of interests) {
-                await prisma.userInterest.create({
-                    data: {
-                        userId,
-                        interest
-                    }
-                });
-            }
-        }
+ 
 
         // Create new preferences
         if (preferences?.length) {
@@ -163,8 +135,7 @@ app.put('/api/user/preferences', async (c) => {
         const updatedUser = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                interests: true,
-                preferences: true,
+                 preferences: true,
                 socialLinks: true
             }
         });

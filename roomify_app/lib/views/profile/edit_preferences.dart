@@ -9,7 +9,6 @@ class EditPreferencesScreen extends StatefulWidget {
 }
 
 class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
-  List<String> _selectedInterests = [];
   List<String> _selectedPreferences = [];
   final Map<String, TextEditingController> _socialControllers = {
     'Facebook': TextEditingController(),
@@ -17,19 +16,6 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
     'Snapchat': TextEditingController(),
     'Instagram': TextEditingController(),
   };
-
-  static const List<String> availableInterests = [
-    'Books',
-    'Cooking',
-    'Fitness',
-    'Gaming',
-    'Movies',
-    'Music',
-    'Sports',
-    'Travel',
-    'Photography',
-    'Art',
-  ];
 
   static const List<String> availablePreferences = [
     'Early riser',
@@ -48,7 +34,6 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
     final user = context.read<AuthProvider>().user;
     if (user != null) {
       setState(() {
-        _selectedInterests = user.interests.map((i) => i.interest).toList();
         _selectedPreferences =
             user.preferences.map((p) => p.preference).toList();
 
@@ -64,16 +49,14 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _loadUserPreferences();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
-    super.dispose();
     _socialControllers.values.forEach((controller) => controller.dispose());
+    super.dispose();
   }
 
   @override
@@ -85,31 +68,6 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
       body: ListView(
         padding: EdgeInsets.all(16),
         children: [
-          Text(
-            'Interests',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: availableInterests.map((interest) {
-              return FilterChip(
-                label: Text(interest),
-                selected: _selectedInterests.contains(interest),
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedInterests.add(interest);
-                    } else {
-                      _selectedInterests.remove(interest);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 24),
           Text(
             'Preferences',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -180,7 +138,6 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
       );
 
       await context.read<ProfileProvider>().updatePreferences(
-            interests: _selectedInterests,
             preferences: _selectedPreferences,
             socialLinks: socialLinks,
           );

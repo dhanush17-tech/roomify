@@ -11,6 +11,8 @@ class Property {
   final List<String>? tags;
   final List<Comment>? comments;
   List<String>? imageUrls;
+  final String? moveInDate;
+  final String? moveOutDate;
 
   Property({
     required this.numberOfBedrooms,
@@ -22,6 +24,8 @@ class Property {
     this.tags,
     this.imageUrls,
     this.comments,
+    this.moveInDate,
+    this.moveOutDate,
   });
   Map<String, dynamic> toJson() {
     return {
@@ -32,6 +36,8 @@ class Property {
       'rating': rating,
       'amenities': amenities,
       'tags': tags,
+      'moveInDate': moveInDate,
+      'moveOutDate': moveOutDate,
     };
   }
 
@@ -42,18 +48,14 @@ class Property {
       maxOccupancy: json['maxOccupancy'] ?? 0,
       isLookingForRoomate: json['isLookingForRoomate'] ?? false,
       rating: (json['rating'] ?? 0).toDouble(),
-      amenities: json["amenities"] != null
-          ? (json["amenities"] is List<String>
-              ? List<String>.from(json["amenities"])
-              : (json["amenities"] is Map<String, dynamic>
-                  ? json["amenities"].values.toList().cast<String>()
-                  : []))
-          : [],
+      amenities: List<String>.from(json["amenities"] ?? []),
       tags: List<String>.from(json['tags'] ?? []),
       imageUrls: List<String>.from(json['imageUrls'] ?? []),
       comments: json['comments'] != null
           ? List<Comment>.from(json['comments'].map((x) => Comment.fromJson(x)))
           : null,
+      moveInDate: json['moveInDate'],
+      moveOutDate: json['moveOutDate'],
     );
   }
 }

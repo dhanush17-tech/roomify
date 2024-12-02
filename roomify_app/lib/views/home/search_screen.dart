@@ -1,387 +1,481 @@
 import 'dart:async';
+import 'dart:ui' as ui;
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:roomify_app/models/filterModel.dart';
 import 'package:roomify_app/models/itemModel.dart';
-import 'package:roomify_app/models/propertyModel.dart';
-import 'package:roomify_app/providers/properties_provider.dart';
-import 'package:roomify_app/utils/colors.dart';
-import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/providers/search_provider.dart';
-import 'package:roomify_app/views/property/explore_properties.dart';
+import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 
-import '../../widgets/filter_bottom_sheet.dart';
+// Separate widget for the search bar to prevent unnecessary rebuilds
+class SearchBarWidget extends StatefulWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final Function(String) onChanged;
 
-class SearchScreen extends StatefulWidget {
+  const SearchBarWidget({
+    Key? key,
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  }) : super(key: key);
+
   @override
-  _SearchScreenState createState() => _SearchScreenState();
+  _SearchBarWidgetState createState() => _SearchBarWidgetState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
-  final _searchController = TextEditingController();
-  Timer? _debounce;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      context.read<SearchProvider>().search(query);
-    });
-  }
-
+class _SearchBarWidgetState extends State<SearchBarWidget> {
   @override
   Widget build(BuildContext context) {
-    return Consumer<SearchProvider>(
-      builder: (context, searchProvider, _) {
-        return Scaffold(
-          backgroundColor: Colors.white,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      // IconButton(
-                      //   icon: Icon(Icons.arrow_back),
-                      //   onPressed: () => Navigator.pop(context),
-                      // ),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (query) {
-                            _onSearchChanged(query);
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Search for more...',
-                            prefixIcon: Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide.none,
-                            ),
-                            fillColor: Colors.grey[200],
-                            filled: true,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.notifications_none),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ),
-                _buildTabBar(searchProvider),
-                if (searchProvider.isLoading)
-                  Expanded(
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (searchProvider.noResults)
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            searchProvider.searchResults.isEmpty
-                                ? Icons.location_off
-                                : Icons.search_off,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            searchProvider.searchResults.isEmpty
-                                ? 'No listings found in your area'
-                                : 'No results found for "${_searchController.text}"',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          if (searchProvider.searchResults.isNotEmpty) ...[
-                            SizedBox(height: 8),
-                            Text(
-                              'Try adjusting your search or filters',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: searchProvider.searchResults.length,
-                      itemBuilder: (context, index) {
-                        final item = searchProvider.searchResults[index];
-                        return _buildSearchResult(
-                            item, searchProvider.activeTab);
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTabBar(SearchProvider provider) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey[300]!, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildTab('Property', provider),
-          _buildTab('Marketplace', provider),
-          IconButton(
-            icon: Icon(Icons.filter_list, color: orangeColor),
-            onPressed: () => _showFilterBottomSheet(context),
+          Icon(Icons.search, color: Colors.grey),
+          SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: widget.controller,
+              focusNode: widget.focusNode,
+              onEditingComplete: () {
+                //unfocus the text field
+                widget.focusNode.unfocus();
+                widget.onChanged(widget.controller.text);
+              },
+              decoration: InputDecoration(
+                hintText: "Search location",
+                border: InputBorder.none,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTab(String title, SearchProvider provider) {
-    final isActive = provider.activeTab == title;
-    return GestureDetector(
-      onTap: () => provider.setActiveTab(title),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: isActive
-              ? Colors.blue.withOpacity(0.1)
-              : Colors.grey.withOpacity(0.1),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: isActive ? Colors.blue : Colors.grey,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+  @override
+  void dispose() {
+    // Don't dispose the controller and focusNode here as they are managed by the parent
+    super.dispose();
+  }
+}
+
+// Custom marker widget
+class MarkerWidget extends StatelessWidget {
+  final String title;
+  final String price;
+
+  const MarkerWidget({
+    Key? key,
+    required this.title,
+    required this.price,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Title container
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ),
+        // Location icon
+        Icon(
+          Icons.location_on_rounded,
+          color: orangeColor,
+          size: 56,
+        ),
+        // Price container
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+          child: Text(
+            '\$$price',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SearchMapScreen extends StatefulWidget {
+  final String query;
+
+  SearchMapScreen({required this.query});
+
+  @override
+  _SearchMapScreenState createState() => _SearchMapScreenState();
+}
+
+class _SearchMapScreenState extends State<SearchMapScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  late DraggableScrollableController _bottomSheetController;
+
+  @override
+  void initState() {
+    super.initState();
+    _bottomSheetController = DraggableScrollableController();
+    if (widget.query.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SearchProvider>().search(widget.query);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: false, // Prevent resize when keyboard appears
+      body: Stack(
+        children: [
+          Consumer<SearchProvider>(
+            builder: (context, provider, _) {
+              return MapView(properties: provider.searchResults);
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return SearchBarWidget(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (query) {
+                    // Use a debouncer to prevent too frequent searches
+                    Future.delayed(Duration(milliseconds: 500), () {
+                      if (mounted && query == _searchController.text) {
+                        context.read<SearchProvider>().search(query);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          DraggableScrollableSheet(
+            controller: _bottomSheetController,
+            initialChildSize: 0.3,
+            minChildSize: 0.15,
+            maxChildSize: 0.8,
+            builder: (context, scrollController) =>
+                _buildResultsSheet(scrollController),
+          ),
+        ],
       ),
     );
   }
 
-  void _showFilterBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => FilterBottomSheet(query: _searchController.text),
-    );
-  }
-}
-
-Widget _buildSearchResult(Listing item, String activeTab) {
-  switch (activeTab) {
-    case 'Property':
-      return PropertyCard(item);
-    case 'Marketplace':
-      return MarketplaceCard(item);
-
-    default:
-      return SizedBox.shrink();
-  }
-}
-
-// Property Card Widget
-class PropertyCard extends StatelessWidget {
-  final Listing listing;
-
-  const PropertyCard(this.listing);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (C) => PropertyDetailsScreen(listing)));
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                  child: listing.property!.imageUrls!.isNotEmpty
-                      ? Image.network(
-                          listing.property!.imageUrls![0],
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        )
-                      : Image.asset(
-                          'assets/test_images/house.png',
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Icon(
-                    Icons.favorite_border,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: EdgeInsets.all(12),
+  Widget _buildResultsSheet(ScrollController scrollController) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5),
+        ],
+      ),
+      child: Consumer<SearchProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
                   Text(
-                    listing.title ?? '',
+                    'Searching...',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined,
-                          size: 16, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text(
-                        listing.location ?? '',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.star, size: 16, color: Colors.amber),
-                          SizedBox(width: 4),
-                          Text(
-                            '${0.0}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      SizedBox(width: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.bed_outlined, size: 16),
-                          SizedBox(width: 4),
-                          Text('${listing.property!.numberOfBedrooms ?? 1}'),
-                        ],
-                      ),
-                      SizedBox(width: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.bathtub_outlined, size: 16),
-                          SizedBox(width: 4),
-                          Text('${listing.property!.numberOfBathrooms ?? 1}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '\$ ${listing.price}/month',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      color: Colors.grey[600],
+                      fontSize: 16,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+            );
+          }
+
+          if (provider.searchResults.isEmpty) {
+            return Center(child: Text("No results found"));
+          }
+          return ListView.builder(
+            controller: scrollController,
+            itemCount: provider.searchResults.length,
+            itemBuilder: (context, index) {
+              final property = provider.searchResults[index];
+              return PropertyCard(listing: property);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _bottomSheetController.dispose();
+    super.dispose();
+  }
+}
+
+class MapView extends StatefulWidget {
+  final List<Listing> properties;
+
+  const MapView({Key? key, required this.properties}) : super(key: key);
+
+  @override
+  _MapViewState createState() => _MapViewState();
+}
+
+class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
+  late MapboxMap _mapboxMap;
+  PointAnnotationManager? _annotationManager;
+  bool _mapInitialized = false;
+  Map<String, Listing> _markerIdToProperty = {};
+
+  Future<void> _initializeMap() async {
+    if (!_mapInitialized) return;
+
+    _annotationManager =
+        await _mapboxMap.annotations.createPointAnnotationManager();
+    _updateMarkersAndCamera(widget.properties);
+  }
+
+  Future<Uint8List> _widgetToImage(Widget widget) async {
+    final GlobalKey repaintBoundaryKey = GlobalKey();
+    final Widget wrappedWidget = RepaintBoundary(
+      key: repaintBoundaryKey,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: widget,
         ),
       ),
+    );
+
+    final RenderRepaintBoundary boundary =
+        await _renderWidget(wrappedWidget, repaintBoundaryKey);
+    final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
+    final ByteData? byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+
+    if (byteData == null) {
+      throw Exception("Failed to render widget to image.");
+    }
+
+    return byteData.buffer.asUint8List();
+  }
+
+  Future<RenderRepaintBoundary> _renderWidget(
+      Widget widget, GlobalKey key) async {
+    final Completer<RenderRepaintBoundary> completer = Completer();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final RenderRepaintBoundary? boundary =
+          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null || boundary.debugNeedsPaint) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          completer.complete(
+              key.currentContext?.findRenderObject() as RenderRepaintBoundary);
+        });
+      } else {
+        completer.complete(boundary);
+      }
+    });
+
+    OverlayEntry overlayEntry = OverlayEntry(
+      builder: (context) => MaterialApp(
+        home: Scaffold(
+          body: Center(child: widget),
+        ),
+      ),
+    );
+    Overlay.of(context)?.insert(overlayEntry);
+
+    final RenderRepaintBoundary boundary = await completer.future;
+    overlayEntry.remove();
+    return boundary;
+  }
+
+  void _handleMarkerTap(PointAnnotation annotation) {
+    final property = _markerIdToProperty[annotation.id];
+    if (property != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PropertyDetailsScreen(property),
+        ),
+      );
+    }
+  }
+
+  void _updateMarkersAndCamera(List<Listing> properties) async {
+    if (_annotationManager == null || !_mapInitialized) return;
+
+    await _annotationManager!.deleteAll();
+    _markerIdToProperty.clear();
+
+    for (var property in properties) {
+      if (property.latitude != null && property.longitude != null) {
+        try {
+          final markerWidget = MarkerWidget(
+            title: property.title,
+            price: property.price.toString(),
+          );
+
+          final markerImage = await _widgetToImage(markerWidget);
+
+          final marker = await _annotationManager!.create(
+            PointAnnotationOptions(
+              geometry: Point(
+                coordinates: Position(property.longitude!, property.latitude!),
+              ),
+              image: markerImage,
+              iconSize: 1.0,
+              iconOffset: [0, -20],
+            ),
+          );
+
+          // Store the property reference with the marker ID
+          _markerIdToProperty[marker.id] = property;
+        } catch (e) {
+          debugPrint("Error creating marker: $e");
+        }
+      }
+    }
+
+    // Update camera position
+    if (properties.isNotEmpty) {
+      final bounds = _calculateBounds(properties);
+      await _mapboxMap.flyTo(
+        CameraOptions(
+          center: bounds.center,
+          zoom: bounds.zoom,
+        ),
+        MapAnimationOptions(duration: 1000),
+      );
+    }
+  }
+
+  _Bounds _calculateBounds(List<Listing> properties) {
+    double minLng = double.infinity, maxLng = -double.infinity;
+    double minLat = double.infinity, maxLat = -double.infinity;
+
+    for (var property in properties) {
+      if (property.longitude != null && property.latitude != null) {
+        minLng = min(minLng, property.longitude!);
+        maxLng = max(maxLng, property.longitude!);
+        minLat = min(minLat, property.latitude!);
+        maxLat = max(maxLat, property.latitude!);
+      }
+    }
+
+    if (minLng == double.infinity) {
+      return _Bounds(
+        center: Point(coordinates: Position(77.6441, 12.9716)),
+        zoom: 12,
+      );
+    }
+
+    final centerLng = (minLng + maxLng) / 2;
+    final centerLat = (minLat + maxLat) / 2;
+
+    final latDiff = maxLat - minLat;
+    final lngDiff = maxLng - minLng;
+    final zoom = 14 - max(latDiff, lngDiff) * 5;
+
+    return _Bounds(
+      center: Point(coordinates: Position(centerLng, centerLat)),
+      zoom: zoom.clamp(3, 18).toDouble(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(MapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.properties != oldWidget.properties) {
+      _updateMarkersAndCamera(widget.properties);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MapWidget(
+      cameraOptions: CameraOptions(
+        center: Point(coordinates: Position(77.6441, 12.9716)),
+        zoom: 12,
+      ),
+      onMapCreated: (map) {
+        _mapboxMap = map;
+        setState(() {
+          _mapInitialized = true;
+        });
+        _initializeMap();
+      },
+      gestureRecognizers: {
+        Factory<OneSequenceGestureRecognizer>(
+          () => EagerGestureRecognizer(),
+        ),
+      },
     );
   }
 }
 
-// Marketplace Card Widget
-class MarketplaceCard extends StatelessWidget {
-  final Listing listing;
+class _Bounds {
+  final Point center;
+  final double zoom;
 
-  const MarketplaceCard(this.listing);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen(listing)));
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              listing.imageUrls[0] ?? '',
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-            ),
-          ),
-          title: Text(
-            listing.title ?? '',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(
-            listing.price != null ? '₦${listing.price}' : '',
-            style: TextStyle(color: Colors.blue),
-          ),
-          trailing: IconButton(
-              onPressed: () {
-                context.read<PropertyProvider>().toggleFavorite(listing);
-              },
-              icon: Icon(context.read<PropertyProvider>().isFavorite(listing.id)
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border)),
-        ),
-      ),
-    );
-  }
+  _Bounds({required this.center, required this.zoom});
 }
