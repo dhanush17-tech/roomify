@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/chat_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/home/home_screen.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ItemDetailsScreen extends StatelessWidget {
   final Listing item;
@@ -38,23 +43,11 @@ class ItemDetailsScreen extends StatelessWidget {
                 ),
                 actions: [
                   Consumer<PropertyProvider>(
-                    builder: (ctx, provider, _) => IconButton(
-                      icon: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          provider.isFavorite(item.id)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: Colors.black,
-                        ),
-                      ),
-                      onPressed: () => provider.toggleFavorite(item),
-                    ),
-                  ),
+                      builder: (ctx, provider, _) => FavoriteButton(
+                            isFavorite: provider.isFavorite(item.id),
+                            onTap: () => provider.toggleFavorite(item),
+                          )),
+                  SizedBox(width: 13),
                   SizedBox(width: 13),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -65,15 +58,20 @@ class ItemDetailsScreen extends StatelessWidget {
                           bottomLeft: Radius.circular(40),
                           bottomRight: Radius.circular(40),
                         ),
-                        child: Image.network(
-                          item.marketplaceItem?.imageUrls?.isNotEmpty == true
+                        child: CachedNetworkImage(
+                          imageUrl: item.marketplaceItem?.imageUrls?.isNotEmpty == true
                               ? item.marketplaceItem!.imageUrls!.first
                               : 'https://via.placeholder.com/180',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
+                          placeholder: (context, url) => Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          errorWidget: (context, url, error) => Icon(Icons.error),
                         ),
                       ),
+
                       // Small images on the right
                       if (item.imageUrls!.length > 1)
                         Positioned(
@@ -91,9 +89,16 @@ class ItemDetailsScreen extends StatelessWidget {
                                     color: Colors.white.withOpacity(0.9),
                                     width: 3,
                                   ),
-                                  image: DecorationImage(
-                                    image: NetworkImage(item.imageUrls![1]),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(17),
+                                  child: CachedNetworkImage(
+                                    imageUrl: item.imageUrls![1],
                                     fit: BoxFit.cover,
+                                    placeholder: (context, url) => Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                    errorWidget: (context, url, error) => Icon(Icons.error),
                                   ),
                                 ),
                               ),
@@ -238,10 +243,34 @@ class ItemDetailsScreen extends StatelessWidget {
           // User card at bottom
           Align(
             alignment: Alignment.bottomCenter,
-            child: ExpandableUserCard(user: item.user!),
+            child: ExpandableUserCard(
+                user: item.user!,
+                isMarketplace: true,
+                onTap: () => navigateToChat(context, item.user!)),
           ),
         ],
       ),
     );
+  }
+
+  void navigateToChat(BuildContext context, User propertyOwner) async {
+    try {
+      // Get or create chat room with property owner
+      final chatRoom = await context.read<ChatProvider>().createOrGetChatRoom(
+            propertyOwner.id,
+          );
+
+      // Navigate to chat screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatMessageScreen(room: chatRoom),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to open chat: $e')),
+      );
+    }
   }
 }

@@ -10,10 +10,19 @@ import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
-class PropertyDetailsScreen extends StatelessWidget {
+class PropertyDetailsScreen extends StatefulWidget {
   final Listing listing;
   PropertyDetailsScreen(this.listing);
+
+  @override
+  _PropertyDetailsScreenState createState() => _PropertyDetailsScreenState();
+}
+
+class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
 
   void navigateToChat(BuildContext context, User propertyOwner) async {
     try {
@@ -34,6 +43,12 @@ class PropertyDetailsScreen extends StatelessWidget {
         SnackBar(content: Text('Failed to open chat: $e')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -65,127 +80,91 @@ class PropertyDetailsScreen extends StatelessWidget {
                 actions: [
                   Consumer<PropertyProvider>(
                       builder: (ctx, provider, _) => FavoriteButton(
-                            isFavorite: provider.isFavorite(listing.id),
-                            onTap: () => provider.toggleFavorite(listing),
+                            isFavorite: provider.isFavorite(widget.listing.id),
+                            onTap: () =>
+                                provider.toggleFavorite(widget.listing),
                           )),
                   SizedBox(width: 13),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     children: [
-                      // Main image
-                      ClipRRect(
-                        borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.circular(40),
-                            bottomRight: Radius.circular(40)),
-                        child: Image.network(
-                          listing.property!.imageUrls!.isEmpty
-                              ? listing.imageUrls![0]
-                              : listing.property!.imageUrls![0],
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double
-                              .infinity, // Set the height to match the expandedHeight of SliverAppBar
-                        ),
+                      // Main image carousel
+                      PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentPage = index;
+                          });
+                        },
+                        itemCount: widget.listing.property!.imageUrls!.isEmpty
+                            ? widget.listing.imageUrls!.length
+                            : widget.listing.property!.imageUrls!.length,
+                        itemBuilder: (context, index) {
+                          final imageUrl =
+                              widget.listing.property!.imageUrls!.isEmpty
+                                  ? widget.listing.imageUrls![index]
+                                  : widget.listing.property!.imageUrls![index];
+                          return ClipRRect(
+                            borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(40),
+                                bottomRight: Radius.circular(40)),
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) => Icon(Icons.error),
+                            ),
+                          );
+                        },
                       ),
-                      // Small images on the right
+                      // Image counter indicator
                       Positioned(
                         right: 16,
-                        bottom: 16,
-                        child: Column(
-                          children: [
-                            ...listing.imageUrls.isNotEmpty
-                                ? [
-                                    Container(
-                                      margin: EdgeInsets.only(bottom: 8),
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(0.9),
-                                          width: 3,
-                                        ),
-                                        image: DecorationImage(
-                                          image: NetworkImage(
-                                              listing.imageUrls![1]),
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    if (listing.imageUrls!.length > 2)
-                                      Container(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        width: 60,
-                                        height: 60,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color:
-                                                Colors.white.withOpacity(0.9),
-                                            width: 3,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '+${listing.imageUrls!.length - 2}',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                  ]
-                                : listing.property!.imageUrls!.isNotEmpty
-                                    ? [
-                                        Container(
-                                          margin: EdgeInsets.only(bottom: 8),
-                                          width: 60,
-                                          height: 60,
-                                          decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            border: Border.all(
-                                              color:
-                                                  Colors.white.withOpacity(0.9),
-                                              width: 3,
-                                            ),
-                                            image: DecorationImage(
-                                              image: NetworkImage(listing
-                                                  .property!.imageUrls![1]),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        if (listing
-                                                .property!.imageUrls!.length >
-                                            2)
-                                          Container(
-                                            margin: EdgeInsets.only(bottom: 8),
-                                            width: 60,
-                                            height: 60,
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Colors.white
-                                                    .withOpacity(0.9),
-                                                width: 3,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '+${listing.property!.imageUrls!.length - 2}',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                      ]
-                                    : [],
-                          ],
+                        top: 16,
+                        child: Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${_currentPage + 1}/${widget.listing.property!.imageUrls!.isEmpty ? widget.listing.imageUrls!.length : widget.listing.property!.imageUrls!.length}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Page indicators at bottom
+                      Positioned(
+                        bottom: 20,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            widget.listing.property!.imageUrls!.isEmpty
+                                ? widget.listing.imageUrls!.length
+                                : widget.listing.property!.imageUrls!.length,
+                            (index) => Container(
+                              margin: EdgeInsets.symmetric(horizontal: 4),
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _currentPage == index
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.4),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -228,7 +207,7 @@ class PropertyDetailsScreen extends StatelessWidget {
 
                                 // Title
                                 Text(
-                                  listing.title,
+                                  widget.listing.title,
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -242,7 +221,7 @@ class PropertyDetailsScreen extends StatelessWidget {
                                         color: Colors.grey, size: 20),
                                     SizedBox(width: 4),
                                     Text(
-                                      listing.location,
+                                      widget.listing.location,
                                       style: TextStyle(color: Colors.grey),
                                     ),
                                   ],
@@ -256,7 +235,7 @@ class PropertyDetailsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                "\$ ${listing.price}",
+                                "\$ ${widget.listing.price}",
                                 style: TextStyle(
                                   fontSize: 27,
                                   fontWeight: FontWeight.bold,
@@ -294,7 +273,8 @@ class PropertyDetailsScreen extends StatelessWidget {
                                         onPressed: () {},
                                       ),
                                       Text(
-                                        listing.property!.numberOfBedrooms
+                                        widget
+                                            .listing.property!.numberOfBedrooms
                                             .toString(),
                                         style: TextStyle(
                                           fontSize: 16,
@@ -322,7 +302,8 @@ class PropertyDetailsScreen extends StatelessWidget {
                                         onPressed: () {},
                                       ),
                                       Text(
-                                        listing.property!.numberOfBathrooms
+                                        widget
+                                            .listing.property!.numberOfBathrooms
                                             .toString(),
                                         style: TextStyle(
                                           fontSize: 16,
@@ -354,7 +335,7 @@ class PropertyDetailsScreen extends StatelessWidget {
                                         children: <TextSpan>[
                                           TextSpan(
                                             text:
-                                                "${listing.property!.maxOccupancy}",
+                                                "${widget.listing.property!.maxOccupancy}",
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: Colors.black,
@@ -377,7 +358,7 @@ class PropertyDetailsScreen extends StatelessWidget {
                         height: 20,
                       ),
                       Text(
-                        listing.description ?? '',
+                        widget.listing.description ?? '',
                         style: AppTextStyles.small(
                           fontWeight: FontWeight.normal,
                           fontSize: 14,
@@ -390,8 +371,9 @@ class PropertyDetailsScreen extends StatelessWidget {
                           style: AppTextStyles.title(
                               fontSize: 15, color: orangeColor)),
                       // Add preferences section
-                      if (listing.property!.amenities!.isNotEmpty)
-                        buildPreferencesSection(listing.property!.amenities!),
+                      if (widget.listing.property!.amenities!.isNotEmpty)
+                        buildPreferencesSection(
+                            widget.listing.property!.amenities!),
 
                       Row(children: [
                         Chip(
@@ -423,7 +405,7 @@ class PropertyDetailsScreen extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.bottomCenter,
-            child: ExpandableUserCard(user: listing.user!),
+            child: ExpandableUserCard(user: widget.listing.user!),
           ),
         ],
       ),
@@ -458,8 +440,11 @@ class PropertyDetailsScreen extends StatelessWidget {
 
 class ExpandableUserCard extends StatefulWidget {
   final User user;
+  final bool isMarketplace;
+  final VoidCallback? onTap;
 
-  ExpandableUserCard({required this.user});
+  ExpandableUserCard(
+      {required this.user, this.isMarketplace = false, this.onTap});
 
   @override
   _ExpandableUserCardState createState() => _ExpandableUserCardState();
@@ -496,14 +481,16 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
   }
 
   void _toggleExpand() {
-    setState(() {
-      isExpanded = !isExpanded;
-      if (isExpanded) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    });
+    if (!widget.isMarketplace) {
+      setState(() {
+        isExpanded = !isExpanded;
+        if (isExpanded) {
+          _controller.forward();
+        } else {
+          _controller.reverse();
+        }
+      });
+    }
   }
 
   @override
@@ -515,7 +502,7 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
         bottom: 26,
       ),
       child: GestureDetector(
-        onTap: _toggleExpand,
+        onTap: widget.isMarketplace ? widget.onTap : _toggleExpand,
         child: AnimatedBuilder(
           animation: _heightAnimation,
           builder: (context, child) {
@@ -551,8 +538,11 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                           child: CircleAvatar(
                             radius: 30,
                             backgroundColor: Colors.black,
-                            backgroundImage:
-                                NetworkImage(widget.user.profilePhotoUrl ?? ''),
+                            backgroundImage: widget.user.profilePhotoUrl != null
+                                ? CachedNetworkImageProvider(
+                                    widget.user.profilePhotoUrl!,
+                                  )
+                                : null,
                           ),
                         ),
                         SizedBox(width: 5),

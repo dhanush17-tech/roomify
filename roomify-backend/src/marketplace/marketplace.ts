@@ -21,18 +21,18 @@ app.get('/', async (c) => {
                 type: 'Marketplace'
             },
             include: {
-                user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                    }
-                },
-                
+                user: true,
+
                 marketplace: {
                     include: {
-                        images: true
-                    }
+                        images: true,
+                        categories: {
+                            select: {
+                                category: true
+                            }
+                        }
+                    },
+
                 },
                 favorites: true
             },
@@ -40,13 +40,145 @@ app.get('/', async (c) => {
                 createdAt: 'desc'
             }
         });
-        console.log(items);
+        console.log("items", items);
         return c.json({ items });
     } catch (error) {
         return c.json({ error: 'Failed to fetch marketplace items' }, 500);
     }
 });
 
+// Search marketplace items
+app.get('/search', async (c) => {
+    try {
+        const { query, location } = c.req.query();
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        const searchConditions: any = {
+            type: 'Marketplace',
+        };
+
+        // Add search conditions if query parameter exists
+        if (query) {
+            searchConditions.OR = [
+                {
+                    location: {
+                        contains: query.toLowerCase()
+                    }
+                },
+                {
+                    title: {
+                        contains: query.toLowerCase()
+                    }
+                },
+                {
+                    description: {
+                        contains: query.toLowerCase()
+                    }
+                }
+            ];
+        }
+
+        // Add location search if location parameter exists
+        if (location) {
+            searchConditions.location = {
+                contains: location,
+                mode: 'insensitive'
+            };
+        }
+
+        const items = await prisma.listing.findMany({
+            where: searchConditions,
+            include: {
+                user: true,
+
+                marketplace: {
+                    include: {
+                        images: true,
+                        categories: {
+                            select: {
+                                category: true
+                            }
+                        }
+                    },
+
+                },
+                favorites: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        return c.json({ items });
+    } catch (error) {
+        console.error('Search error:', error);
+        return c.json({ error: 'Failed to search marketplace items' }, 500);
+    }
+});
+
+// Get search suggestions
+app.get('/suggestions', async (c) => {
+    try {
+        const query = c.req.query('query');
+        if (!query) {
+            return c.json({ suggestions: [] });
+        }
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+        const searchConditions: any = {
+            type: 'Marketplace',
+        };
+        searchConditions.OR = [
+            {
+                location: {
+                    contains: query.toLowerCase()
+                }
+            },
+            {
+                title: {
+                    contains: query.toLowerCase()
+                }
+            },
+            {
+                description: {
+                    contains: query.toLowerCase()
+                }
+            }
+        ];
+
+
+        // Get distinct values matching the query
+        const listings = await prisma.listing.findMany({
+            where:
+                searchConditions,
+            include: {
+                user: true,
+
+                marketplace: {
+                    include: {
+                        images: true,
+                        categories: {
+                            select: {
+                                category: true
+                            }
+                        }
+                    },
+
+                },
+                favorites: true
+            },
+            take: 10 // Limit results
+        });
+
+        return c.json({ listings });
+    } catch (error) {
+        console.error('Suggestions error:', error);
+        return c.json({ error: 'Failed to fetch suggestions' }, 500);
+    }
+});
 
 // Create marketplace item
 app.post('/', async (c) => {
@@ -130,6 +262,9 @@ app.post('/', async (c) => {
             },
             property: null
         };
+        console.log(listingData.categories.map((category: string) => ({
+            category
+        })));
 
         return c.json({ listing: formattedListing });
     } catch (error) {
@@ -221,5 +356,7 @@ app.put('/:id', async (c) => {
         return c.json({ error: 'Failed to update marketplace item' }, 500);
     }
 });
+
+
 
 export default app;

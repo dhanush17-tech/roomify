@@ -83,12 +83,64 @@ class MarketplaceRepository {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body)['items'];
-        return data.map((item) => Listing.fromJson(item)).toList();
+        final List<Listing> listings =
+            data.map((item) => Listing.fromJson(item)).toList();
+        return listings;
       } else {
         throw Exception('Failed to load marketplace items');
       }
     } catch (e) {
       throw Exception('Failed to load marketplace items: $e');
+    }
+  }
+
+  Future<List<Listing>> searchMarketplaceItems(String query) async {
+    try {
+      final token = await AuthRepository().getToken();
+      final _headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/marketplace/search?query=$query'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body)['items'];
+        return data.map((item) => Listing.fromJson(item)).toList();
+      } else {
+        throw Exception('Failed to search marketplace items');
+      }
+    } catch (e) {
+      throw Exception('Failed to search marketplace items: $e');
+    }
+  }
+
+  Future<List<Listing>> getSearchSuggestions(String query) async {
+    try {
+      final token = await AuthRepository().getToken();
+      final _headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/marketplace/suggestions?query=$query'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body)['items'] ?? [];
+        final List<Listing> listings =
+            data.map((item) => Listing.fromJson(item)).toList();
+        return listings;
+      } else {
+        throw Exception('Failed to get search suggestions');
+      }
+    } catch (e) {
+      throw Exception('Failed to get search suggestions: $e');
     }
   }
 }

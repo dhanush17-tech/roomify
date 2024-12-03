@@ -14,6 +14,7 @@ import 'package:roomify_app/providers/search_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 
 // Separate widget for the search bar to prevent unnecessary rebuilds
 class SearchBarWidget extends StatefulWidget {
@@ -44,7 +45,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: Colors.grey),
+          Icon(Icons.search_rounded, size: 30, color: Colors.grey),
           SizedBox(width: 10),
           Expanded(
             child: TextField(
@@ -56,7 +57,8 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                 widget.onChanged(widget.controller.text);
               },
               decoration: InputDecoration(
-                hintText: "Search location",
+                hintText: "Search location...",
+                hintStyle: TextStyle(fontSize: 18, color: Colors.grey),
                 border: InputBorder.none,
               ),
             ),
@@ -162,6 +164,7 @@ class _SearchMapScreenState extends State<SearchMapScreen> {
   void initState() {
     super.initState();
     _bottomSheetController = DraggableScrollableController();
+    _searchFocusNode.requestFocus();
     if (widget.query.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<SearchProvider>().search(widget.query);
@@ -423,8 +426,13 @@ class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
     }
 
     if (minLng == double.infinity) {
+      // Get user's location from AuthProvider
+      final userLocation = context.read<AuthProvider>().user;
+      final defaultLat = userLocation?.latitude ?? 12.9716;
+      final defaultLng = userLocation?.longitude ?? 77.6441;
+
       return _Bounds(
-        center: Point(coordinates: Position(77.6441, 12.9716)),
+        center: Point(coordinates: Position(defaultLng, defaultLat)),
         zoom: 12,
       );
     }
@@ -452,9 +460,15 @@ class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Get user's location from AuthProvider
+    final userLocation = context.read<AuthProvider>().user;
+    final defaultLat = userLocation?.latitude ??
+        12.9716; // Default to Bangalore if no location
+    final defaultLng = userLocation?.longitude ?? 77.6441;
+
     return MapWidget(
       cameraOptions: CameraOptions(
-        center: Point(coordinates: Position(77.6441, 12.9716)),
+        center: Point(coordinates: Position(defaultLng, defaultLat)),
         zoom: 12,
       ),
       onMapCreated: (map) {

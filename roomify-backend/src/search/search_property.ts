@@ -137,7 +137,7 @@ app.get('/', async (c) => {
                 imageUrls: listing.property.images.map(i => i.imageUrl)
             } : null
         }));
-
+        console.log("results", results);
         return c.json({ results });
     } catch (error) {
         console.error('Search error:', error);

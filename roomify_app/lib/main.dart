@@ -127,7 +127,12 @@ class MyApp extends StatelessWidget {
           //   }
           // },
           theme: ThemeData.from(
-            colorScheme: ColorScheme.fromSeed(seedColor: orangeColor),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: orangeColor,
+            ).copyWith(
+              secondary: Colors.orange,
+              primary: Colors.orange.withOpacity(0.5),
+            ),
             textTheme: GoogleFonts.rubikTextTheme(),
           ),
           debugShowCheckedModeBanner: false,

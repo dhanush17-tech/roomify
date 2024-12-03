@@ -80,7 +80,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       RoommateMatchScreen(),
       Container(), // Empty container for center button
-      MarketplaceScreen(),
+      MarketplaceScreen(searchQuery: ''),
       ProfileScreen(),
     ];
 

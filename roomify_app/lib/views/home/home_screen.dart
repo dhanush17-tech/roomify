@@ -15,6 +15,7 @@ import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/home/search_screen.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/widgets/location_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeScreen extends StatefulWidget {
   User user;
@@ -76,7 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             MaterialPageRoute(
                                 builder: (context) => ChatListScreen()));
                       },
-                      child: Icon(Icons.message_rounded, color: Colors.grey),
+                      child: Image.asset(
+                        'assets/icons/send.png',
+                        width: 20,
+                        color: Colors.orange,
+                      ),
                     ),
                   ),
                 ],
@@ -86,21 +91,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Search Bar
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 13),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
+                  border:
+                      Border.all(color: Colors.grey.withOpacity(0.2), width: 2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search, color: Colors.grey),
-                    SizedBox(width: 8),
+                    Icon(Icons.search_rounded, size: 30, color: Colors.grey),
+                    SizedBox(width: 10),
                     Expanded(
                       child: TextField(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      SearchMapScreen(query: '')));
+                        },
                         decoration: InputDecoration(
-                          hintText: 'Search location',
+                          hintText: "Search location...",
+                          hintStyle:
+                              TextStyle(fontSize: 18, color: Colors.grey),
                           border: InputBorder.none,
-                          hintStyle: TextStyle(color: Colors.grey),
                         ),
                       ),
                     ),
@@ -221,13 +236,17 @@ class PropertyCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      listing.property!.imageUrls!.isEmpty
+                    child: CachedNetworkImage(
+                      imageUrl: listing.property!.imageUrls!.isEmpty
                           ? listing.imageUrls![0]
                           : listing.property!.imageUrls![0],
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.error),
                     ),
                   ),
                   Positioned(

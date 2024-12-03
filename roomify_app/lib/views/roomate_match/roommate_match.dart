@@ -10,6 +10,7 @@ import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/profile/edit_profile.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RoommateMatchScreen extends StatefulWidget {
   @override
@@ -482,13 +483,17 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                           flex: 2,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15),
-                            child: Image.network(
-                              listing.property!.imageUrls!.isEmpty
+                            child: CachedNetworkImage(
+                              imageUrl: listing.property!.imageUrls!.isEmpty
                                   ? listing.imageUrls![0]
-                                  : listing.property!.imageUrls![
-                                      0], // Corrected to use profile.properties
+                                  : listing.property!.imageUrls![0],
                               fit: BoxFit.cover,
                               width: double.infinity,
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.error),
                             ),
                           ),
                         ),

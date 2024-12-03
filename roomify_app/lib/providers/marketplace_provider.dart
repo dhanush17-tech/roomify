@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/repository/marketplace_repo.dart';
@@ -7,14 +8,17 @@ class MarketplaceProvider extends ChangeNotifier {
   final MarketplaceRepository _repository;
   final BuildContext context;
   List<Listing> _items = [];
+  List<Listing> _searchSuggestions = [];
   bool _isLoading = false;
   String? _error;
+  Timer? _debounceTimer;
 
   MarketplaceProvider(this._repository, this.context) {
     loadItems();
   }
 
   List<Listing> get items => _items;
+  List<Listing> get searchSuggestions => _searchSuggestions;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -24,7 +28,7 @@ class MarketplaceProvider extends ChangeNotifier {
       notifyListeners();
 
       _items = await _repository.getMarketplaceItems();
-
+      print(items);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -48,7 +52,7 @@ class MarketplaceProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      final newItem = await _repository.createMarketplaceItem(
+      await _repository.createMarketplaceItem(
         title: title,
         description: description,
         price: price,
@@ -59,7 +63,6 @@ class MarketplaceProvider extends ChangeNotifier {
         images: images,
       );
 
-      _items.insert(0, newItem);
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -69,4 +72,49 @@ class MarketplaceProvider extends ChangeNotifier {
       throw e;
     }
   }
+
+  Future<void> search(String query) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      _items = await _repository.searchMarketplaceItems(query);
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> getSearchSuggestions(String query) async {
+    // Cancel previous timer if it exists
+    _debounceTimer?.cancel();
+
+    // Only fetch suggestions if query is not empty
+    if (query.isEmpty) {
+      _searchSuggestions = [];
+      notifyListeners();
+      return;
+    }
+
+    // Debounce the API call
+    _debounceTimer = Timer(Duration(milliseconds: 300), () async {
+      try {
+        _searchSuggestions = await _repository.getSearchSuggestions(query);
+        notifyListeners();
+      } catch (e) {
+        _error = e.toString();
+        notifyListeners();
+      }
+    });
+  }
+
+  void clearSearchSuggestions() {
+    _searchSuggestions = [];
+    notifyListeners();
+  }
+ 
 }

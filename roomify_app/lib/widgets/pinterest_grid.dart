@@ -1,60 +1,140 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/models/itemModel.dart';
-import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/marketplace/item_details.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 
 class PinterestGrid extends StatelessWidget {
   final List<Listing> items;
-  final ScrollPhysics physics;
+  final ScrollPhysics? physics;
   final bool showDeleteIcon;
-  final Function(Listing item)? onTapDelete;
+  final Function(Listing)? onTapDelete;
 
   const PinterestGrid({
     Key? key,
     required this.items,
-    this.physics = const NeverScrollableScrollPhysics(),
-    this.onTapDelete,
+    this.physics,
     this.showDeleteIcon = false,
+    this.onTapDelete,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: MasonryGridView.count(
-        padding: const EdgeInsets.all(0),
-        scrollDirection: Axis.vertical,
+    return GridView.builder(
+      physics: physics,
+      shrinkWrap: true,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 18,
-        crossAxisSpacing: 18,
-        shrinkWrap: true,
-        physics: physics,
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          return FeaturedItemCard(
+        childAspectRatio: 0.8,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        return AnimatedListItem(
+          index: index,
+          child: FeaturedItemCard(
             item: items[index],
-            onTap: () {
-              if (items[index].property is Property) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PropertyDetailsScreen(items[index]),
-                  ),
-                );
-              } else {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ItemDetailsScreen(item: items[index]),
-                  ),
-                );
-              }
-            },
             showDeleteIcon: showDeleteIcon,
-            onTapDelete: onTapDelete,
+            onTapDelete: onTapDelete != null
+                ? (Listing item) => onTapDelete!(item)
+                : null,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      items[index].type == ListingType.Property
+                          ? PropertyDetailsScreen(items[index])
+                          : ItemDetailsScreen(item: items[index]),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+  final int index;
+
+  const AnimatedListItem({
+    Key? key,
+    required this.child,
+    required this.index,
+  }) : super(key: key);
+
+  @override
+  State<AnimatedListItem> createState() => _AnimatedListItemState();
+}
+
+class _AnimatedListItemState extends State<AnimatedListItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+  bool _isVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 200),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    // Delay the animation based on the item's position
+    Future.delayed(Duration(milliseconds: 100 * widget.index), () {
+      if (mounted) {
+        _controller.forward();
+        setState(() {
+          _isVisible = true;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      duration: Duration(milliseconds: 500),
+      opacity: _isVisible ? 1.0 : 0.0,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Opacity(
+              opacity: _opacityAnimation.value,
+              child: child,
+            ),
           );
         },
+        child: widget.child,
       ),
     );
   }
@@ -87,25 +167,19 @@ class FeaturedItemCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(15),
-                  child: Image.network(
-                    item.type == ListingType.Property
+                  child: CachedNetworkImage(
+                    imageUrl: item.type == ListingType.Property
                         ? item.property?.imageUrls?.isNotEmpty == true
                             ? item.property!.imageUrls!.first
                             : 'https://via.placeholder.com/180'
                         : item.marketplaceItem?.imageUrls?.isNotEmpty == true
                             ? item.marketplaceItem!.imageUrls!.first
                             : 'https://via.placeholder.com/180',
-                    width: 180,
-                    height: 120,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 180,
-                        height: 120,
-                        color: Colors.grey[200],
-                        child: Icon(Icons.error),
-                      );
-                    },
+                    placeholder: (context, url) => Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    errorWidget: (context, url, error) => Icon(Icons.error),
                   ),
                 ),
                 const SizedBox(height: 5),

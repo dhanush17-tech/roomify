@@ -139,8 +139,9 @@
 
 -- UPDATE listing
 -- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
-SELECT mi.image_url
+SELECT l.title, l.price, mc.category
 FROM listing l
-JOIN marketplace_items m ON l.id = m.listing_id
-JOIN marketplace_image mi ON m.listing_id = mi.item_id
-WHERE l.type = 'Marketplace';
+JOIN marketplace_items mi ON l.id = mi.listingId
+JOIN marketplace_categories mc ON mi.listingId = mc.item_id
+WHERE l.type = 'Marketplace'
+ORDER BY l.title;
