@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/marketplace/item_details.dart';
@@ -21,39 +22,40 @@ class PinterestGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: physics,
-      shrinkWrap: true,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: MasonryGridView.count(
         crossAxisCount: 2,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        mainAxisSpacing: 18,
+        crossAxisSpacing: 18,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          return AnimatedListItem(
+            key: ValueKey(items[index].id), // Add key for proper animation
+            index: index,
+            child: FeaturedItemCard(
+              item: items[index],
+              showDeleteIcon: showDeleteIcon,
+              onTapDelete: onTapDelete != null
+                  ? (Listing item) => onTapDelete!(item)
+                  : null,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        items[index].type == ListingType.Property
+                            ? PropertyDetailsScreen(items[index])
+                            : ItemDetailsScreen(item: items[index]),
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        return AnimatedListItem(
-          index: index,
-          child: FeaturedItemCard(
-            item: items[index],
-            showDeleteIcon: showDeleteIcon,
-            onTapDelete: onTapDelete != null
-                ? (Listing item) => onTapDelete!(item)
-                : null,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      items[index].type == ListingType.Property
-                          ? PropertyDetailsScreen(items[index])
-                          : ItemDetailsScreen(item: items[index]),
-                ),
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }
@@ -82,9 +84,13 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+  }
+
+  void _setupAnimations() {
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 300),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
@@ -101,8 +107,7 @@ class _AnimatedListItemState extends State<AnimatedListItem>
       ),
     );
 
-    // Delay the animation based on the item's position
-    Future.delayed(Duration(milliseconds: 100 * widget.index), () {
+    Future.delayed(Duration(milliseconds: 50 * widget.index), () {
       if (mounted) {
         _controller.forward();
         setState(() {
@@ -110,6 +115,25 @@ class _AnimatedListItemState extends State<AnimatedListItem>
         });
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(AnimatedListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.index != widget.index) {
+      _controller.reset();
+      setState(() {
+        _isVisible = false;
+      });
+      Future.delayed(Duration(milliseconds: 50 * widget.index), () {
+        if (mounted) {
+          _controller.forward();
+          setState(() {
+            _isVisible = true;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -121,7 +145,8 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   @override
   Widget build(BuildContext context) {
     return AnimatedOpacity(
-      duration: Duration(milliseconds: 500),
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       opacity: _isVisible ? 1.0 : 0.0,
       child: AnimatedBuilder(
         animation: _controller,
@@ -168,11 +193,12 @@ class FeaturedItemCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(15),
                   child: CachedNetworkImage(
+                    width: 180,
                     imageUrl: item.type == ListingType.Property
                         ? item.property?.imageUrls?.isNotEmpty == true
                             ? item.property!.imageUrls!.first
                             : 'https://via.placeholder.com/180'
-                        : item.marketplaceItem?.imageUrls?.isNotEmpty == true
+                        : item.marketplaceItem!.imageUrls?.isNotEmpty == true
                             ? item.marketplaceItem!.imageUrls!.first
                             : 'https://via.placeholder.com/180',
                     fit: BoxFit.cover,

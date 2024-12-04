@@ -47,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
                 title: Text("Logout"),
                 onTap: () async {
                   try {
-                    await userProvider.signOut();
+                    await userProvider.signOut(context);
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => SignUpLoginScreen(),
@@ -108,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
                   SizedBox(
                     height: 5,
                   ),
-                  Text("Computer Science, ${user.user!.university}",
+                  Text("${user.user!.university}",
                       style: AppTextStyles.caption(color: Colors.white)),
                   SizedBox(height: 8),
                   GestureDetector(

@@ -22,6 +22,7 @@ import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'views/onboarding/splash_screen.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(MyApp());
 }
 
@@ -35,26 +36,49 @@ class MyApp extends StatelessWidget {
           Provider<AuthRepository>(
             create: (_) => AuthRepository(),
           ),
+          Provider<PropertyRepository>(
+            create: (_) => PropertyRepository(),
+          ),
+          Provider<MarketplaceRepository>(
+            create: (_) => MarketplaceRepository(),
+          ),
           Provider<ProfileUpdateRepo>(
             create: (_) => ProfileUpdateRepo(),
           ),
 
-          // Then, provide UserProvider since others depend on it
           ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
-            create: (context) =>
-                AuthProvider(context.read<AuthRepository>(), context),
-            update: (context, authRepository, previous) =>
-                previous ?? AuthProvider(authRepository, context),
+            create: (context) => AuthProvider(context.read<AuthRepository>()),
+            update: (context, authRepo, previous) =>
+                previous ?? AuthProvider(authRepo),
           ),
 
-          // Now EditProfileProvider can access UserProvider
-          ChangeNotifierProxyProvider<ProfileUpdateRepo, ProfileProvider>(
-            create: (context) =>
-                ProfileProvider(context.read<ProfileUpdateRepo>(), context),
-            update: (context, repo, previous) => ProfileProvider(repo, context),
+          ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo, ProfileProvider>(
+            create: (context) => ProfileProvider(
+              context.read<ProfileUpdateRepo>(),
+              context,
+            ),
+            update: (context, authRepo, profileRepo, previous) =>
+                previous ?? ProfileProvider(profileRepo, context),
           ),
 
-          // Roommate Match Provider
+          ChangeNotifierProxyProvider2<AuthRepository, PropertyRepository, PropertyProvider>(
+            create: (context) => PropertyProvider(
+              context.read<PropertyRepository>(),
+              context,
+            ),
+            update: (context, authRepo, propRepo, previous) =>
+                previous ?? PropertyProvider(propRepo, context),
+          ),
+
+          ChangeNotifierProxyProvider2<AuthRepository, MarketplaceRepository, MarketplaceProvider>(
+            create: (context) => MarketplaceProvider(
+              context.read<MarketplaceRepository>(),
+              context,
+            ),
+            update: (context, authRepo, marketRepo, previous) =>
+                previous ?? MarketplaceProvider(marketRepo, context),
+          ),
+
           Provider<RoommateMatchRepository>(
             create: (_) => RoommateMatchRepository(),
           ),
@@ -67,7 +91,6 @@ class MyApp extends StatelessWidget {
                 previous ?? RoommateMatchProvider(repository),
           ),
 
-          // Search Provider
           Provider<SearchRepository>(
             create: (_) => SearchRepository(),
           ),
@@ -76,17 +99,6 @@ class MyApp extends StatelessWidget {
                 SearchProvider(context.read<SearchRepository>(), context),
             update: (context, repository, previous) =>
                 previous ?? SearchProvider(repository, context),
-          ),
-          Provider<PropertyRepository>(
-            create: (_) => PropertyRepository(),
-          ),
-          ChangeNotifierProxyProvider<PropertyRepository, PropertyProvider>(
-            create: (context) => PropertyProvider(
-              context.read<PropertyRepository>(),
-              context,
-            ),
-            update: (context, repository, previous) =>
-                PropertyProvider(repository, context),
           ),
           Provider<ChatRepository>(
             create: (_) => ChatRepository(),
@@ -97,19 +109,6 @@ class MyApp extends StatelessWidget {
             ),
             update: (context, repository, previous) =>
                 previous ?? ChatProvider(repository),
-          ),
-
-          Provider<MarketplaceRepository>(
-            create: (_) => MarketplaceRepository(),
-          ),
-          ChangeNotifierProxyProvider<MarketplaceRepository,
-              MarketplaceProvider>(
-            create: (context) => MarketplaceProvider(
-              context.read<MarketplaceRepository>(),
-              context,
-            ),
-            update: (context, repository, previous) =>
-                MarketplaceProvider(repository, context),
           ),
         ],
         child: MaterialApp(

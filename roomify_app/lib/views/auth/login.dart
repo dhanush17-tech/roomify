@@ -176,20 +176,22 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                   ? null
                                   : () {
                                       authViewModel.register(
-                                          email: _emailController.text,
-                                          password: _passwordController.text,
-                                          displayName: _nameController.text,
-                                          university: _collegeController.text,
-                                          location: _locationController.text,
-                                          age: int.parse(_ageController.text),
-                                          onSuccess: () {
-                                            Navigator.pushAndRemoveUntil(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (c) => MainScreen()),
-                                              (route) => false,
-                                            );
-                                          });
+                                        context: context,
+                                        email: _emailController.text,
+                                        password: _passwordController.text,
+                                        displayName: _nameController.text,
+                                        university: _collegeController.text,
+                                        location: _locationController.text,
+                                        age: int.parse(_ageController.text),
+                                        onSuccess: () {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (c) => MainScreen()),
+                                            (route) => false,
+                                          );
+                                        },
+                                      );
                                     },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: orangeColor,
@@ -254,6 +256,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                       }
 
                                       authViewModel.login(
+                                        context,
                                         _loginEmailController.text,
                                         _loginPasswordController.text,
                                         () {

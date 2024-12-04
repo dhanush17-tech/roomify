@@ -58,11 +58,35 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        'Real Estate',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      RichText(
+                        text: TextSpan(
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: 'Apartments',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' & ',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Houses',
+                              style: TextStyle(
+                                fontSize: 24,
+                                
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -90,84 +114,40 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 20),
 
               // Search Bar
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 13),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  border:
-                      Border.all(color: Colors.grey.withOpacity(0.2), width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search_rounded, size: 30, color: Colors.grey),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      SearchMapScreen(query: '')));
-                        },
-                        decoration: InputDecoration(
-                          hintText: "Search location...",
-                          hintStyle:
-                              TextStyle(fontSize: 18, color: Colors.grey),
-                          border: InputBorder.none,
-                        ),
+              Hero(
+                tag: 'home_search_field',
+                child: Material(
+                  color: Colors.transparent,
+                  child: TextField(
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  SearchMapScreen(query: '')));
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search for apartments, houses...",
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey.shade200,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
 
               SizedBox(height: 20),
 
               // Property Type Filter
-              Row(
-                children: [
-                  FilterChip(
-                    selected: false,
-                    label: Text('Home'),
-                    onSelected: (_) {},
-                    backgroundColor: Colors.transparent,
-                    labelStyle: TextStyle(color: Colors.black),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.withOpacity(0.4)),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  FilterChip(
-                    selected: false,
-                    label: Text('Villa'),
-                    onSelected: (_) {},
-                    backgroundColor: Colors.transparent,
-                    labelStyle: TextStyle(color: Colors.black),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.withOpacity(0.4)),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  FilterChip(
-                    selected: true,
-                    showCheckmark: false,
-                    label: Text('Apartment'),
-                    onSelected: (_) {},
-                    selectedColor: orangeColor,
-                    backgroundColor: Colors.grey[200],
-                    labelStyle: TextStyle(color: Colors.white),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 20),
 
               // Popular Section
               Text(

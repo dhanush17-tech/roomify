@@ -53,6 +53,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                 return <Widget>[
                   SliverAppBar(
                     elevation: 0,
+                    backgroundColor: Colors.white,
                     leading: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black),
                       onPressed: () => Navigator.pop(context),
@@ -178,15 +179,23 @@ class _FavoritesScreenState extends State<FavoritesScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Clear All Favorites'),
-          content: Text('Are you sure you want to remove all favorites?'),
+          title: Text('Clear All Favorites',
+              style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20)),
+          content: Text('Are you sure you want to remove all favorites?',
+              style: TextStyle(color: Colors.black, fontSize: 16)),
           actions: <Widget>[
             TextButton(
-              child: Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: Colors.black)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: Text('Clear'),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              child: Text('Clear', style: TextStyle(color: Colors.white)),
               onPressed: () {
                 context.read<PropertyProvider>().clearAll();
                 Navigator.of(context).pop();

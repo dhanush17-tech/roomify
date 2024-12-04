@@ -40,57 +40,52 @@ class _MarketplaceSearchScreenState extends State<MarketplaceSearchScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        margin: const EdgeInsets.only(right: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.search, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                focusNode: _searchFocusNode,
-                                decoration: const InputDecoration(
-                                  hintText: 'Search marketplace...',
-                                  border: InputBorder.none,
-                                  hintStyle: TextStyle(color: Colors.grey),
-                                ),
-                                onChanged: (query) {
-                                  context
-                                      .read<MarketplaceProvider>()
-                                      .getSearchSuggestions(query);
-                                },
-                                onSubmitted: (query) {
-                                  context
-                                      .read<MarketplaceProvider>()
-                                      .search(query);
-                                  Navigator.pop(context, {
-                                    'results': context
-                                        .read<MarketplaceProvider>()
-                                        .items,
-                                    'query': query,
-                                  });
-                                },
-                              ),
+                      child: Hero(
+                        tag: 'search_field',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            if (_searchController.text.isNotEmpty)
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.clear, color: Colors.grey),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _handleSearch();
-                                },
-                              ),
-                          ],
+                            child: Row(
+                              children: [
+                                const Icon(Icons.search, color: Colors.grey),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Search marketplace...',
+                                      border: InputBorder.none,
+                                      hintStyle: TextStyle(color: Colors.grey),
+                                    ),
+                                    onChanged: (query) {
+                                      context
+                                          .read<MarketplaceProvider>()
+                                          .getSearchSuggestions(query);
+                                    },
+                                    onSubmitted: (query) {
+                                      context
+                                          .read<MarketplaceProvider>()
+                                          .search(query);
+                                      Navigator.pop(context, {
+                                        'results': context
+                                            .read<MarketplaceProvider>()
+                                            .items,
+                                        'query': query,
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -147,6 +142,32 @@ class _MarketplaceSearchScreenState extends State<MarketplaceSearchScreen> {
 
                   if (provider.error != null) {
                     return Center(child: Text(provider.error!));
+                  }
+
+                  if (provider.items.isEmpty && _searchController.text.isNotEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No results found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            'Try searching with different keywords',
+                            style: TextStyle(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   }
 
                   return ListView.builder(

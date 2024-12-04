@@ -12,9 +12,8 @@ import 'package:roomify_app/providers/search_provider.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
-  BuildContext context;
 
-  AuthProvider(this._authRepository, this.context);
+  AuthProvider(this._authRepository);
 
   User? _user;
   bool _isLoading = false;
@@ -40,7 +39,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password, Function onSuccess) async {
+  Future<void> login(BuildContext context, String email, String password,
+      Function onSuccess) async {
     try {
       _setLoading(true);
       _setError(null);
@@ -55,6 +55,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _setUser(user);
+      await refreshAllProviders(context);
       onSuccess();
     } catch (e) {
       _setError(e.toString().replaceAll('Exception: ', ''));
@@ -86,7 +87,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> register(
-      {required String email,
+      {required BuildContext context,
+      required String email,
       required String password,
       required String displayName,
       required int age,
@@ -106,6 +108,7 @@ class AuthProvider extends ChangeNotifier {
           location: location);
 
       _setUser(user);
+      await refreshAllProviders(context);
       onSuccess();
     } catch (e) {
       _setError(e.toString());
@@ -115,6 +118,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> updateProfile({
+    required BuildContext context,
     String? status,
     String? displayName,
     String? email,
@@ -143,10 +147,7 @@ class AuthProvider extends ChangeNotifier {
           profileImage: profileImage);
 
       _user = updatedUser;
-
-      // Refresh all providers
       await refreshAllProviders(context);
-      
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -173,10 +174,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut(BuildContext context) async {
     try {
       await _authRepository.signOut();
       _user = null;
+      final marketplaceProvider =
+          Provider.of<MarketplaceProvider>(context, listen: false);
+      marketplaceProvider.clearItems();
       notifyListeners();
     } catch (e) {
       throw Exception('Failed to sign out: $e');
@@ -221,24 +225,40 @@ class AuthProvider extends ChangeNotifier {
       // Refresh user profile
       await loadUserProfile();
 
-      // Refresh PropertyProvider
-      final propertyProvider = Provider.of<PropertyProvider>(context, listen: false);
-      await propertyProvider.fetchRecommendations();
-      await propertyProvider.loadFavorites();
-      await propertyProvider.fetchPairUpListings();
+      // Use Provider.of with a try-catch to handle potential provider not found errors
+      try {
+        final propertyProvider =
+            Provider.of<PropertyProvider>(context, listen: false);
+        await propertyProvider.fetchRecommendations();
+        await propertyProvider.loadFavorites();
+        await propertyProvider.fetchPairUpListings();
+      } catch (e) {
+        print('PropertyProvider not available: $e');
+      }
 
-      // Refresh MarketplaceProvider
-      final marketplaceProvider = Provider.of<MarketplaceProvider>(context, listen: false);
-      await marketplaceProvider.loadItems();
+      try {
+        final marketplaceProvider =
+            Provider.of<MarketplaceProvider>(context, listen: false);
+        await marketplaceProvider.loadItems();
+      } catch (e) {
+        print('MarketplaceProvider not available: $e');
+      }
 
-      // Refresh ProfileProvider
-      final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
-      await profileProvider.loadUserListings();
+      try {
+        final profileProvider =
+            Provider.of<ProfileProvider>(context, listen: false);
+        await profileProvider.loadUserListings();
+      } catch (e) {
+        print('ProfileProvider not available: $e');
+      }
 
-      // Refresh SearchProvider
-      final searchProvider = Provider.of<SearchProvider>(context, listen: false);
-      await searchProvider.fetchRecommendations();
-
+      try {
+        final searchProvider =
+            Provider.of<SearchProvider>(context, listen: false);
+        await searchProvider.fetchRecommendations();
+      } catch (e) {
+        print('SearchProvider not available: $e');
+      }
     } catch (e) {
       _error = e.toString();
       notifyListeners();

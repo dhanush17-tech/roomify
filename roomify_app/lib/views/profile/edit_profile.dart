@@ -37,7 +37,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _ageController.text = user.age?.toString() ?? '';
       _selectedGender = user.gender;
       _selectedStatus = user.status;
-      
     }
   }
 
@@ -309,6 +308,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       await UserProvider.updateProfile(
+        context: context,
         status: _selectedStatus,
         displayName: _nameController.text,
         email: _emailController.text,

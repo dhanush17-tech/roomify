@@ -37,6 +37,7 @@ class _UserListingScreenState extends State<UserListingScreen>
                   (BuildContext context, bool innerBoxIsScrolled) {
                 return <Widget>[
                   SliverAppBar(
+                    backgroundColor: Colors.white,
                     elevation: 0,
                     leading: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -121,17 +122,24 @@ class _UserListingScreenState extends State<UserListingScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Delete Listing'),
+          title: Text('Delete Listing',
+              style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
           content: Text('Are you sure you want to delete this listing?'),
           actions: <Widget>[
             TextButton(
-              child: Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: Colors.black)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
               child: Text(
                 'Delete',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Colors.white),
               ),
               onPressed: () async {
                 Navigator.of(context).pop();

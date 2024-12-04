@@ -36,34 +36,62 @@ class SearchBarWidget extends StatefulWidget {
 class _SearchBarWidgetState extends State<SearchBarWidget> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey[300]!, width: 2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.search_rounded, size: 30, color: Colors.grey),
-          SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: widget.controller,
-              focusNode: widget.focusNode,
-              onEditingComplete: () {
-                //unfocus the text field
-                widget.focusNode.unfocus();
-                widget.onChanged(widget.controller.text);
-              },
-              decoration: InputDecoration(
-                hintText: "Search location...",
-                hintStyle: TextStyle(fontSize: 18, color: Colors.grey),
-                border: InputBorder.none,
+    return Hero(
+      tag: 'home_search_field',
+      child: Material(
+        color: Colors.transparent,
+        child: Row(
+          children: [
+            IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.arrow_back, color: Colors.black),
+              ),
+              onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.only(left: 13),
+            ),
+            SizedBox(
+              width: 10,
+            ),
+            Expanded(
+              child: TextField(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                onEditingComplete: () {
+                  widget.focusNode.unfocus();
+                  widget.onChanged(widget.controller.text);
+                },
+                decoration: InputDecoration(
+                  hintText: "Search for furniture, books...",
+                  hintStyle: TextStyle(color: Colors.grey, fontSize: 18),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: Colors.grey.withOpacity(0.3),
+                      width: 3,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: Colors.grey.withOpacity(0.3),
+                      width: 3,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+            SizedBox(width: 10),
+          ],
+        ),
       ),
     );
   }
@@ -185,8 +213,8 @@ class _SearchMapScreenState extends State<SearchMapScreen> {
           ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
+            left: 0,
+            right: 0,
             child: StatefulBuilder(
               builder: (context, setState) {
                 return SearchBarWidget(
@@ -226,39 +254,58 @@ class _SearchMapScreenState extends State<SearchMapScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5),
         ],
       ),
-      child: Consumer<SearchProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Searching...',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
+      child: Column(
+        children: [
+          // Tab indicator
+          Container(
+            margin: EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          SizedBox(height: 10),
+          // Results list
+          Expanded(
+            child: Consumer<SearchProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Searching...',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          if (provider.searchResults.isEmpty) {
-            return Center(child: Text("No results found"));
-          }
-          return ListView.builder(
-            controller: scrollController,
-            itemCount: provider.searchResults.length,
-            itemBuilder: (context, index) {
-              final property = provider.searchResults[index];
-              return PropertyCard(listing: property);
-            },
-          );
-        },
+                if (provider.searchResults.isEmpty) {
+                  return Center(child: Text("No results found"));
+                }
+                return ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                  controller: scrollController,
+                  itemCount: provider.searchResults.length,
+                  itemBuilder: (context, index) {
+                    final property = provider.searchResults[index];
+                    return PropertyCard(listing: property);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

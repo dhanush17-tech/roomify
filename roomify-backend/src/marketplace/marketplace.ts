@@ -16,12 +16,24 @@ app.get('/', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+        const userId = payload.sub;
+
+        // Extract price range from query parameters
+        const { minPrice, maxPrice } = c.req.query();
+
         const items = await prisma.listing.findMany({
             where: {
-                type: 'Marketplace'
+                NOT: { userId },
+                type: 'Marketplace',
+                // Add price range filtering
+                ...(minPrice && { price: { gte: parseFloat(minPrice) } }),
+                ...(maxPrice && { price: { lte: parseFloat(maxPrice) } })
             },
             include: {
                 user: true,
+
 
                 marketplace: {
                     include: {
@@ -54,6 +66,11 @@ app.get('/search', async (c) => {
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
+
+
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+        const userId = payload.sub;
 
         const searchConditions: any = {
             type: 'Marketplace',
@@ -89,7 +106,10 @@ app.get('/search', async (c) => {
         }
 
         const items = await prisma.listing.findMany({
-            where: searchConditions,
+            where: {
+                ...searchConditions,
+                NOT: { userId }
+            },
             include: {
                 user: true,
 
@@ -126,11 +146,16 @@ app.get('/suggestions', async (c) => {
             return c.json({ suggestions: [] });
         }
 
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+        const userId = payload.sub;
+
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
         const searchConditions: any = {
             type: 'Marketplace',
         };
+
         searchConditions.OR = [
             {
                 location: {
@@ -152,8 +177,10 @@ app.get('/suggestions', async (c) => {
 
         // Get distinct values matching the query
         const listings = await prisma.listing.findMany({
-            where:
-                searchConditions,
+            where: {
+                ...searchConditions,
+                NOT: { userId }
+            },
             include: {
                 user: true,
 

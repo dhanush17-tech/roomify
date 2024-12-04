@@ -69,15 +69,26 @@ class MarketplaceRepository {
     }
   }
 
-  Future<List<Listing>> getMarketplaceItems() async {
+  Future<List<Listing>> getMarketplaceItems(
+      {double? minPrice, double? maxPrice}) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       };
+
+      // Build URL with query parameters
+      var uri = Uri.parse('$baseUrl/api/marketplace');
+      if (minPrice != null || maxPrice != null) {
+        final queryParams = <String, String>{};
+        if (minPrice != null) queryParams['minPrice'] = minPrice.toString();
+        if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/marketplace'),
+        uri,
         headers: _headers,
       );
 

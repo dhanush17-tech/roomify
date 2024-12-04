@@ -12,9 +12,11 @@ class MarketplaceProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   Timer? _debounceTimer;
+  double? _minPrice;
+  double? _maxPrice;
 
   MarketplaceProvider(this._repository, this.context) {
-    loadItems();
+    Future.microtask(() => loadItems());
   }
 
   List<Listing> get items => _items;
@@ -22,17 +24,29 @@ class MarketplaceProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  double? get minPrice => _minPrice;
+  double? get maxPrice => _maxPrice;
+
+  void setPriceRange(double? min, double? max) {
+    _minPrice = min;
+    _maxPrice = max;
+    loadItems();
+  }
+
   Future<void> loadItems() async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
-      _items = await _repository.getMarketplaceItems();
-      print(items);
-      _isLoading = false;
-      notifyListeners();
+      _items = await _repository.getMarketplaceItems(
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
+      );
     } catch (e) {
       _error = e.toString();
+      _items = [];
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
@@ -116,5 +130,11 @@ class MarketplaceProvider extends ChangeNotifier {
     _searchSuggestions = [];
     notifyListeners();
   }
- 
+
+  void clearItems() {
+    _items = [];
+    _searchSuggestions = [];
+    _error = null;
+    notifyListeners();
+  }
 }
