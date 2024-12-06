@@ -34,6 +34,7 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
   ];
 
   final Map<int, bool> _removingImages = {};
+  final Map<int, bool> _addingImages = {};
 
   Future<void> _pickImages() async {
     final ImagePicker picker = ImagePicker();
@@ -41,8 +42,22 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
 
     if (images.isNotEmpty) {
       setState(() {
-        _selectedImages.addAll(images.map((image) => File(image.path)));
+        for (var image in images) {
+          _selectedImages.add(File(image.path));
+          _addingImages[_selectedImages.length - 1] = true;
+        }
       });
+
+      await Future.delayed(Duration(milliseconds: 50));
+
+      for (var i = _selectedImages.length - images.length;
+          i < _selectedImages.length;
+          i++) {
+        setState(() {
+          _addingImages.remove(i);
+        });
+        await Future.delayed(Duration(milliseconds: 50));
+      }
     }
   }
 
@@ -103,70 +118,59 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
   }
 
   Widget _buildImagePreview(File image, int index) {
-    return TweenAnimationBuilder(
-      key: ValueKey(index),
-      duration: Duration(milliseconds: 1500),
-      curve: Curves.fastLinearToSlowEaseIn,
-      tween: Tween<double>(
-        begin: _removingImages[index] == true ? 1.0 : 1.0,
-        end: _removingImages[index] == true ? 0.0 : 1.0,
-      ),
-      onEnd: () {
-        if (_removingImages[index] == true) {
-          setState(() {
-            _selectedImages.removeAt(index);
-            _removingImages.remove(index);
-          });
-        }
-      },
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              width: 120,
-              height: 120,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      image,
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _removingImages[index] = true;
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: blueColor,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+    return AnimatedOpacity(
+      duration: Duration(milliseconds: 300),
+      opacity: _addingImages[index] == true ? 0.0 : 1.0,
+      child: AnimatedScale(
+        duration: Duration(milliseconds: 300),
+        scale: _addingImages[index] == true ? 0.0 : 1.0,
+        child: Container(
+          width: 120,
+          height: 120,
+          child: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  image,
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _removingImages[index] = true;
+                    });
+                    Future.delayed(Duration(milliseconds: 300), () {
+                      setState(() {
+                        _selectedImages.removeAt(index);
+                        _removingImages.remove(index);
+                      });
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      color: blueColor,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

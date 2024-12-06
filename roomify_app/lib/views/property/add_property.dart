@@ -83,20 +83,23 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     if (images.isNotEmpty) {
       setState(() {
-        // Add all images at once
         for (var image in images) {
           _selectedImages.add(File(image.path));
           _addingImages[_selectedImages.length - 1] = true;
         }
       });
 
-      // Trigger animations sequentially but without delay
-      for (var i = 0; i < images.length; i++) {
-        Future.microtask(() {
-          setState(() {
-            _addingImages.remove(i);
-          });
+      // Add a slight delay before removing the animation state
+      await Future.delayed(Duration(milliseconds: 50));
+
+      for (var i = _selectedImages.length - images.length;
+          i < _selectedImages.length;
+          i++) {
+        setState(() {
+          _addingImages.remove(i);
         });
+        // Add a small delay between each image animation
+        await Future.delayed(Duration(milliseconds: 50));
       }
     }
   }
@@ -769,35 +772,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             runSpacing: 8,
             children: [
               ..._selectedImages.asMap().entries.map(
-                    (entry) => TweenAnimationBuilder(
-                      key: ValueKey(entry.key),
-                      duration: Duration(milliseconds: 1500),
-                      curve: Curves.fastLinearToSlowEaseIn,
-                      tween: Tween<double>(
-                        begin: _addingImages[entry.key] == true ||
-                                _removingImages[entry.key] == true
-                            ? 0.0
-                            : 1.0,
-                        end: _removingImages[entry.key] == true ? 0.0 : 1.0,
-                      ),
-                      onEnd: () {
-                        if (_removingImages[entry.key] == true) {
-                          setState(() {
-                            _selectedImages.removeAt(entry.key);
-                            _removingImages.remove(entry.key);
-                          });
-                        }
-                      },
-                      builder: (context, double value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Opacity(
-                            opacity: value,
-                            child: _buildImagePreview(entry.value, entry.key),
-                          ),
-                        );
-                      },
-                    ),
+                    (entry) => _buildImagePreview(entry.value, entry.key),
                   ),
               InkWell(
                 onTap: _pickImages,
@@ -824,41 +799,58 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }
 
   Widget _buildImagePreview(File image, int index) {
-    return Container(
-      width: 120,
-      height: 120,
-      margin: EdgeInsets.all(4),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(
-              image,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _removingImages[index] = true;
-                });
-              },
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
+    return AnimatedOpacity(
+      duration: Duration(milliseconds: 300),
+      opacity: _addingImages[index] == true ? 0.0 : 1.0,
+      child: AnimatedScale(
+        duration: Duration(milliseconds: 300),
+        scale: _addingImages[index] == true ? 0.0 : 1.0,
+        child: Container(
+          width: 120,
+          height: 120,
+          child: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  image,
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.cover,
                 ),
-                child: Icon(Icons.close, color: blueColor, size: 16),
               ),
-            ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _removingImages[index] = true;
+                    });
+                    Future.delayed(Duration(milliseconds: 300), () {
+                      setState(() {
+                        _selectedImages.removeAt(index);
+                        _removingImages.remove(index);
+                      });
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      color: blueColor,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
