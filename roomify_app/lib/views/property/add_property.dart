@@ -9,6 +9,7 @@ import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils.dart';
+import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/widgets/mapbox_widget.dart';
 import 'package:intl/intl.dart';
 
@@ -38,6 +39,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   DateTime? _moveOutDate;
   String? moveInDate;
   String? moveOutDate;
+  final _customFeatureController = TextEditingController();
+  final List<String> _customFeatures = [];
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  final Map<int, bool> _removingImages = {};
+  final Map<int, bool> _addingImages = {};
 
   String capitalizeWords(String text) {
     if (text.isEmpty) return text;
@@ -45,6 +51,15 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       if (word.isEmpty) return word;
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     }).join(' ');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with default values
+    _bedroomsController.text = '0';
+    _bathroomsController.text = '0';
+    _maxOccController.text = '0';
   }
 
   @override
@@ -58,6 +73,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     _bedroomsController.dispose();
     _maxOccController.dispose();
     _addressController.dispose();
+    _customFeatureController.dispose();
     super.dispose();
   }
 
@@ -67,8 +83,21 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     if (images.isNotEmpty) {
       setState(() {
-        _selectedImages.addAll(images.map((xFile) => File(xFile.path)));
+        // Add all images at once
+        for (var image in images) {
+          _selectedImages.add(File(image.path));
+          _addingImages[_selectedImages.length - 1] = true;
+        }
       });
+
+      // Trigger animations sequentially but without delay
+      for (var i = 0; i < images.length; i++) {
+        Future.microtask(() {
+          setState(() {
+            _addingImages.remove(i);
+          });
+        });
+      }
     }
   }
 
@@ -265,393 +294,410 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.read<AuthProvider>().user;
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Add Property'),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).padding.top),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Add Property",
+                          style: TextStyle(
+                            color: orangeColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 25,
+                          ),
+                        ),
+                        IconButton(
+                          style: IconButton.styleFrom(
+                            padding: EdgeInsets.all(10),
+                            backgroundColor: Colors.grey[200],
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Listing Title',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter property title',
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      validator: (value) =>
+                          value!.isEmpty ? 'Please enter a title' : null,
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      'Property category',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _buildCategoryChip('Apartment', Icons.apartment),
+                        _buildCategoryChip('Villa', Icons.villa),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+                    _buildImageList(),
+                    SizedBox(height: 24),
+                    Text(
+                      'Location',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    _buildAddressField(),
+                    SizedBox(height: 24),
+                    Text(
+                      'Rent Price',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _priceController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              hintText: 'Enter price',
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              prefixIcon: Icon(Icons.attach_money),
+                            ),
+                            validator: (value) =>
+                                value!.isEmpty ? 'Please enter a price' : null,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              _buildPriceTypeButton('Monthly', true),
+                              _buildPriceTypeButton('Yearly', false),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      'Property Features',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    _buildFeatureCounter('Bedroom', _bedroomsController),
+                    SizedBox(height: 12),
+                    _buildFeatureCounter('Bathroom', _bathroomsController),
+                    SizedBox(height: 12),
+                    _buildFeatureCounter('Max Occupancy', _maxOccController),
+                    SizedBox(height: 24),
+                    Text(
+                      'Environment / Facilities',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            _buildAmenityChip('Parking Lot'),
+                            _buildAmenityChip('Pet Allowed'),
+                            _buildAmenityChip('Garden'),
+                            _buildAmenityChip('Gym'),
+                            _buildAmenityChip('Park'),
+                            _buildAmenityChip('Home theatre'),
+                            _buildAmenityChip("Kid's Friendly"),
+                            ..._customFeatures
+                                .map((feature) => _buildAmenityChip(feature)),
+                            InkWell(
+                              onTap: _showAddFeatureDialog,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.add,
+                                        size: 18, color: Colors.grey[600]),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Add Feature',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _handleSubmit(user!),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Add Property',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildCategoryChip(String label, IconData icon) {
+    PropertyCategory? getCategory() {
+      switch (label) {
+        case 'House':
+          return PropertyCategory.PrivateResidence;
+        case 'Apartment':
+          return PropertyCategory.Apartment;
+
+        default:
+          return PropertyCategory.Apartment;
+      }
+    }
+
+    final category = getCategory();
+    final isSelected =
+        category != null && _selectedCategories.contains(category);
+
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isSelected ? Colors.white : Colors.grey[600],
+          ),
+          SizedBox(width: 8),
+          Text(label),
+        ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: EdgeInsets.all(16),
-          children: [
-            // Images Section
-            Container(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _selectedImages.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == _selectedImages.length) {
-                    return _buildAddImageButton();
-                  }
-                  return _buildImagePreview(_selectedImages[index], index);
+      selected: isSelected,
+      onSelected: (bool selected) {
+        if (category != null) {
+          setState(() {
+            if (selected) {
+              _selectedCategories.add(category);
+            } else {
+              _selectedCategories.remove(category);
+            }
+          });
+        }
+      },
+      selectedColor: Theme.of(context).primaryColor,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black87,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? Colors.transparent : Colors.grey[300]!,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmenityChip(String label) {
+    final isSelected = _selectedAmenities.contains(label);
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        setState(() {
+          if (selected) {
+            _selectedAmenities.add(label);
+          } else {
+            _selectedAmenities.remove(label);
+          }
+        });
+      },
+      selectedColor: orangeColor.withOpacity(0.2),
+      checkmarkColor: orangeColor,
+      labelStyle: TextStyle(
+        color: isSelected ? orangeColor : Colors.black87,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? orangeColor : Colors.grey[300]!,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCounter(String label, TextEditingController controller) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.remove),
+                onPressed: () {
+                  setState(() {
+                    final currentValue = int.tryParse(controller.text) ?? 0;
+                    if (currentValue > 0) {
+                      controller.text = (currentValue - 1).toString();
+                    }
+                  });
                 },
-              ),
-            ),
-
-            SizedBox(height: 20),
-
-            // Title
-            TextFormField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hintText: 'Enter property title',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a title';
-                }
-                if (value.length < 5) {
-                  return 'Title must be at least 5 characters long';
-                }
-                if (value.length > 100) {
-                  return 'Title must be less than 100 characters';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 16),
-
-            // Description
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hintText: 'Describe your property',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a description';
-                }
-                if (value.length < 20) {
-                  return 'Description must be at least 20 characters long';
-                }
-                if (value.length > 1000) {
-                  return 'Description must be less than 1000 characters';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 16),
-
-            // Location and Price
-
-            SizedBox(
-              height: 10,
-            ),
-            // Number of Rooms
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _bedroomsController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Number of Bedrooms',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      hintText: 'Enter number of bedrooms',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      final bedrooms = int.tryParse(value);
-                      if (bedrooms == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (bedrooms <= 0) {
-                        return 'Must have at least 1 bedroom';
-                      }
-                      if (bedrooms > 20) {
-                        return 'Number seems too high';
-                      }
-                      return null;
-                    },
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  padding: EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _bathroomsController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Number of Bathrooms',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      hintText: 'Enter number of bathrooms',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      final bathrooms = int.tryParse(value);
-                      if (bathrooms == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (bathrooms <= 0) {
-                        return 'Must have at least 1 bathroom';
-                      }
-                      if (bathrooms > 20) {
-                        return 'Number seems too high';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 20),
-            TextFormField(
-              controller: _maxOccController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Max Occupancy',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hintText: 'Enter maximum number of occupants',
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Required';
-                }
-                final occupancy = int.tryParse(value);
-                if (occupancy == null) {
-                  return 'Please enter a valid number';
-                }
-                if (occupancy <= 0) {
-                  return 'Must allow at least 1 occupant';
-                }
-                if (occupancy > 50) {
-                  return 'Number seems too high';
-                }
-                return null;
-              },
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            // Amenities
-            Text(
-              'Amenities',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Wrap(
-              spacing: 8,
-              children: [
-                'Wi-Fi',
-                'Parking',
-                'Gym',
-                'Pool',
-                'Laundry',
-                'AC',
-                'Security',
-                'Furnished',
-              ]
-                  .map((amenity) => FilterChip(
-                        label: Text(amenity),
-                        selected: _selectedAmenities.contains(amenity),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedAmenities.add(amenity);
-                            } else {
-                              _selectedAmenities.remove(amenity);
-                            }
-                          });
-                        },
-                      ))
-                  .toList(),
-            ),
-            SizedBox(height: 20),
-
-            // Categories Section
-            _buildAddressField(),
-            SizedBox(
-              height: 20,
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _locationController,
-                    decoration: InputDecoration(
-                      labelText: 'Location',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Price/month',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixText: '\$',
-                      hintText: 'Enter monthly rent',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a price';
-                      }
-                      final price = int.tryParse(value);
-                      if (price == null) {
-                        return 'Please enter a valid number';
-                      }
-                      if (price <= 0) {
-                        return 'Price must be greater than 0';
-                      }
-                      if (price > 1000000) {
-                        return 'Price seems too high';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              'Categories',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: PropertyCategory.values.map((category) {
-                return FilterChip(
-                  label: Text(category.displayName),
-                  selected: _selectedCategories.contains(category),
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedCategories.add(category);
-                      } else {
-                        _selectedCategories.remove(category);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Text(
-                  'Will you be living with the roommate',
+              Container(
+                width: 40,
+                alignment: Alignment.center,
+                child: Text(
+                  controller.text,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Checkbox(
-                  value: isLookingForRoomate,
-                  onChanged: (value) {
-                    setState(() {
-                      isLookingForRoomate = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-
-            SizedBox(height: 16),
-
-            // Move In Date Picker
-            TextFormField(
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Move In Date',
-                hintText:
-                    moveInDate != null ? moveInDate : 'Select Move In Date',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+              ),
+              IconButton(
+                icon: Icon(Icons.add),
+                onPressed: () {
+                  setState(() {
+                    final currentValue = int.tryParse(controller.text) ?? 0;
+                    controller.text = (currentValue + 1).toString();
+                  });
+                },
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  padding: EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.grey[300]!),
+                  ),
                 ),
               ),
-              onTap: () => _selectDate(context, true),
-              validator: (value) {
-                if (moveInDate == null) {
-                  return 'Please select a move-in date'; // Validation message
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 16),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Move Out Date Picker
-            TextFormField(
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Move Out Date',
-                hintText:
-                    moveOutDate != null ? moveOutDate : 'Select Move Out Date',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onTap: () => _selectDate(context, false),
-              validator: (value) {
-                if (moveOutDate == null) {
-                  return 'Please select a move-out date'; // Validation message
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 16),
-
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading
-                  ? null
-                  : () => _handleSubmit(context.read<AuthProvider>().user!),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isLoading
-                  ? CircularProgressIndicator(color: Colors.white)
-                  : Text('Add Property'),
-            ),
-          ],
+  Widget _buildPriceTypeButton(String label, bool isMonthly) {
+    return TextButton(
+      onPressed: () {
+        // Implement price type toggle logic
+      },
+      style: TextButton.styleFrom(
+        backgroundColor:
+            isMonthly ? Theme.of(context).primaryColor : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isMonthly ? Colors.white : Colors.black87,
         ),
       ),
     );
@@ -661,10 +707,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Address',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
         SizedBox(height: 8),
         MapBoxAutoCompleteWidget(
           hint: "Enter property address",
@@ -707,55 +749,161 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     );
   }
 
-  Widget _buildAddImageButton() {
-    return InkWell(
-      onTap: _pickImages,
-      child: Container(
-        width: 100,
-        margin: EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(12),
+  Widget _buildImageList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Listing Photos',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
-        child: Icon(Icons.add_photo_alternate, size: 40),
-      ),
+        SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ..._selectedImages.asMap().entries.map(
+                    (entry) => TweenAnimationBuilder(
+                      key: ValueKey(entry.key),
+                      duration: Duration(milliseconds: 1500),
+                      curve: Curves.fastLinearToSlowEaseIn,
+                      tween: Tween<double>(
+                        begin: _addingImages[entry.key] == true ||
+                                _removingImages[entry.key] == true
+                            ? 0.0
+                            : 1.0,
+                        end: _removingImages[entry.key] == true ? 0.0 : 1.0,
+                      ),
+                      onEnd: () {
+                        if (_removingImages[entry.key] == true) {
+                          setState(() {
+                            _selectedImages.removeAt(entry.key);
+                            _removingImages.remove(entry.key);
+                          });
+                        }
+                      },
+                      builder: (context, double value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Opacity(
+                            opacity: value,
+                            child: _buildImagePreview(entry.value, entry.key),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              InkWell(
+                onTap: _pickImages,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 32,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildImagePreview(File image, int index) {
-    return Stack(
-      children: [
-        Container(
-          width: 100,
-          margin: EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
+    return Container(
+      width: 120,
+      height: 120,
+      margin: EdgeInsets.all(4),
+      child: Stack(
+        children: [
+          ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: FileImage(image),
+            child: Image.file(
+              image,
+              width: 120,
+              height: 120,
               fit: BoxFit.cover,
             ),
           ),
-        ),
-        Positioned(
-          top: 4,
-          right: 12,
-          child: InkWell(
-            onTap: () {
-              setState(() {
-                _selectedImages.removeAt(index);
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
+          Positioned(
+            top: 8,
+            right: 8,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _removingImages[index] = true;
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close, color: blueColor, size: 16),
               ),
-              child: Icon(Icons.close, color: Colors.white, size: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddFeatureDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Add Custom Feature',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: _customFeatureController,
+          decoration: InputDecoration(
+            hintText: 'Swimming Pool',
+            hintStyle: TextStyle(
+                fontSize: 14, color: Colors.grey[600]!.withOpacity(0.3)),
+            filled: true,
+            fillColor: Colors.grey[100],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
           ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (_customFeatureController.text.isNotEmpty) {
+                setState(() {
+                  _customFeatures.add(_customFeatureController.text.trim());
+                  _customFeatureController.clear();
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 }

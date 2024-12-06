@@ -45,14 +45,13 @@ class MyApp extends StatelessWidget {
           Provider<ProfileUpdateRepo>(
             create: (_) => ProfileUpdateRepo(),
           ),
-
           ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
             create: (context) => AuthProvider(context.read<AuthRepository>()),
             update: (context, authRepo, previous) =>
                 previous ?? AuthProvider(authRepo),
           ),
-
-          ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo, ProfileProvider>(
+          ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo,
+              ProfileProvider>(
             create: (context) => ProfileProvider(
               context.read<ProfileUpdateRepo>(),
               context,
@@ -60,8 +59,8 @@ class MyApp extends StatelessWidget {
             update: (context, authRepo, profileRepo, previous) =>
                 previous ?? ProfileProvider(profileRepo, context),
           ),
-
-          ChangeNotifierProxyProvider2<AuthRepository, PropertyRepository, PropertyProvider>(
+          ChangeNotifierProxyProvider2<AuthRepository, PropertyRepository,
+              PropertyProvider>(
             create: (context) => PropertyProvider(
               context.read<PropertyRepository>(),
               context,
@@ -69,8 +68,8 @@ class MyApp extends StatelessWidget {
             update: (context, authRepo, propRepo, previous) =>
                 previous ?? PropertyProvider(propRepo, context),
           ),
-
-          ChangeNotifierProxyProvider2<AuthRepository, MarketplaceRepository, MarketplaceProvider>(
+          ChangeNotifierProxyProvider2<AuthRepository, MarketplaceRepository,
+              MarketplaceProvider>(
             create: (context) => MarketplaceProvider(
               context.read<MarketplaceRepository>(),
               context,
@@ -78,7 +77,6 @@ class MyApp extends StatelessWidget {
             update: (context, authRepo, marketRepo, previous) =>
                 previous ?? MarketplaceProvider(marketRepo, context),
           ),
-
           Provider<RoommateMatchRepository>(
             create: (_) => RoommateMatchRepository(),
           ),
@@ -90,7 +88,6 @@ class MyApp extends StatelessWidget {
             update: (context, repository, previous) =>
                 previous ?? RoommateMatchProvider(repository),
           ),
-
           Provider<SearchRepository>(
             create: (_) => SearchRepository(),
           ),
@@ -130,7 +127,7 @@ class MyApp extends StatelessWidget {
               seedColor: orangeColor,
             ).copyWith(
               secondary: Colors.orange,
-              primary: Colors.orange.withOpacity(0.5),
+              primary: Colors.orange,
             ),
             textTheme: GoogleFonts.rubikTextTheme(),
           ),

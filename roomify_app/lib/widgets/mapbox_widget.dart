@@ -91,17 +91,36 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
           controller: _searchController,
           decoration: InputDecoration(
             hintText: widget.hint,
-            prefixIcon: Icon(Icons.location_on),
-            suffixIcon: _isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : null,
+            filled: true,
+            fillColor: Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            prefixIcon: Icon(Icons.location_on_outlined),
+            suffixIcon: _isLoading
+                ? Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
           ),
           onChanged: (value) {
             if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -114,11 +133,11 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
           Container(
             margin: EdgeInsets.only(top: 4),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: Offset(0, 5),
                 ),
@@ -131,16 +150,27 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
               itemBuilder: (context, index) {
                 final place = _suggestions[index];
                 return ListTile(
-                  leading: Icon(Icons.location_on_outlined),
+                  leading: Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.grey[600],
+                  ),
                   title: Text(
                     place.placeName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
                   ),
                   subtitle: Text(
                     '${place.city ?? ''}, ${place.state ?? ''}'.trim(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
                   ),
                   onTap: () {
                     _searchController.text = place.placeName;

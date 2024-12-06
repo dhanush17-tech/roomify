@@ -16,6 +16,8 @@ import 'package:roomify_app/views/home/search_screen.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/widgets/location_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:fade_shimmer/fade_shimmer.dart';
 
 class HomeScreen extends StatefulWidget {
   User user;
@@ -81,7 +83,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               text: 'Houses',
                               style: TextStyle(
                                 fontSize: 24,
-                                
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange,
                               ),
@@ -164,18 +165,36 @@ class _HomeScreenState extends State<HomeScreen> {
               Consumer<PropertyProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoading) {
-                    return Center(child: CircularProgressIndicator());
+                    return _fadeShimmerSearchListView();
                   }
 
-                  return ListView.separated(
-                    separatorBuilder: (context, index) => SizedBox(height: 20),
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: provider.pairUpListings.length,
-                    itemBuilder: (context, index) {
-                      final listing = provider.pairUpListings[index];
-                      return PropertyCard(listing: listing);
-                    },
+                  return AnimationLimiter(
+                    child: ListView.separated(
+                      separatorBuilder: (context, index) =>
+                          SizedBox(height: 20),
+                      shrinkWrap: true,
+                      physics: BouncingScrollPhysics(),
+                      itemCount: provider.pairUpListings.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final listing = provider.pairUpListings[index];
+                        return AnimationConfiguration.staggeredList(
+                          position: index,
+                          delay: Duration(milliseconds: 00),
+                          child: SlideAnimation(
+                            duration: Duration(milliseconds: 2000),
+                            curve: Curves.fastLinearToSlowEaseIn,
+                            horizontalOffset: 0,
+                            verticalOffset: 300.0,
+                            child: FlipAnimation(
+                              duration: Duration(milliseconds: 3000),
+                              curve: Curves.fastLinearToSlowEaseIn,
+                              flipAxis: FlipAxis.y,
+                              child: PropertyCard(listing: listing),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
@@ -183,6 +202,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _fadeShimmerSearchListView() {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: 5, // Number of shimmer items to show
+      separatorBuilder: (context, index) => SizedBox(height: 20),
+      itemBuilder: (context, index) {
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FadeShimmer(
+                height: 200,
+                width: double.infinity,
+                radius: 12,
+                highlightColor: Colors.grey[200]!,
+                baseColor: Colors.grey[300]!,
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  FadeShimmer(
+                    height: 15,
+                    width: 100,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                  FadeShimmer(
+                    height: 15,
+                    width: 50,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              FadeShimmer(
+                height: 20,
+                width: double.infinity,
+                radius: 4,
+                highlightColor: Colors.grey[200]!,
+                baseColor: Colors.grey[300]!,
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  FadeShimmer(
+                    height: 15,
+                    width: 150,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                  Spacer(),
+                  FadeShimmer(
+                    height: 15,
+                    width: 80,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
