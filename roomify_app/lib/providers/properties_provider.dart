@@ -27,10 +27,10 @@ class PropertyProvider extends ChangeNotifier {
   void setCoordinates(double latitude, double longitude) async {
     _latitude = latitude;
     _longitude = longitude;
-    
+
     await Provider.of<AuthProvider>(context, listen: false)
         .refreshAllProviders(context);
-    
+
     notifyListeners();
   }
 
@@ -69,7 +69,6 @@ class PropertyProvider extends ChangeNotifier {
       // Refresh all providers
       await Provider.of<AuthProvider>(context, listen: false)
           .refreshAllProviders(context);
-
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -127,10 +126,10 @@ class PropertyProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-      
+
       // Get favorites from repository
       _favorites = await _repository.getFavorites();
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -143,7 +142,7 @@ class PropertyProvider extends ChangeNotifier {
   Future<void> toggleFavorite(Listing listing) async {
     try {
       final isFavorite = _favorites.any((item) => item.id == listing.id);
-      
+
       if (isFavorite) {
         // Remove from favorites
         await _repository.removeFavorite(listing.id);

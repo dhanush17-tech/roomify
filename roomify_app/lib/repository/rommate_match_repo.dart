@@ -27,15 +27,17 @@ class RoommateMatchRepository {
     }
   }
 
-  Future<void> recordSwipe(String userId, String direction) async {
+  Future<User?> recordSwipe(String userId, String direction) async {
     try {
       final token = await AuthRepository().getToken();
-      await http.post(Uri.parse('$baseUrl/api/roommate-match/swipe'), headers: {
-        'Authorization': 'Bearer $token',
-      }, body: {
-        'userId': userId,
-        'direction': direction,
-      });
+      final response =
+          await http.post(Uri.parse('$baseUrl/api/roommate-match/swipe'),
+              headers: {
+                'Authorization': 'Bearer $token',
+              },
+              body: json.encode({'userId': userId, 'direction': direction}));
+      final data = jsonDecode(response.body);
+      return data['matched'] ? User.fromJson(data['matchedUser']) : null;
     } catch (e) {
       throw Exception('Failed to record swipe');
     }

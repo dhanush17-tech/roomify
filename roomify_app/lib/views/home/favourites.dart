@@ -52,8 +52,9 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                   (BuildContext context, bool innerBoxIsScrolled) {
                 return <Widget>[
                   SliverAppBar(
+                    pinned: true,
                     elevation: 0,
-                    backgroundColor: Colors.white,
+                    backgroundColor: Colors.transparent,
                     leading: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black),
                       onPressed: () => Navigator.pop(context),

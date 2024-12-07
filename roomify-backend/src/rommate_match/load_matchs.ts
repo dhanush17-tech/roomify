@@ -90,14 +90,7 @@ app.get('/', async (c) => {
 
                         description: true,
                         createdAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true,
-                                email: true,
-                            }
-                        },
+                        user: true,
                         location: true,
                         price: true,
                         isFavorite: true,
@@ -124,43 +117,83 @@ app.get('/', async (c) => {
                 },
             },
             orderBy: [
-                { university: currentUser.university ? 'asc' : undefined },
-                { location: currentUser.location ? 'asc' : undefined },
-                { createdAt: 'desc' }
-            ].filter(order => Object.values(order)[0] !== undefined),
+                currentUser.university ? { university: 'asc' as const } : null,
+                currentUser.location ? { location: 'asc' as const } : null,
+                { createdAt: 'desc' as const }
+            ].filter(Boolean) as any,
             take: 50
         });
 
-        const matches = potentialMatches.map((user: any) => ({
-            ...user,
-            matchPercentage: calculateMatchPercentage(currentUser, user),
-            listings: user.listings.map((listing: any) => ({
-                ...listing,
-                property: listing.property ? {
-                    ...listing.property,
-                    amenities: listing.property.amenities.map((a: any) => a.amenity),
-                    tags: listing.property.tags.map((t: any) => t.tag),
-                    imageUrls: listing.property.images.map((i: any) => i.imageUrl)
-                } : null
-            })),
-            amenities: user.listings
-                .map((listing: any) => listing.property?.amenities?.map((amenity: any) => amenity.amenity))
-                .flat()
-                .join(', ')
-        }));
+        const matches = potentialMatches.map((user: any) => {
+            const matchScore = calculateMatchPercentage(currentUser, user);
+            return {
+                ...user,
+                matchPercentage: matchScore,
+                listings: user.listings.map((listing: any) => ({
+                    ...listing,
+                    property: listing.property ? {
+                        ...listing.property,
+                        amenities: listing.property.amenities == null ?
+                            [] :
+                            listing.property.amenities.map((amenity: any) => amenity.amenity),
+                        tags: listing.property.tags ?
+                            listing.property.tags.map((t: any) => t.tag) :
+                            [],
+                        imageUrls: listing.property.images ?
+                            listing.property.images.map((i: any) => i.imageUrl) :
+                            []
+                    } : null
+                })),
+            };
+        });
 
+        // Sort matches based on multiple criteria
+        const sortedMatches = matches.sort((a, b) => {
+            // First, prioritize match percentage
+            if (a.matchPercentage !== b.matchPercentage) {
+                return b.matchPercentage - a.matchPercentage;
+            }
 
-        console.log(matches.map((match: any) => match.listings.map((listing: any) => listing.property.amenities)));
-        return c.json({ matches });
-    } catch (error) {
+            // Then consider university match if user has a preference
+            if (currentUser.university) {
+                const aUniversityMatch = a.university === currentUser.university;
+                const bUniversityMatch = b.university === currentUser.university;
+                if (aUniversityMatch !== bUniversityMatch) {
+                    return aUniversityMatch ? -1 : 1;
+                }
+            }
+
+            // Then consider location match if user has a preference
+            if (currentUser.location) {
+                const aLocationMatch = a.location === currentUser.location;
+                const bLocationMatch = b.location === currentUser.location;
+                if (aLocationMatch !== bLocationMatch) {
+                    return aLocationMatch ? -1 : 1;
+                }
+            }
+
+            // Consider age proximity if both users have age
+            if (currentUser.age && a.age && b.age) {
+                const aAgeDiff = Math.abs(currentUser.age - a.age);
+                const bAgeDiff = Math.abs(currentUser.age - b.age);
+                if (aAgeDiff !== bAgeDiff) {
+                    return aAgeDiff - bAgeDiff;
+                }
+            }
+
+            // Finally, sort by most recent
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        return c.json({ matches: sortedMatches });
+    } catch (error: any) {
         console.error('Roommate match error:', error);
         return c.json({
             error: 'Failed to fetch matches',
-            details: error.message
+            details: error?.message || 'Unknown error'
         }, 500);
     }
 });
-
 
 app.post('/swipe', async (c) => {
     try {
@@ -177,51 +210,113 @@ app.post('/swipe', async (c) => {
         }
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
-        // Record the swipe
-        await prisma.roommateSwipe.create({
-            data: {
+
+        // Check if the swipe is already recorded
+        const existingSwipe = await prisma.roommateSwipe.findFirst({
+            where: {
                 swiperId: currentUserId,
                 swipedId: userId,
-                direction: direction,
-                createdAt: new Date(),
+                direction: direction
             }
         });
 
-        // Check for match if it's a right swipe
-        if (direction === 'right') {
-            const mutualSwipe = await prisma.roommateSwipe.findFirst({
-                where: {
-                    swiperId: userId,
-                    swipedId: currentUserId,
-                    direction: 'right'
-                }
-            });
-
-            if (mutualSwipe) {
-                // Create a match
-                await prisma.roommateMatch.create({
-                    data: {
-                        user1Id: currentUserId,
-                        user2Id: userId,
-                        matchedAt: new Date()
+        if (existingSwipe) {
+            // Check for match if it's a right swipe
+            if (direction === 'right') {
+                const mutualSwipe = await prisma.roommateSwipe.findFirst({
+                    where: {
+                        swiperId: userId,
+                        swipedId: currentUserId,
+                        direction: 'right'
                     }
                 });
 
+                if (mutualSwipe) {
+                    // Match already exists, return match and matchedUser
+                    const matchedUser = await prisma.user.findUnique({
+                        where: { id: userId }
+                    });
+                    return c.json({
+                        matched: true,
+                        matchedUser: matchedUser
+                    });
+                } else {
+                    // No match, return success but not matched
+                    return c.json({
+                        matched: false,
+                        success: true
+                    });
+                }
+            } else {
+                // If it's not a right swipe, just return success
                 return c.json({
-                    matched: true,
-                    matchedUser: await prisma.user.findUnique({
-                        where: { id: userId },
-                        select: {
-                            id: true,
-                            displayName: true,
-                            profileImageUrl: true
+                    matched: false,
+                    success: true
+                });
+            }
+        } else {
+            // If the swipe is not already recorded, create or update it
+            await prisma.roommateSwipe.upsert({
+                where: {
+                    swiperId_swipedId: {
+                        swiperId: currentUserId,
+                        swipedId: userId
+                    }
+                },
+                update: {
+                    direction: direction,
+                },
+                create: {
+                    swiperId: currentUserId,
+                    swipedId: userId,
+                    direction: direction,
+                    createdAt: new Date(),
+                }
+            });
+
+            // Check for match if it's a right swipe
+            if (direction === 'right') {
+                const mutualSwipe = await prisma.roommateSwipe.findFirst({
+                    where: {
+                        swiperId: userId,
+                        swipedId: currentUserId,
+                        direction: 'right'
+                    }
+                });
+
+                if (mutualSwipe) {
+                    // Create a match
+                    await prisma.roommateMatch.create({
+                        data: {
+                            user1Id: currentUserId,
+                            user2Id: userId,
+                            matchedAt: new Date()
                         }
-                    })
+                    });
+
+                    // Return match and matchedUser
+                    const matchedUser = await prisma.user.findUnique({
+                        where: { id: userId }
+                    });
+                    return c.json({
+                        matched: true,
+                        matchedUser: matchedUser
+                    });
+                } else {
+                    // No match, return success but not matched
+                    return c.json({
+                        matched: false,
+                        success: true
+                    });
+                }
+            } else {
+                // If it's not a right swipe, just return success
+                return c.json({
+                    matched: false,
+                    success: true
                 });
             }
         }
-
-        return c.json({ success: true });
     } catch (error) {
         console.error('Swipe error:', error);
         return c.json({ error: 'Failed to process swipe' }, 500);
@@ -231,36 +326,50 @@ app.post('/swipe', async (c) => {
 
 function calculateMatchPercentage(currentUser: any, potentialMatch: any): number {
     let score = 0;
-    let totalFactors = 0;
+    let totalWeight = 0;
 
+    // University match (weight: 3)
     if (currentUser.university && potentialMatch.university) {
-        totalFactors++;
+        totalWeight += 3;
         if (currentUser.university === potentialMatch.university) {
-            score++;
+            score += 3;
         }
     }
 
+    // Location match (weight: 3)
     if (currentUser.location && potentialMatch.location) {
-        totalFactors++;
+        totalWeight += 3;
         if (currentUser.location === potentialMatch.location) {
-            score++;
+            score += 3;
         }
     }
 
+    // Age proximity (weight: 2)
     if (currentUser.age && potentialMatch.age) {
-        totalFactors++;
-        if (Math.abs(currentUser.age - potentialMatch.age) <= 3) {
-            score++;
-        }
+        totalWeight += 2;
+        const ageDiff = Math.abs(currentUser.age - potentialMatch.age);
+        if (ageDiff <= 1) score += 2;
+        else if (ageDiff <= 2) score += 1.5;
+        else if (ageDiff <= 3) score += 1;
     }
 
+    // Gender preference (weight: 2)
     if (currentUser.gender && potentialMatch.gender) {
-        totalFactors++;
+        totalWeight += 2;
         if (currentUser.gender === potentialMatch.gender) {
-            score++;
+            score += 2;
         }
     }
 
-    return totalFactors > 0 ? Math.round((score / totalFactors) * 100) : 0;
+    // Language match (weight: 1)
+    if (currentUser.language && potentialMatch.language) {
+        totalWeight += 1;
+        if (currentUser.language === potentialMatch.language) {
+            score += 1;
+        }
+    }
+
+    // Calculate percentage
+    return totalWeight > 0 ? Math.round((score / totalWeight) * 100) : 0;
 }
 export default app

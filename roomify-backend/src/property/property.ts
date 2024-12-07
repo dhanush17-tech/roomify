@@ -498,6 +498,7 @@ app.get('/favorites', async (c) => {
                         marketplace: {
                             include: {
                                 images: true,
+                                categories: true,
                             }
                         },
                         property: {
@@ -517,6 +518,10 @@ app.get('/favorites', async (c) => {
         return c.json({
             favorites: favorites.map(f => ({
                 ...f.listing,
+                marketplaceItem: {
+                    ...f.listing.marketplace,
+                    categories: f.listing.marketplace?.categories.map(c => c.category),
+                },
                 property: f.listing.property ? {
                     ...f.listing.property,
                     amenities: f.listing.property.amenities.map(a => a.amenity),

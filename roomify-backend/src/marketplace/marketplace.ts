@@ -32,8 +32,8 @@ app.get('/', async (c) => {
                 ...(maxPrice && { price: { lte: parseFloat(maxPrice) } })
             },
             include: {
-                user: true,
-
+                user: true
+                ,
 
                 marketplace: {
                     include: {
@@ -255,13 +255,7 @@ app.post('/', async (c) => {
                 }
             },
             include: {
-                user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                    }
-                },
+                user: true,
                 marketplace: {
                     include: {
                         categories: true,
@@ -356,13 +350,7 @@ app.put('/:id', async (c) => {
             include: {
                 listing: {
                     include: {
-                        user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true,
-                            }
-                        }
+                        user: true
                     }
                 },
                 categories: true,

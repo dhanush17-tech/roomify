@@ -26,7 +26,7 @@ app.get('/', async (c) => {
                     }
                 },
                 listings: true,
-                 preferences: true,
+                preferences: true,
                 socialLinks: true,
             }
         });
@@ -208,13 +208,7 @@ app.get('/listings', async (c) => {
                         categories: true
                     }
                 },
-                user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                    }
-                }
+                user: true,
             },
             orderBy: {
                 createdAt: 'desc'

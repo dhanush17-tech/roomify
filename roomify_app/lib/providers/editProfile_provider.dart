@@ -155,7 +155,6 @@ class ProfileProvider extends ChangeNotifier {
       // Refresh all providers when location changes
       await Provider.of<AuthProvider>(context, listen: false)
           .refreshAllProviders(context);
-
     } catch (e) {
       _error = 'Failed to update location: ${e.toString()}';
     } finally {

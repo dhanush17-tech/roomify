@@ -27,14 +27,33 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
-    // Load favorites when screen is initialized
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: Curves.easeIn,
+      ),
+    );
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PropertyProvider>().loadFavorites();
     });
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -168,32 +187,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     return _fadeShimmerSearchListView();
                   }
 
-                  return AnimationLimiter(
-                    child: ListView.separated(
-                      separatorBuilder: (context, index) =>
-                          SizedBox(height: 20),
-                      shrinkWrap: true,
-                      physics: BouncingScrollPhysics(),
-                      itemCount: provider.pairUpListings.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final listing = provider.pairUpListings[index];
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          delay: Duration(milliseconds: 00),
-                          child: SlideAnimation(
-                            duration: Duration(milliseconds: 2000),
-                            curve: Curves.fastLinearToSlowEaseIn,
-                            horizontalOffset: 0,
-                            verticalOffset: 300.0,
-                            child: FlipAnimation(
-                              duration: Duration(milliseconds: 3000),
+                  _fadeController.forward();
+
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: AnimationLimiter(
+                      child: ListView.separated(
+                        separatorBuilder: (context, index) =>
+                            SizedBox(height: 20),
+                        shrinkWrap: true,
+                        physics: BouncingScrollPhysics(),
+                        itemCount: provider.pairUpListings.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final listing = provider.pairUpListings[index];
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            delay: Duration(milliseconds: 00),
+                            child: SlideAnimation(
+                              duration: Duration(milliseconds: 2000),
                               curve: Curves.fastLinearToSlowEaseIn,
-                              flipAxis: FlipAxis.y,
-                              child: PropertyCard(listing: listing),
+                              horizontalOffset: 0,
+                              verticalOffset: 150.0,
+                              child: FlipAnimation(
+                                duration: Duration(milliseconds: 2000),
+                                curve: Curves.fastLinearToSlowEaseIn,
+                                flipAxis: FlipAxis.y,
+                                child: PropertyCard(listing: listing),
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   );
                 },

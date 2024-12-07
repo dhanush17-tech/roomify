@@ -56,33 +56,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     double maxPrice =
         items.map((e) => e.price).reduce((a, b) => a > b ? a : b).toDouble();
 
-    double range = (maxPrice - minPrice) / 4;
+    // Determine the number of price ranges based on the number of items
+    int rangeCount = items.length <= 2 ? items.length : 4;
+    double range = (maxPrice - minPrice) / rangeCount;
 
-    return [
+    List<PriceRange> priceRanges = [
       PriceRange(min: 0, max: -1, label: 'All Prices'),
-      PriceRange(
-        min: minPrice,
-        max: minPrice + range,
-        label: '\$${minPrice.toInt()}-\$${(minPrice + range).toInt()}',
-      ),
-      PriceRange(
-        min: minPrice + range,
-        max: minPrice + (range * 2),
-        label:
-            '\$${(minPrice + range).toInt()}-\$${(minPrice + range * 2).toInt()}',
-      ),
-      PriceRange(
-        min: minPrice + (range * 2),
-        max: minPrice + (range * 3),
-        label:
-            '\$${(minPrice + range * 2).toInt()}-\$${(minPrice + range * 3).toInt()}',
-      ),
-      PriceRange(
-        min: minPrice + (range * 3),
-        max: maxPrice,
-        label: '\$${(minPrice + range * 3).toInt()}+',
-      ),
     ];
+
+    for (int i = 0; i < rangeCount; i++) {
+      double rangeMin = minPrice + (range * i);
+      double rangeMax = (i == rangeCount - 1) ? maxPrice : rangeMin + range;
+      priceRanges.add(PriceRange(
+        min: rangeMin,
+        max: rangeMax,
+        label: '\$${rangeMin.toInt()}-\$${rangeMax.toInt()}',
+      ));
+    }
+
+    return priceRanges;
   }
 
   List<Listing> _getFilteredItems(List<Listing> items, String? category) {

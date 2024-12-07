@@ -408,7 +408,7 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _submitForm,
+                        onPressed: _isLoading ? null : () => _submitForm(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
@@ -417,10 +417,15 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: Text(
-                          'Add Item',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator()
+                            : Text(
+                                'Add to Marketplace',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     SizedBox(height: 24),

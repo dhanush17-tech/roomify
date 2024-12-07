@@ -7,12 +7,14 @@ class RoommateMatchProvider extends ChangeNotifier {
   List<User> _matches = [];
   bool _isLoading = false;
   String? _error;
+  User? _matchedUser;
 
   RoommateMatchProvider(this._repository);
 
   List<User> get matches => _matches;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  User? get matchedUser => _matchedUser;
 
   Future<void> loadMatches() async {
     try {
@@ -27,23 +29,29 @@ class RoommateMatchProvider extends ChangeNotifier {
   }
 
   Future<void> swipeLeft(String userId) async {
-    // try {
-    //   await _repository.recordSwipe(userId, 'left');
-    //   _removeMatch(userId);
-    // } catch (e) {
-    //   _error = e.toString();
-    //   notifyListeners();
-    // }
+    try {
+      await _repository.recordSwipe(userId, 'left');
+      // _removeMatch(userId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
-  Future<void> swipeRight(String userId) async {
-    // try {
-    //   await _repository.recordSwipe(userId, 'right');
-    //   _removeMatch(userId);
-    // } catch (e) {
-    //   _error = e.toString();
-    //   notifyListeners();
-    // }
+  Future<bool> swipeRight(String userId) async {
+    try {
+      final matchedUser = await _repository.recordSwipe(userId, 'right');
+      if (matchedUser != null) {
+        _matchedUser = matchedUser;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
   void _removeMatch(String userId) {

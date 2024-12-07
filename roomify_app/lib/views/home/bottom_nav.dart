@@ -27,7 +27,10 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('What would you like to add?'),
+          title: Text(
+            'What would you like to add?',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

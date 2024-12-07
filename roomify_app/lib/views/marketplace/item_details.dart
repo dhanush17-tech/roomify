@@ -59,16 +59,19 @@ class ItemDetailsScreen extends StatelessWidget {
                           bottomRight: Radius.circular(40),
                         ),
                         child: CachedNetworkImage(
-                          imageUrl: item.marketplaceItem?.imageUrls?.isNotEmpty == true
-                              ? item.marketplaceItem!.imageUrls!.first
-                              : 'https://via.placeholder.com/180',
+                          imageUrl:
+                              item.marketplaceItem?.imageUrls?.isNotEmpty ==
+                                      true
+                                  ? item.marketplaceItem!.imageUrls!.first
+                                  : 'https://via.placeholder.com/180',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
                           placeholder: (context, url) => Center(
                             child: CircularProgressIndicator(),
                           ),
-                          errorWidget: (context, url, error) => Icon(Icons.error),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.error),
                         ),
                       ),
 
@@ -98,7 +101,8 @@ class ItemDetailsScreen extends StatelessWidget {
                                     placeholder: (context, url) => Center(
                                       child: CircularProgressIndicator(),
                                     ),
-                                    errorWidget: (context, url, error) => Icon(Icons.error),
+                                    errorWidget: (context, url, error) =>
+                                        Icon(Icons.error),
                                   ),
                                 ),
                               ),

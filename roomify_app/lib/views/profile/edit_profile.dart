@@ -136,18 +136,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit Profile'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back),
-        ),
-        iconTheme: IconThemeData(color: Colors.black),
-      ),
       body: Consumer<AuthProvider>(
         builder: (context, UserProvider, child) {
           final user = UserProvider.user;
@@ -158,6 +146,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  SizedBox(height: MediaQuery.of(context).padding.top),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Edit Profile",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 25,
+                        ),
+                      ),
+                      IconButton(
+                        style: IconButton.styleFrom(
+                          padding: EdgeInsets.all(10),
+                          backgroundColor: Colors.grey[200],
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
                   // Profile Image
                   GestureDetector(
                     onTap: _pickImage,
@@ -191,7 +202,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 20),
                   if (user?.profilePhotoUrl != null)
                     TextButton(
                       onPressed: () => UserProvider.deleteProfilePhoto(),
@@ -276,24 +286,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       });
                     },
                   ),
-                  SizedBox(height: 20),
-                  if (UserProvider.isLoading)
-                    CircularProgressIndicator()
-                  else
-                    ElevatedButton(
-                      onPressed: () => _updateProfile(UserProvider),
+                  SizedBox(height: 35),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: UserProvider.isLoading
+                          ? null
+                          : () => _updateProfile(UserProvider),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: orangeColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 50,
-                          vertical: 15,
-                        ),
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text('Save Changes'),
+                      child: UserProvider.isLoading
+                          ? CircularProgressIndicator()
+                          : Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
+                  ),
+                  SizedBox(height: 25),
                 ],
               ),
             ),

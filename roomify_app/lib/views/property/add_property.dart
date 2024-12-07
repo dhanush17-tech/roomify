@@ -424,7 +424,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           child: Row(
                             children: [
                               _buildPriceTypeButton('Monthly', true),
-                              _buildPriceTypeButton('Yearly', false),
                             ],
                           ),
                         ),
@@ -502,7 +501,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => _handleSubmit(user!),
+                        onPressed: _isLoading
+                            ? null
+                            : () => _handleSubmit(user!),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
@@ -511,9 +512,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: Text(
+                        child: _isLoading
+                            ? CircularProgressIndicator()
+                            : Text(
                           'Add Property',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -701,6 +707,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         label,
         style: TextStyle(
           color: isMonthly ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
