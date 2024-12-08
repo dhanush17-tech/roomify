@@ -15,6 +15,7 @@ import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 // Separate widget for the search bar to prevent unnecessary rebuilds
 class SearchBarWidget extends StatefulWidget {
@@ -46,7 +47,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               icon: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.arrow_back, color: Colors.black),
@@ -70,7 +71,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 18),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   filled: true,
-                  fillColor: Colors.grey.shade200,
+                  fillColor: Theme.of(context).scaffoldBackgroundColor,
                   contentPadding: const EdgeInsets.symmetric(vertical: 20),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
@@ -333,70 +334,71 @@ class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
   PointAnnotationManager? _annotationManager;
   bool _mapInitialized = false;
   Map<String, Listing> _markerIdToProperty = {};
-
   Future<void> _initializeMap() async {
-    if (!_mapInitialized) return;
+    try {
+      if (!_mapInitialized) return;
 
-    _annotationManager =
-        await _mapboxMap.annotations.createPointAnnotationManager();
-    _updateMarkersAndCamera(widget.properties);
+      _annotationManager =
+          await _mapboxMap.annotations.createPointAnnotationManager();
+      _updateMarkersAndCamera(widget.properties);
+    } catch (e) {
+      debugPrint("Map initialization error: $e");
+      // Handle error appropriately
+    }
   }
 
   Future<Uint8List> _widgetToImage(Widget widget) async {
+    final double width = 200;
+    final double height = 200;
+
     final GlobalKey repaintBoundaryKey = GlobalKey();
     final Widget wrappedWidget = RepaintBoundary(
       key: repaintBoundaryKey,
       child: Material(
         type: MaterialType.transparency,
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: widget,
+        child: Container(
+          width: width,
+          height: height,
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: widget,
+          ),
         ),
       ),
     );
 
-    final RenderRepaintBoundary boundary =
-        await _renderWidget(wrappedWidget, repaintBoundaryKey);
-    final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
-    final ByteData? byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
+    // Create an overlay entry to actually render the widget
+    final overlayEntry = OverlayEntry(
+      builder: (context) => wrappedWidget,
+    );
 
-    if (byteData == null) {
-      throw Exception("Failed to render widget to image.");
-    }
+    // Insert the overlay entry into the current overlay
+    Overlay.of(context).insert(overlayEntry);
 
-    return byteData.buffer.asUint8List();
-  }
+    // Wait for the widget to be rendered
+    await Future.delayed(Duration(milliseconds: 100));
 
-  Future<RenderRepaintBoundary> _renderWidget(
-      Widget widget, GlobalKey key) async {
-    final Completer<RenderRepaintBoundary> completer = Completer();
+    try {
+      // Now we can safely access the RenderRepaintBoundary
+      final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final RenderRepaintBoundary? boundary =
-          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null || boundary.debugNeedsPaint) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          completer.complete(
-              key.currentContext?.findRenderObject() as RenderRepaintBoundary);
-        });
-      } else {
-        completer.complete(boundary);
+      if (boundary == null) {
+        throw Exception("Failed to find render boundary");
       }
-    });
 
-    OverlayEntry overlayEntry = OverlayEntry(
-      builder: (context) => MaterialApp(
-        home: Scaffold(
-          body: Center(child: widget),
-        ),
-      ),
-    );
-    Overlay.of(context)?.insert(overlayEntry);
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
-    final RenderRepaintBoundary boundary = await completer.future;
-    overlayEntry.remove();
-    return boundary;
+      if (byteData == null) {
+        throw Exception("Failed to convert image to bytes");
+      }
+
+      return byteData.buffer.asUint8List();
+    } finally {
+      // Always remove the overlay entry
+      overlayEntry.remove();
+    }
   }
 
   void _handleMarkerTap(PointAnnotation annotation) {
@@ -414,48 +416,122 @@ class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
   void _updateMarkersAndCamera(List<Listing> properties) async {
     if (_annotationManager == null || !_mapInitialized) return;
 
-    await _annotationManager!.deleteAll();
-    _markerIdToProperty.clear();
+    try {
+      // Clear existing markers
+      await _annotationManager!.deleteAll();
+      _markerIdToProperty.clear();
 
-    for (var property in properties) {
-      if (property.latitude != null && property.longitude != null) {
-        try {
-          final markerWidget = MarkerWidget(
-            title: property.title,
-            price: property.price.toString(),
-          );
+      // Load marker icon once
 
-          final markerImage = await _widgetToImage(markerWidget);
+      // Create all marker options at once
+      var options = <PointAnnotationOptions>[];
 
-          final marker = await _annotationManager!.create(
-            PointAnnotationOptions(
-              geometry: Point(
-                coordinates: Position(property.longitude!, property.latitude!),
+      for (var property in properties) {
+        ScreenshotController screenshotController = ScreenshotController();
+
+        final wrappedWidget = Container(
+          height: 200,
+          width: 200,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title container
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  property.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
               ),
-              image: markerImage,
-              iconSize: 1.0,
-              iconOffset: [0, -20],
-            ),
-          );
+              // Location icon
+              Icon(
+                Icons.location_on_rounded,
+                color: orangeColor,
+                size: 56,
+              ),
+              // Price container
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '\$${property.price}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
 
-          // Store the property reference with the marker ID
-          _markerIdToProperty[marker.id] = property;
-        } catch (e) {
-          debugPrint("Error creating marker: $e");
+        await screenshotController
+            .captureFromWidget(wrappedWidget)
+            .then((Uint8List? image) {
+          if (property.latitude != null && property.longitude != null) {
+            options.add(
+              PointAnnotationOptions(
+            
+                  geometry: Point(
+                    coordinates: Position(
+                      property.longitude!,
+                      property.latitude!,
+                    ),
+                  ),
+                  image: image,
+                  iconSize: 0.75),
+            );
+          }
+        });
+      }
+
+      // Create all markers at once
+      final markers = await _annotationManager?.createMulti(options);
+
+      // Store property references
+      if (markers != null) {
+        for (var i = 0; i < markers.length; i++) {
+          _markerIdToProperty[markers[i]!.id!] = properties[i];
         }
       }
-    }
 
-    // Update camera position
-    if (properties.isNotEmpty) {
-      final bounds = _calculateBounds(properties);
-      await _mapboxMap.flyTo(
-        CameraOptions(
-          center: bounds.center,
-          zoom: bounds.zoom,
-        ),
-        MapAnimationOptions(duration: 1000),
-      );
+      // Update camera to show all markers
+      if (properties.isNotEmpty) {
+        final bounds = _calculateBounds(properties);
+        await _mapboxMap.flyTo(
+          CameraOptions(
+            center: bounds.center,
+            zoom: bounds.zoom,
+          ),
+          MapAnimationOptions(duration: 1000),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error updating markers: $e");
     }
   }
 
@@ -513,23 +589,31 @@ class _MapViewState extends State<MapView> with SingleTickerProviderStateMixin {
         12.9716; // Default to Bangalore if no location
     final defaultLng = userLocation?.longitude ?? 77.6441;
 
-    return MapWidget(
-      cameraOptions: CameraOptions(
-        center: Point(coordinates: Position(defaultLng, defaultLat)),
-        zoom: 12,
-      ),
-      onMapCreated: (map) {
-        _mapboxMap = map;
-        setState(() {
-          _mapInitialized = true;
-        });
-        _initializeMap();
-      },
-      gestureRecognizers: {
-        Factory<OneSequenceGestureRecognizer>(
-          () => EagerGestureRecognizer(),
+    return SizedBox(
+      height: MediaQuery.of(context).size.height,
+      width: MediaQuery.of(context).size.width,
+      child: MapWidget(
+        cameraOptions: CameraOptions(
+          center: Point(coordinates: Position(defaultLng, defaultLat)),
+          zoom: 12,
         ),
-      },
+        onMapCreated: (map) async {
+          _mapboxMap = map;
+          // Wait for map to be fully loaded
+        },
+        onStyleLoadedListener: (d) async {
+          print("Map style loaded");
+          setState(() {
+            _mapInitialized = true;
+          });
+          await _initializeMap();
+        },
+        gestureRecognizers: {
+          Factory<OneSequenceGestureRecognizer>(
+            () => EagerGestureRecognizer(),
+          ),
+        },
+      ),
     );
   }
 }

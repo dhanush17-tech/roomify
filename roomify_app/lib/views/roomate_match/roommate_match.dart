@@ -36,6 +36,10 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
+  late AnimationController _profileOverlayController;
+  late Animation<double> _profileScaleAnimation;
+  late Animation<double> _profileOpacityAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +94,28 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
       parent: _matchAnimationController,
       curve: Curves.easeIn,
     ));
+
+    _profileOverlayController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _profileScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _profileOverlayController,
+      curve: Curves.easeOutBack,
+    ));
+
+    _profileOpacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _profileOverlayController,
+      curve: Curves.easeIn,
+    ));
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadMatches();
     });
@@ -105,6 +131,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
 
     _overlayController.dispose();
     controller.dispose();
+    _profileOverlayController.dispose();
     super.dispose();
   }
 
@@ -130,6 +157,9 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   }
 
   Widget _buildMatchOverlay(User? matchedUser) {
+    if (matchedUser == null) {
+      return Center();
+    }
     return GestureDetector(
       onTap: () {
         _matchAnimationController.reverse();
@@ -166,9 +196,18 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                     width: 150,
                                     height: 200,
                                     decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                          spreadRadius: 20,
+                                          color: Colors.orange.withOpacity(0.2),
+                                          blurRadius: 20,
+                                        ),
+                                      ],
+                                      border: Border.all(
+                                          color: Colors.orange, width: 3),
                                       borderRadius: BorderRadius.circular(16),
                                       image: DecorationImage(
-                                        image: NetworkImage(context
+                                        image: CachedNetworkImageProvider(context
                                                 .read<AuthProvider>()
                                                 .user!
                                                 .profilePhotoUrl ??
@@ -191,11 +230,20 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                     width: 150,
                                     height: 200,
                                     decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                          spreadRadius: 20,
+                                          color: Colors.orange.withOpacity(0.2),
+                                          blurRadius: 20,
+                                        ),
+                                      ],
+                                      border: Border.all(
+                                          color: Colors.orange, width: 3),
                                       borderRadius: BorderRadius.circular(16),
                                       image: DecorationImage(
-                                        image: NetworkImage(matchedUser!
-                                                .profilePhotoUrl ??
-                                            ''), // Replace with the current user's image
+                                        image: CachedNetworkImageProvider(
+                                            matchedUser!.profilePhotoUrl ??
+                                                ''), // Replace with the current user's image
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -264,7 +312,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.bottom),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -502,12 +550,12 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                       ),
                     ),
                     SizedBox(height: 20),
-                    Text(
-                      'Preferences',
-                      style:
-                          AppTextStyles.title(fontSize: 15, color: orangeColor),
-                    ),
                     if (profile.preferences.isNotEmpty) ...[
+                      Text(
+                        'Preferences',
+                        style: AppTextStyles.title(
+                            fontSize: 15, color: orangeColor),
+                      ),
                       buildPreferencesSection(profile.preferences),
                       SizedBox(height: 20),
                     ],
@@ -626,7 +674,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
       builder: (context, provider, _) {
         final user = context.watch<AuthProvider>().user;
 
-        if (provider.isLoading) {
+        if (provider.isLoading || provider.matches.isEmpty) {
           return Scaffold(
             body: SafeArea(
               child: Padding(
@@ -634,6 +682,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: MediaQuery.of(context).padding.top),
                     _buildHeader(),
                     Expanded(
                       child: _buildShimmerLoading(),
@@ -652,125 +701,217 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
         }
 
         return Scaffold(
-          body: SafeArea(
-            child: Stack(
-              children: [
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Stack(
-                      children: [
-                        Column(
-                          children: [
-                            _buildHeader(),
-                            Flexible(
-                              child: Stack(
-                                children: [
-                                  isExhausted
-                                      ? Center(
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.people_outline,
-                                                  size: 64, color: Colors.grey),
-                                              SizedBox(height: 16),
-                                              Text(
-                                                'No more matches',
-                                                style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.grey[800],
-                                                ),
+          body: Stack(
+            children: [
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Stack(
+                    children: [
+                      Column(
+                        children: [
+                          SizedBox(height: MediaQuery.of(context).padding.top),
+                          _buildHeader(),
+                          Flexible(
+                            child: Stack(
+                              children: [
+                                isExhausted
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.people_outline,
+                                                size: 64, color: Colors.grey),
+                                            SizedBox(height: 16),
+                                            Text(
+                                              'No more matches',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.grey[800],
                                               ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'Check back later for new potential matches',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.grey[600],
-                                                ),
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'Check back later for new potential matches',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: Colors.grey[600],
                                               ),
-                                            ],
-                                          ),
-                                        )
-                                      : CardSwiper(
-                                          maxAngle: 20,
-                                          isLoop: false,
-                                          controller: controller,
-                                          cardsCount: provider.matches.length,
-                                          numberOfCardsDisplayed:
-                                              provider.matches.isEmpty
-                                                  ? 1
-                                                  : provider.matches.length >= 3
-                                                      ? 3
-                                                      : provider.matches.length,
-                                          backCardOffset: const Offset(40, 16),
-                                          allowedSwipeDirection:
-                                              AllowedSwipeDirection.only(
-                                            left: true,
-                                            right: true,
-                                            up: false,
-                                            down: false,
-                                          ),
-                                          onSwipe: (previousIndex, currentIndex,
-                                              direction) async {
-                                            if (previousIndex <
-                                                provider.matches.length) {
-                                              final match = provider
-                                                  .matches[previousIndex];
-                                              if (direction ==
-                                                  CardSwiperDirection.left) {
-                                                provider.swipeLeft(match.id);
-                                              } else if (direction ==
-                                                  CardSwiperDirection.right) {
-                                                final isMutualSwipe =
-                                                    await provider
-                                                        .swipeRight(match.id);
-                                                if (isMutualSwipe) {
-                                                  _matchAnimationController
-                                                      .forward();
-                                                } //add the animation code here
-                                              }
-
-                                              if (currentIndex == null) {
-                                                setState(() {
-                                                  isExhausted = true;
-                                                });
-                                              }
-                                            }
-                                            return true;
-                                          },
-                                          onSwipeDirectionChange:
-                                              (direction, swipeP) {
-                                            setState(() {
-                                              currentDirection = direction;
-                                            });
-                                          },
-                                          cardBuilder:
-                                              (context, index, idt, ins) {
-                                            if (index >=
-                                                provider.matches.length) {
-                                              return Container();
-                                            }
-                                            return _buildProfileCard(
-                                                provider.matches[index]);
-                                          },
+                                            ),
+                                          ],
                                         ),
-                                  _buildSwipeOverlay(),
-                                ],
-                              ),
+                                      )
+                                    : CardSwiper(
+                                        maxAngle: 20,
+                                        isLoop: false,
+                                        controller: controller,
+                                        cardsCount: provider.matches.length,
+                                        numberOfCardsDisplayed: provider
+                                                .matches.isEmpty
+                                            ? 1
+                                            : provider.matches.length >= 3
+                                                ? 3
+                                                : provider.matches.length < 1
+                                                    ? 1
+                                                    : provider.matches.length,
+                                        backCardOffset: const Offset(40, 16),
+                                        allowedSwipeDirection:
+                                            AllowedSwipeDirection.only(
+                                          left: true,
+                                          right: true,
+                                          up: false,
+                                          down: false,
+                                        ),
+                                        onSwipe: (previousIndex, currentIndex,
+                                            direction) async {
+                                          if (previousIndex <
+                                              provider.matches.length) {
+                                            final match =
+                                                provider.matches[previousIndex];
+                                            if (direction ==
+                                                CardSwiperDirection.left) {
+                                              provider.swipeLeft(match.id);
+                                            } else if (direction ==
+                                                CardSwiperDirection.right) {
+                                              final isMutualSwipe =
+                                                  await provider
+                                                      .swipeRight(match.id);
+                                              if (isMutualSwipe) {
+                                                _matchAnimationController
+                                                    .forward();
+                                              } //add the animation code here
+                                            }
+
+                                            if (currentIndex == null) {
+                                              setState(() {
+                                                isExhausted = true;
+                                              });
+                                            }
+                                          }
+                                          return true;
+                                        },
+                                        onSwipeDirectionChange:
+                                            (direction, swipeP) {
+                                          setState(() {
+                                            currentDirection = direction;
+                                          });
+                                        },
+                                        cardBuilder:
+                                            (context, index, idt, ins) {
+                                          if (index >=
+                                              provider.matches.length) {
+                                            return Container();
+                                          }
+                                          return _buildProfileCard(
+                                              provider.matches[index]);
+                                        },
+                                      ),
+                                _buildSwipeOverlay(),
+                              ],
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                      _buildMatchOverlay(provider.matchedUser)
+                    ],
+                  ),
+                ),
+              ),
+              if (user != null && !user.isProfileComplete()) ...[
+                // Blurred background with animation
+                AnimatedBuilder(
+                  animation: _profileOverlayController,
+                  builder: (context, child) {
+                    _profileOverlayController.forward(); // Start the animation
+                    return FadeTransition(
+                      opacity: _profileOpacityAnimation,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          width: double.infinity,
+                          height: double.infinity,
                         ),
-                        _buildMatchOverlay(provider.matchedUser)
-                      ],
-                    ),
+                      ),
+                    );
+                  },
+                ),
+
+                // Centered content with scale and opacity animation
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _profileOverlayController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _profileScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _profileOpacityAnimation,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 40),
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Complete Your Profile',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+
+                                // Profile completion indicator
+                                _buildProfileCompletion(user),
+
+                                SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            EditProfileScreen(),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Edit Profile',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         );
       },
@@ -935,6 +1076,77 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
       },
     );
   }
+
+  Widget _buildProfileCompletion(User user) {
+    double completion = user.getProfileCompletion();
+    bool isComplete = user.isProfileComplete();
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isComplete
+            ? Colors.green.withOpacity(0.1)
+            : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Profile Completion',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              if (!isComplete)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Required',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: completion / 100,
+            backgroundColor: Colors.grey[300],
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isComplete ? Colors.green : Colors.orange,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '${completion.toStringAsFixed(0)}% Complete',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 extension on String {
@@ -953,10 +1165,10 @@ Widget buildPreferencesSection(List<UserPreference> preferences) {
           children: List<Widget>.generate(preferencesList.length, (index) {
             return Chip(
               label: Text('${preferencesList[index].preference}'),
-              backgroundColor: Color(4293718257),
+              backgroundColor: Colors.grey.withOpacity(0.2),
               labelStyle: AppTextStyles.small(
                 color: Colors.grey,
-                fontWeight: FontWeight.normal,
+                fontWeight: FontWeight.bold,
               ),
               side: BorderSide.none,
               shape: RoundedRectangleBorder(

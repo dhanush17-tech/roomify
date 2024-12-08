@@ -8,6 +8,27 @@ import 'package:roomify_app/utils.dart';
 class RoommateMatchRepository {
   RoommateMatchRepository();
 
+  Future<List<User>> getMutualMatches() async {
+    try {
+      final token = await AuthRepository().getToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/roommate-match/matches'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body)['matches'];
+        return data.map((json) => User.fromJson(json['user'])).toList();
+      } else {
+        throw Exception('Failed to load mutual matches');
+      }
+    } catch (e) {
+      throw Exception('Failed to load mutual matches: $e');
+    }
+  }
+
   Future<List<User>> getMatches() async {
     try {
       final token = await AuthRepository().getToken();

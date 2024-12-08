@@ -5,12 +5,13 @@ class ChatRoom {
   final List<User> participants;
   final ChatMessage? lastMessage;
   final DateTime updatedAt;
-
+  final int unreadCount;
   ChatRoom({
     required this.id,
     required this.participants,
     this.lastMessage,
     required this.updatedAt,
+    this.unreadCount = 0,
   });
 
   ChatRoom copyWith({
@@ -18,12 +19,14 @@ class ChatRoom {
     List<User>? participants,
     ChatMessage? lastMessage,
     DateTime? updatedAt,
+    int? unreadCount,
   }) {
     return ChatRoom(
       id: id ?? this.id,
       participants: participants ?? this.participants,
       lastMessage: lastMessage ?? this.lastMessage,
       updatedAt: updatedAt ?? this.updatedAt,
+      unreadCount: unreadCount ?? this.unreadCount,
     );
   }
 
@@ -37,6 +40,7 @@ class ChatRoom {
           ? ChatMessage.fromJson(json['messages'][0])
           : null,
       updatedAt: DateTime.parse(json['updatedAt']),
+      unreadCount: json['unreadCount'] ?? 0,
     );
   }
 }

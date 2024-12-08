@@ -5,6 +5,7 @@ import 'package:roomify_app/repository/rommate_match_repo.dart';
 class RoommateMatchProvider extends ChangeNotifier {
   final RoommateMatchRepository _repository;
   List<User> _matches = [];
+  List<User> _mutualMatches = [];
   bool _isLoading = false;
   String? _error;
   User? _matchedUser;
@@ -12,6 +13,7 @@ class RoommateMatchProvider extends ChangeNotifier {
   RoommateMatchProvider(this._repository);
 
   List<User> get matches => _matches;
+  List<User> get mutualMatches => _mutualMatches;
   bool get isLoading => _isLoading;
   String? get error => _error;
   User? get matchedUser => _matchedUser;
@@ -20,6 +22,18 @@ class RoommateMatchProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _matches = await _repository.getMatches();
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> loadMutualMatches() async {
+    try {
+      _setLoading(true);
+      _mutualMatches = await _repository.getMutualMatches();
       _error = null;
     } catch (e) {
       _error = e.toString();

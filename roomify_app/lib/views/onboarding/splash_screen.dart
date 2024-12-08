@@ -24,13 +24,13 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
 
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutBack, // Creates a pop-in effect
+      curve: Curves.fastLinearToSlowEaseIn, // Creates a pop-in effect
     );
 
     // Start the animation after a 2-second delay

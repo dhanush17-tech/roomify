@@ -105,4 +105,27 @@ class ChatRepository {
       throw Exception('Failed to create chat room: $e');
     }
   }
+
+  Future<void> markMessagesAsRead(String roomId) async {
+    try {
+      final token = await AuthRepository().getToken();
+
+      Map<String, String> _headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/chat/$roomId/mark-read'),
+        headers: _headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to mark messages as read: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to mark messages as read: $e');
+    }
+  }
+
 }

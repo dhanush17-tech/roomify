@@ -41,6 +41,9 @@ class ProfileProvider extends ChangeNotifier {
 
   String? get currentLocation => _currentLocation;
 
+  // Cache for other users' listings
+  final Map<String, List<Listing>> _otherUsersListings = {};
+
   Future<void> _initializeLocation() async {
     try {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
@@ -165,12 +168,10 @@ class ProfileProvider extends ChangeNotifier {
 
   Future<void> updatePreferences({
     required List<String> preferences,
-    required Map<String, String> socialLinks,
   }) async {
     try {
       final updatedUser = await _repository.updatePreferences(
         preferences: preferences,
-        socialLinks: socialLinks,
       );
 
       Provider.of<AuthProvider>(context, listen: false).updateUser(updatedUser);
@@ -180,26 +181,46 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadUserListings() async {
+  Future<List<Listing>> loadUserListings([String? userId]) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final listings = await _repository.getUserListings();
+      // If requesting other user's listings, check cache first
+      if (userId != null && _otherUsersListings.containsKey(userId)) {
+        return _otherUsersListings[userId]!;
+      }
 
-      _properties =
-          listings.where((item) => item.type == ListingType.Property).toList();
-      _marketplaceItems = listings
-          .where((item) => item.type == ListingType.Marketplace)
-          .toList();
+      final listings = await _repository.getUserListings(userId);
+
+      // If it's current user, update the local state
+      if (userId == null) {
+        _properties = listings.where((item) => item.type == ListingType.Property).toList();
+        _marketplaceItems = listings.where((item) => item.type == ListingType.Marketplace).toList();
+      } 
+      // If it's another user, cache their listings
+      else {
+        _otherUsersListings[userId] = listings;
+      }
 
       _isLoading = false;
       notifyListeners();
+      
+      return listings;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      return [];
     }
+  }
+
+  // Helper method to get cached listings synchronously
+  List<Listing> getCachedListings([String? userId]) {
+    if (userId == null) {
+      return [..._properties, ..._marketplaceItems];
+    }
+    return _otherUsersListings[userId] ?? [];
   }
 
   Future<void> deleteListing(int listingId) async {

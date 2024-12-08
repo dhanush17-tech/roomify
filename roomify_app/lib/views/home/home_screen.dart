@@ -27,7 +27,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -44,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         curve: Curves.easeIn,
       ),
     );
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PropertyProvider>().loadFavorites();
     });
@@ -197,9 +198,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             SizedBox(height: 20),
                         shrinkWrap: true,
                         physics: BouncingScrollPhysics(),
-                        itemCount: provider.pairUpListings.length,
+                        itemCount: provider.recommendations.length,
                         itemBuilder: (BuildContext context, int index) {
-                          final listing = provider.pairUpListings[index];
+                          final listing = provider.recommendations[index];
                           return AnimationConfiguration.staggeredList(
                             position: index,
                             delay: Duration(milliseconds: 00),

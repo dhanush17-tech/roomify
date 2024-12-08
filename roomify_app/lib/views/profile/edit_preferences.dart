@@ -139,7 +139,6 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
 
       await context.read<ProfileProvider>().updatePreferences(
             preferences: _selectedPreferences,
-            socialLinks: socialLinks,
           );
 
       Navigator.pop(context);
@@ -150,7 +149,7 @@ class _EditPreferencesScreenState extends State<EditPreferencesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update preferences: $e')),
       );
-    }
+  }
   }
 
   IconData _getSocialIcon(String platform) {

@@ -6,6 +6,8 @@ import 'package:roomify_app/models/userModel.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/chat_provider.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:roomify_app/utils/colors.dart';
 
 class ChatListScreen extends StatefulWidget {
   @override
@@ -14,109 +16,80 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text('Chats', style: TextStyle(color: Colors.black)),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Consumer<ChatProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        children: [
+          SizedBox(height: MediaQuery.of(context).padding.top),
+          Row(
             children: [
-              // Recent Matches Section
-              // Padding(
-              //   padding: EdgeInsets.all(16),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         'Recent Matches',
-              //         style: TextStyle(
-              //           fontSize: 16,
-              //           fontWeight: FontWeight.bold,
-              //         ),
-              //       ),
-              //       SizedBox(height: 16),
-              //       SingleChildScrollView(
-              //         scrollDirection: Axis.horizontal,
-              //         child: Row(
-              //           children: provider.recentMatches.map((user) {
-              //             return _buildRecentMatch(user);
-              //           }).toList(),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-
-              // Messages Section
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Messages',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Container(
+                margin: EdgeInsets.only(left: 8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFF8F8F8),
                 ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: provider.rooms.length,
-                  itemBuilder: (context, index) {
-                    final room = provider.rooms[index];
-                    return _buildChatTile(room);
+                child: IconButton(
+                  icon: Icon(Icons.close, color: Colors.black),
+                  onPressed: () {
+                    Navigator.pop(context);
                   },
                 ),
               ),
+              SizedBox(width: 20),
+              Text(
+                'Messages',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRecentMatch(User user) {
-    return Padding(
-      padding: EdgeInsets.only(right: 16),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundImage: user.profilePhotoUrl != null
-                ? NetworkImage(user.profilePhotoUrl!)
-                : null,
-            child:
-                user.profilePhotoUrl == null ? Text(user.displayName[0]) : null,
           ),
-          SizedBox(height: 8),
-          Text(
-            user.displayName.split(' ')[0],
-            style: TextStyle(fontSize: 12),
+          SizedBox(height: 10),
+          Consumer<ChatProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (provider.rooms.isEmpty) {
+                return Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.message_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No messages here',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.all(16),
+                itemCount: provider.rooms.length,
+                itemBuilder: (context, index) {
+                  final room = provider.rooms[index];
+                  return _buildChatTile(room);
+                },
+              );
+            },
           ),
         ],
       ),
@@ -131,35 +104,102 @@ class _ChatListScreenState extends State<ChatListScreen> {
       orElse: () => room.participants[0],
     );
 
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(vertical: 8),
-      leading: CircleAvatar(
-        radius: 30,
-        backgroundImage: otherUser.profilePhotoUrl != null
-            ? NetworkImage(otherUser.profilePhotoUrl!)
-            : null,
-        child: otherUser.profilePhotoUrl == null
-            ? Text(otherUser.displayName[0])
-            : null,
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+          ),
+        ],
       ),
-      title: Text(
-        otherUser.displayName,
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        lastMessage?.content ?? '',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Text(
-        _formatTime(lastMessage?.createdAt ?? room.updatedAt),
-        style: TextStyle(color: Colors.grey),
-      ),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatMessageScreen(room: room),
+      child: ListTile(
+        contentPadding: EdgeInsets.all(12),
+        leading: Hero(
+          tag: 'profile-${room.id}',
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white, width: 2),
+              image: otherUser.profilePhotoUrl != null
+                  ? DecorationImage(
+                      fit: BoxFit.cover,
+                      image: CachedNetworkImageProvider(
+                          otherUser.profilePhotoUrl!))
+                  : null,
+            ),
+            child: otherUser.profilePhotoUrl == null
+                ? Center(child: Text(otherUser.displayName[0]))
+                : null,
+          ),
         ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              otherUser.displayName,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              lastMessage?.content ?? '',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              _formatTime(lastMessage?.createdAt ?? room.updatedAt),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+            SizedBox(height: 4),
+            if (room.unreadCount > 0)
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: orangeColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  room.unreadCount.toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        onTap: () {
+          // Mark messages as read when entering the chat
+          context.read<ChatProvider>().markMessagesAsRead(room.id);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatMessageScreen(room: room),
+            ),
+          );
+        },
       ),
     );
   }
@@ -168,6 +208,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final now = DateTime.now();
     if (time.day == now.day) {
       return DateFormat('h:mm a').format(time);
+    }
+    if (now.difference(time).inDays < 7) {
+      return DateFormat('E').format(time); // Returns abbreviated day name
     }
     return DateFormat('MMM d').format(time);
   }

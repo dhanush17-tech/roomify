@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/chatModel.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
@@ -117,7 +118,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               placeholder: (context, url) => Center(
                                 child: CircularProgressIndicator(),
                               ),
-                              errorWidget: (context, url, error) => Icon(Icons.error),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.error),
                             ),
                           );
                         },
@@ -443,8 +445,11 @@ class ExpandableUserCard extends StatefulWidget {
   final bool isMarketplace;
   final VoidCallback? onTap;
 
-  ExpandableUserCard(
-      {required this.user, this.isMarketplace = false, this.onTap});
+  ExpandableUserCard({
+    required this.user,
+    this.isMarketplace = false,
+    this.onTap,
+  });
 
   @override
   _ExpandableUserCardState createState() => _ExpandableUserCardState();
@@ -453,7 +458,6 @@ class ExpandableUserCard extends StatefulWidget {
 class _ExpandableUserCardState extends State<ExpandableUserCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _heightAnimation;
   bool isExpanded = false;
 
   @override
@@ -462,15 +466,6 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
     _controller = AnimationController(
       duration: Duration(milliseconds: 300),
       vsync: this,
-    );
-    _heightAnimation = Tween<double>(
-      begin: 90,
-      end: 300,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
     );
   }
 
@@ -504,14 +499,13 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
       child: GestureDetector(
         onTap: widget.isMarketplace ? widget.onTap : _toggleExpand,
         child: AnimatedBuilder(
-          animation: _heightAnimation,
+          animation: _controller,
           builder: (context, child) {
             return Container(
-              height: _heightAnimation.value,
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: Colors.grey.shade200,
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
@@ -521,126 +515,154 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                   ),
                 ],
               ),
-              child: SingleChildScrollView(
-                physics: NeverScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
-                            shape: BoxShape.circle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
                           ),
-                          child: CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.black,
-                            backgroundImage: widget.user.profilePhotoUrl != null
-                                ? CachedNetworkImageProvider(
-                                    widget.user.profilePhotoUrl!,
-                                  )
-                                : null,
-                          ),
+                          shape: BoxShape.circle,
                         ),
-                        SizedBox(width: 5),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.user.displayName,
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              Text(
-                                "${widget.user.university} | ${widget.user.age}yo",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w200,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.black,
+                          backgroundImage: widget.user.profilePhotoUrl != null
+                              ? CachedNetworkImageProvider(
+                                  widget.user.profilePhotoUrl!,
+                                )
+                              : null,
                         ),
-                        AnimatedRotation(
-                          duration: Duration(milliseconds: 300),
-                          turns: isExpanded ? 0.25 : 0,
-                          child: Icon(Icons.arrow_forward_ios_outlined),
-                        ),
-                      ],
-                    ),
-                    if (isExpanded) ...[
-                      SizedBox(height: 16),
-                      Divider(),
-                      if (widget.user.bio != null) ...[
-                        Text(
-                          'Bio',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(widget.user.bio!),
-                        SizedBox(height: 16),
-                      ],
-                      SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildInfoItem(Icons.language, widget.user.language),
-                          _buildInfoItem(Icons.location_on,
-                              widget.user.location ?? 'Not specified'),
-                          _buildInfoItem(Icons.school,
-                              widget.user.university ?? 'Not specified'),
-                        ],
                       ),
-                      SizedBox(height: 16),
-                      //contact button
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: orangeColor,
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 12.0, horizontal: 12.0),
-                                child: Center(
-                                  child: Text(
-                                    'Contact',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
+                      SizedBox(width: 5),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.user.displayName,
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              widget.user.university != null
+                                  ? "${widget.user.university} | ${widget.user.age}yo"
+                                  : "${widget.user.age}yo",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w200,
+                                color: Colors.grey.shade600,
                               ),
                             ),
-                          ),
-                          SizedBox(width: 10),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  width: 3, color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              icon: Icon(Icons.arrow_forward_ios_rounded),
-                              onPressed: () {},
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        duration: Duration(milliseconds: 300),
+                        turns: isExpanded ? 0.25 : 0,
+                        child: Icon(Icons.arrow_forward_ios_outlined),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  SizeTransition(
+                    sizeFactor: _controller,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 5),
+                          Divider(),
+                          if (widget.user.bio != null) ...[
+                            Text(
+                              'Bio',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: orangeColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(widget.user.bio!,
+                                style: AppTextStyles.small(
+                                    fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                          if (widget.user.preferences!.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            Text(
+                              'Preferences',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: orangeColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            buildPreferencesSection(widget.user.preferences!),
+                          ],
+                          SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () async {
+                              final chatRoom = await context
+                                  .read<ChatProvider>()
+                                  .createOrGetChatRoom(
+                                    widget.user.id,
+                                  );
+
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatMessageScreen(
+                                      room: chatRoom,
+                                    ),
+                                  ));
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12.0, horizontal: 12.0),
+                                      child: Center(
+                                        child: Text(
+                                          'Contact',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        width: 3, color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(Icons.arrow_forward_ios_rounded),
+                                    onPressed: null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           },

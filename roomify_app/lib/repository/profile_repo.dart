@@ -32,14 +32,12 @@ class ProfileUpdateRepo {
 
   Future<User> updatePreferences({
     required List<String> preferences,
-    required Map<String, String> socialLinks,
   }) async {
     try {
       final response = await _dio.put(
         '/api/user/preferences',
         data: {
           'preferences': preferences,
-          'socialLinks': socialLinks,
         },
       );
 
@@ -52,11 +50,12 @@ class ProfileUpdateRepo {
     }
   }
 
-  Future<List<Listing>> getUserListings() async {
+  Future<List<Listing>> getUserListings([String? userId]) async {
     try {
-      final response = await _dio.get(
-        '/api/user/profile/listings',
-      );
+      final endpoint = '/api/user/profile/listings';
+
+      final response = await _dio.get(endpoint,
+          queryParameters: userId != null ? {'userId': userId} : null);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['listings'];

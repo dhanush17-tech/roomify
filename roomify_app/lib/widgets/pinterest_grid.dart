@@ -4,6 +4,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/marketplace/item_details.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 
 class PinterestGrid extends StatelessWidget {
@@ -202,9 +203,7 @@ class FeaturedItemCard extends StatelessWidget {
                             ? item.marketplaceItem!.imageUrls!.first
                             : 'https://via.placeholder.com/180',
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    placeholder: (context, url) => buildPropertyImageShimmer(),
                     errorWidget: (context, url, error) => Icon(Icons.error),
                   ),
                 ),

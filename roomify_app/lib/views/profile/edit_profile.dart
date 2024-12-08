@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/widgets/input_field.dart';
@@ -38,6 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _selectedGender = user.gender;
       _selectedStatus = user.status;
     }
+    _loadUserPreferences();
   }
 
   Future<void> _pickImage() async {
@@ -96,29 +98,62 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (user == null) return SizedBox();
 
     double completion = user.getProfileCompletion();
+    bool isComplete = user.isProfileComplete();
 
     return Container(
       padding: EdgeInsets.all(16),
       margin: EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: isComplete
+            ? Colors.green.withOpacity(0.1)
+            : Colors.orange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Profile Completion',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Text(
+                'Profile Completion',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              if (!isComplete)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Required',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           SizedBox(height: 8),
           LinearProgressIndicator(
             value: completion / 100,
             backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isComplete ? Colors.green : Colors.orange,
+            ),
           ),
           SizedBox(height: 4),
           Text(
@@ -128,9 +163,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               fontSize: 14,
             ),
           ),
+          if (!isComplete) ...[
+            SizedBox(height: 8),
+            Text(
+              'Complete your profile to start matching with potential roommates',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  static const List<String> availablePreferences = [
+    'Early riser',
+    'Night owl',
+    'Non-smoker',
+    'Pet lover',
+    'Vegetarian',
+    'Vegan',
+    'Quiet',
+    'Social',
+    'Tidy',
+    'Student',
+  ];
+  List<String> _selectedPreferences = [];
+  void _loadUserPreferences() {
+    final user = context.read<AuthProvider>().user;
+    if (user != null) {
+      setState(() {
+        _selectedPreferences =
+            user.preferences.map((p) => p.preference).toList();
+      });
+    }
   }
 
   @override
@@ -210,6 +278,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildProfileCompletion(user),
                   _buildInputFieldWithIndicator(
                     controller: _nameController,
+                    keyboardType: TextInputType.name,
                     label: "Full Name",
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Name is required';
@@ -219,6 +288,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   InputField(
                     controller: _emailController,
                     label: "Email",
+                    keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Email is required';
                       if (!value!.contains('@')) return 'Invalid email';
@@ -233,6 +303,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   InputField(
                     controller: _universityController,
                     label: "University",
+                    keyboardType: TextInputType.name,
                   ),
                   InputField(
                     controller: _bioController,
@@ -265,6 +336,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      'Preferences',
+                      style: TextStyle(
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: availablePreferences.map((preference) {
+                      return FilterChip(
+                        label: Text(preference),
+                        selected: _selectedPreferences.contains(preference),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedPreferences.add(preference);
+                            } else {
+                              _selectedPreferences.remove(preference);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 20),
                   DropdownButtonFormField<String>(
                     value: _selectedStatus,
                     decoration: InputDecoration(
@@ -273,13 +374,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    items:
-                        ["I'm looking for a room", "I'm looking for a roommate"]
-                            .map((status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(status),
-                                ))
-                            .toList(),
+                    items: [
+                      "I'm looking for a room",
+                      "I'm looking for a roommate",
+                      "I'm looking for a roommate and a room"
+                    ]
+                        .map((status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            ))
+                        .toList(),
                     onChanged: (value) {
                       setState(() {
                         _selectedStatus = value;
@@ -340,7 +444,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: _selectedGender,
         profileImage: _profileImage,
       );
-
+      await context.read<ProfileProvider>().updatePreferences(
+            preferences: _selectedPreferences,
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile updated successfully')),
       );

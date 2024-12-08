@@ -8,7 +8,8 @@ import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/favourites.dart';
 import 'package:roomify_app/views/profile/edit_preferences.dart';
 import 'package:roomify_app/views/profile/edit_profile.dart';
-import 'package:roomify_app/views/profile/user_listings.dart'; // For iOS style icons and widgets
+import 'package:roomify_app/views/profile/user_listings.dart';
+import 'package:roomify_app/views/roomate_match/user_matches.dart'; // For iOS style icons and widgets
 
 class ProfileScreen extends StatelessWidget {
   @override
@@ -29,10 +30,6 @@ class ProfileScreen extends StatelessWidget {
                   onTap: () {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (c) => EditProfileScreen()));
-              }),
-              _buildListItem("Preferences", Icons.tune, onTap: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (c) => EditPreferencesScreen()));
               }),
               _buildListItem("Notifications", Icons.notifications_none),
               _buildListItem("Payment Methods", Icons.payment),
@@ -157,7 +154,10 @@ class ProfileScreen extends StatelessWidget {
             Navigator.push(
                 context, MaterialPageRoute(builder: (c) => FavoritesScreen()));
           }),
-          _quickAccessIcon(Icons.people_alt_outlined, "Matches"),
+          _quickAccessIcon(Icons.people_alt_outlined, "Matches", onTap: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (c) => UserMatchesScreen()));
+          }),
         ],
       ),
     );

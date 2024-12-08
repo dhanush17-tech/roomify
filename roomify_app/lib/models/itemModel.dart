@@ -117,7 +117,10 @@ class MarketplaceItem {
   factory MarketplaceItem.fromJson(Map<String, dynamic> json) {
     return MarketplaceItem(
       categories: json['categories'] != null
-          ? json['categories'].map((e) => e.toString()).cast<String>().toList()
+          ? json['categories']
+              .map((e) => e['category'].toString())
+              .cast<String>()
+              .toList()
           : List<String>.from(json['categories']),
       condition: json['condition'],
       brand: json['brand'],

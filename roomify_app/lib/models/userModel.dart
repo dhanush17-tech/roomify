@@ -161,7 +161,7 @@ class User {
   }
 
   double getProfileCompletion() {
-    int totalFields = 7; // Adjusted total number of required fields
+    int totalFields = 6; // Adjusted total number of required fields
     int completedFields = 0;
 
     if (bio != null && bio!.isNotEmpty) completedFields++;
@@ -170,8 +170,7 @@ class User {
     if (gender != null) completedFields++;
     if (status != null) completedFields++;
     if (age != null) completedFields++;
-    if (socialLinks.isNotEmpty) completedFields++;
-
+ 
     return (completedFields / totalFields) * 100;
   }
 

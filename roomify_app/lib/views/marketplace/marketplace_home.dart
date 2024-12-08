@@ -297,9 +297,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       ),
                     ),
                     const SizedBox(height: 25),
-                    filteredItems.isEmpty
-                        ? SizedBox()
-                        : _buildPriceRangeFilter(items),
+                    items  .isEmpty ? SizedBox() : _buildPriceRangeFilter(items),
                     filteredItems.isEmpty
                         ? SizedBox(
                             height: 200,

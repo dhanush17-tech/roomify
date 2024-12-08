@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:roomify_app/providers/chat_provider.dart';
@@ -23,6 +24,9 @@ import 'views/onboarding/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+   MapboxOptions.setAccessToken(mapboxToken);
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
   runApp(MyApp());
 }
 

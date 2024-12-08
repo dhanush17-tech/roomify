@@ -118,7 +118,9 @@ class PropertyProvider extends ChangeNotifier {
       for (Listing favourites in _favorites) {
         await _repository.removeFavorite(favourites.id);
       }
+      _favorites = [];
       _isLoading = false;
+      notifyListeners();
     } catch (e) {}
   }
 

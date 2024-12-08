@@ -161,6 +161,7 @@ class AuthRepository {
     String? gender,
     String? status,
     File? profileImage,
+ 
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -175,6 +176,7 @@ class AuthRepository {
         if (profileImage != null)
           'profilePhoto': await MultipartFile.fromFile(profileImage.path,
               filename: "${userId}")
+
       });
 
       final response = await _dio.put(

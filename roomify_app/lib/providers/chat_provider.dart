@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:roomify_app/models/chatModel.dart';
 import 'package:roomify_app/repository/chat_repo.dart';
@@ -13,7 +16,14 @@ class ChatProvider extends ChangeNotifier {
   String? _error;
 
   ChatProvider(this._repository) {
-    loadChats();
+    // Initialize by loading chats
+    loadChats().then((value) {
+      // After loading chats, connect to all rooms
+      for (var room in _rooms) {
+        loadMessages(room.id);
+        connectToRoom(room.id);
+      }
+    });
   }
 
   List<ChatRoom> get rooms => _rooms;
@@ -118,17 +128,20 @@ class ChatProvider extends ChangeNotifier {
       _messages[roomId] = [];
     }
 
-    // Add message to the end of the list for correct chronological order
     _messages[roomId]!.add(message);
 
-    // Update room's last message
     final roomIndex = _rooms.indexWhere((room) => room.id == roomId);
     if (roomIndex != -1) {
+      final isMessageFromMe = message.senderId == message.sender?.id;
+
       _rooms[roomIndex] = _rooms[roomIndex].copyWith(
         lastMessage: message,
         updatedAt: DateTime.now(),
+        unreadCount: isMessageFromMe
+            ? _rooms[roomIndex].unreadCount
+            : _rooms[roomIndex].unreadCount + 1,
       );
-      // Sort rooms by latest message
+
       _rooms.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     }
 
@@ -138,13 +151,37 @@ class ChatProvider extends ChangeNotifier {
   Future<ChatRoom> createOrGetChatRoom(String otherUserId) async {
     try {
       final room = await _repository.createOrGetChatRoom(otherUserId);
-      _rooms.add(room);
-      notifyListeners();
+      // Check if room already exists in _rooms
+      final existingRoomIndex = _rooms.indexWhere((r) => r.id == room.id);
+      if (existingRoomIndex == -1) {
+        _rooms.add(room);
+        notifyListeners();
+      }
       return room;
     } catch (e) {
       _error = e.toString();
       notifyListeners();
       rethrow;
+    }
+  }
+
+  Future<void> markMessagesAsRead(String roomId) async {
+    try {
+      await _repository.markMessagesAsRead(roomId);
+      // Update the local state
+      final roomIndex = _rooms.indexWhere((room) => room.id == roomId);
+      if (roomIndex != -1) {
+        _rooms[roomIndex] = ChatRoom(
+          id: _rooms[roomIndex].id,
+          participants: _rooms[roomIndex].participants,
+          lastMessage: _rooms[roomIndex].lastMessage,
+          updatedAt: _rooms[roomIndex].updatedAt,
+          unreadCount: 0, // Reset unread count
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error marking messages as read: $e');
     }
   }
 
