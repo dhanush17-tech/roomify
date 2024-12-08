@@ -188,12 +188,16 @@ app.get('/listings', async (c) => {
         const payload = c.get('jwtPayload');
         if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
-        const userId = payload.sub;
+        // Get userId from query parameter, if not provided use current user's id
+        const queryUserId = c.req.query('userId');
+        const currentUserId = payload.sub;
+        const targetUserId = queryUserId || currentUserId;
+
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
         const listings = await prisma.listing.findMany({
-            where: { userId },
+            where: { userId: targetUserId },
             include: {
                 property: {
                     include: {
@@ -208,7 +212,11 @@ app.get('/listings', async (c) => {
                         categories: true
                     }
                 },
-                user: true,
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                }
             },
             orderBy: {
                 createdAt: 'desc'
@@ -225,13 +233,12 @@ app.get('/listings', async (c) => {
             } : null,
             marketplace: listing.marketplace ? {
                 ...listing.marketplace,
-                categories: listing.marketplace.categories.map(c => c.category),
-                imageUrls: listing.marketplace.images.map(i => i.imageUrl)
             } : null
         }));
 
         return c.json({ listings: formattedListings });
     } catch (error) {
+        console.error('Fetch listings error:', error);
         return c.json({ error: 'Failed to fetch user listings' }, 500);
     }
 });

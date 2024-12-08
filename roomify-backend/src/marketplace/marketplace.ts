@@ -32,7 +32,11 @@ app.get('/', async (c) => {
                 ...(maxPrice && { price: { lte: parseFloat(maxPrice) } })
             },
             include: {
-                user: true
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                }
                 ,
 
                 marketplace: {
@@ -111,7 +115,11 @@ app.get('/search', async (c) => {
                 NOT: { userId }
             },
             include: {
-                user: true,
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                },
 
                 marketplace: {
                     include: {
@@ -182,7 +190,11 @@ app.get('/suggestions', async (c) => {
                 NOT: { userId }
             },
             include: {
-                user: true,
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                },
 
                 marketplace: {
                     include: {
@@ -255,7 +267,11 @@ app.post('/', async (c) => {
                 }
             },
             include: {
-                user: true,
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                },
                 marketplace: {
                     include: {
                         categories: true,

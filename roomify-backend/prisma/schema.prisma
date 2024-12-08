@@ -45,6 +45,7 @@ model User {
   favorites      Favorite[]
   passwordResets PasswordReset[]
   activeTokens   ActiveToken[]
+  UnreadMessage  UnreadMessage[]
 }
 
 model PasswordReset {
@@ -69,9 +70,7 @@ model Listing {
   category    String?
   latitude    Float?
   longitude   Float?
-    isFavorite  Boolean  @default(false)
-
-  
+  isFavorite  Boolean  @default(false)
 
   // Relations
   user        User             @relation(fields: [userId], references: [id])
@@ -81,24 +80,23 @@ model Listing {
 }
 
 model Property {
-  listingId           Int                @id @map("listing_id")
-  numberOfBedrooms    Int                @map("number_of_bedrooms")
-  numberOfBathrooms   Int                @map("number_of_bathrooms")
-  maxOccupancy        Int                @map("max_occupancy")
-  isLookingForRoomate Boolean            @default(false)
-  rating              Float              @default(0.0)
-  moveInDate         String?          @map("move_in_date")
-  moveOutDate        String?          @map("move_out_date")
-  
-  // Relations
-  listing             Listing            @relation(fields: [listingId], references: [id])
-  amenities           PropertyAmenity[]
-  tags                PropertyTag[]
-  images              PropertyImage[]
-  comments            Comment[]
-  categories          PropertyCategory[]
-  favorites           Favorite[] // Add this relation to link back to Favorite
+  listingId           Int     @id @map("listing_id")
+  numberOfBedrooms    Int     @map("number_of_bedrooms")
+  numberOfBathrooms   Int     @map("number_of_bathrooms")
+  maxOccupancy        Int     @map("max_occupancy")
+  isLookingForRoomate Boolean @default(false)
+  rating              Float   @default(0.0)
+  moveInDate          String? @map("move_in_date")
+  moveOutDate         String? @map("move_out_date")
 
+  // Relations
+  listing    Listing            @relation(fields: [listingId], references: [id])
+  amenities  PropertyAmenity[]
+  tags       PropertyTag[]
+  images     PropertyImage[]
+  comments   Comment[]
+  categories PropertyCategory[]
+  favorites  Favorite[] // Add this relation to link back to Favorite
 }
 
 model PropertyAmenity {
@@ -138,24 +136,24 @@ model PropertyCategory {
 }
 
 model MarketplaceItem {
-  listingId   Int      @id @default(autoincrement())
+  listingId Int @id @default(autoincrement())
 
   // Relations
-  listing     Listing              @relation(fields: [listingId], references: [id])
-  images      MarketplaceImage[]
-  favorites   Favorite[]
-  categories  MarketplaceCategory[] // Add this relation
+  listing    Listing               @relation(fields: [listingId], references: [id])
+  images     MarketplaceImage[]
+  favorites  Favorite[]
+  categories MarketplaceCategory[] // Add this relation
 
   @@map("marketplace_items")
 }
 
 // Add new MarketplaceCategory model
 model MarketplaceCategory {
-  itemId    Int      @map("item_id")
-  category  String
+  itemId   Int    @map("item_id")
+  category String
 
   // Relations
-  item      MarketplaceItem @relation(fields: [itemId], references: [listingId])
+  item MarketplaceItem @relation(fields: [itemId], references: [listingId])
 
   @@id([itemId, category])
   @@map("marketplace_categories")
@@ -182,16 +180,16 @@ model Comment {
 }
 
 model Favorite {
-  userId                  String           @map("user_id")
-  listingId               Int             @map("listing_id")
-  marketplaceItemListingId Int?           @map("marketplace_item_listing_id")
-  propertyId              Int?            @map("property_id") // New field for property relation
+  userId                   String @map("user_id")
+  listingId                Int    @map("listing_id")
+  marketplaceItemListingId Int?   @map("marketplace_item_listing_id")
+  propertyId               Int?   @map("property_id") // New field for property relation
 
   // Relations
-  user                    User            @relation(fields: [userId], references: [id])
-  listing                 Listing         @relation(fields: [listingId], references: [id])
-  marketplaceItem         MarketplaceItem? @relation(fields: [marketplaceItemListingId], references: [listingId]) // Make this relation optional
-  property                Property?       @relation(fields: [propertyId], references: [listingId]) // New relation for Property
+  user            User             @relation(fields: [userId], references: [id])
+  listing         Listing          @relation(fields: [listingId], references: [id])
+  marketplaceItem MarketplaceItem? @relation(fields: [marketplaceItemListingId], references: [listingId]) // Make this relation optional
+  property        Property?        @relation(fields: [propertyId], references: [listingId]) // New relation for Property
 
   @@id([userId, listingId])
 }
@@ -229,7 +227,6 @@ model RoommateMatch {
   @@unique([user1Id, user2Id])
 }
 
-
 model UserPreference {
   userId     String @map("user_id")
   preference String
@@ -252,8 +249,9 @@ model ChatRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  participants ChatParticipant[]
-  messages     ChatMessage[]
+  participants   ChatParticipant[]
+  messages       ChatMessage[]
+  unreadMessages UnreadMessage[] // Add this relation
 }
 
 model ChatParticipant {
@@ -272,6 +270,23 @@ model ChatMessage {
   roomId    String
   senderId  String
 
-  room   ChatRoom @relation(fields: [roomId], references: [id])
-  sender User     @relation(fields: [senderId], references: [id])
+  room          ChatRoom        @relation(fields: [roomId], references: [id])
+  sender        User            @relation(fields: [senderId], references: [id])
+  UnreadMessage UnreadMessage[]
+}
+
+model UnreadMessage {
+  id          String      @id @default(cuid())
+  roomId      String
+  messageId   String
+  recipientId String
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  room        ChatRoom    @relation(fields: [roomId], references: [id])
+  message     ChatMessage @relation(fields: [messageId], references: [id])
+  recipient   User        @relation(fields: [recipientId], references: [id])
+
+  @@index([roomId])
+  @@index([messageId])
+  @@index([recipientId])
 }

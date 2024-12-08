@@ -33,10 +33,8 @@ app.get('/', async (c) => {
                 participants: {
                     include: {
                         user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true,
+                            include: {
+                                preferences: true,
                             }
                         }
                     }
@@ -52,6 +50,12 @@ app.get('/', async (c) => {
                             }
                         }
                     }
+                },
+                unreadMessages: {
+                    where: {
+                        recipientId: userId,
+                        isRead: false
+                    }
                 }
             },
             orderBy: {
@@ -59,7 +63,12 @@ app.get('/', async (c) => {
             }
         });
 
-        return c.json({ rooms });
+        const formattedRooms = rooms.map(room => ({
+            ...room,
+            unreadCount: room.unreadMessages.length
+        }));
+
+        return c.json({ rooms: formattedRooms });
     } catch (error) {
         console.error('Get chats error:', error);
         return c.json({ error: 'Failed to get chats' }, 500);
@@ -67,21 +76,36 @@ app.get('/', async (c) => {
 });
 
 app.get('/:roomId/ws', async (c) => {
-     const roomId = c.req.param('roomId');
+    const roomId = c.req.param('roomId');
     //@ts-ignore
     const durableId = c.env.CHATROOM.idFromName(roomId);
     //@ts-ignore
     const room = c.env.CHATROOM.get(durableId);
-     return room.fetch(c.req.raw);
-}); 
+    return room.fetch(c.req.raw);
+});
 
 // Get room messages
 app.get('/:roomId/messages', async (c) => {
     const roomId = c.req.param('roomId');
+    const payload = c.get('jwtPayload');
+    if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const userId = payload.sub;
     const adapter = new PrismaD1(c.env.DB);
     const prisma = new PrismaClient({ adapter });
 
     try {
+        await prisma.unreadMessage.updateMany({
+            where: {
+                roomId,
+                recipientId: userId,
+                isRead: false
+            },
+            data: {
+                isRead: true
+            }
+        });
+
         const messages = await prisma.chatMessage.findMany({
             where: { roomId },
             include: {
@@ -139,10 +163,8 @@ app.post('/create', async (c) => {
                 participants: {
                     include: {
                         user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true,
+                            include: {
+                                preferences: true,
                             }
                         }
                     }
@@ -182,10 +204,8 @@ app.post('/create', async (c) => {
                 participants: {
                     include: {
                         user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true,
+                            include: {
+                                preferences: true,
                             }
                         }
                     }
@@ -214,6 +234,37 @@ app.post('/create', async (c) => {
             error: 'Failed to create chat room',
             details: error.message
         }, 500);
+    }
+});
+
+// Add endpoint to mark messages as read
+app.post('/:roomId/mark-read', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const roomId = c.req.param('roomId');
+        
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Mark all unread messages in the room as read
+        await prisma.unreadMessage.updateMany({
+            where: {
+                roomId,
+                recipientId: userId,
+                isRead: false
+            },
+            data: {
+                isRead: true
+            }
+        });
+
+        return c.json({ success: true });
+    } catch (error) {
+        console.error('Mark messages read error:', error);
+        return c.json({ error: 'Failed to mark messages as read' }, 500);
     }
 });
 

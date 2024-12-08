@@ -21,6 +21,8 @@ app.get('/', async (c) => {
         if (isNaN(userLatitude) || isNaN(userLongitude)) {
             return c.json({ error: 'Valid location coordinates required' }, 400);
         }
+        console.log("userLatitude", userLatitude);
+        console.log("userLongitude", userLongitude);
 
         const query = c.req.query('query') || '';
         const type = c.req.query('type') || 'Property';
@@ -86,12 +88,14 @@ app.get('/', async (c) => {
                         amenities: true,
                         categories: true,
                         images: true,
-                        comments: {
-                            include: { user: true }
-                        }
+                       
                     }
                 },
-                user: true,
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                },
                 favorites: {
                     where: { userId }
                 }

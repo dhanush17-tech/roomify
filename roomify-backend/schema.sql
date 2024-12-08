@@ -139,9 +139,11 @@
 
 -- UPDATE listing
 -- SET latitude = CAST(0.1 AS DOUBLE), longitude = CAST(0.1 AS DOUBLE);
-SELECT l.title, l.price, mc.category
-FROM listing l
-JOIN marketplace_items mi ON l.id = mi.listingId
-JOIN marketplace_categories mc ON mi.listingId = mc.item_id
-WHERE l.type = 'Marketplace'
-ORDER BY l.title;
+DELETE FROM UnreadMessage;
+
+-- Then delete all chat messages
+DELETE FROM ChatMessage;
+
+-- If you also want to clean up chat rooms and participants
+DELETE FROM ChatParticipant;
+DELETE FROM ChatRoom;

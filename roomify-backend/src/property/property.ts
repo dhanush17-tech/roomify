@@ -96,29 +96,15 @@ app.post('/', async (c) => {
             },
             include: {
                 user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                        email: true,
+                    include: {
+                        preferences: true,
                     }
-                },
-                property: {
+                }, property: {
                     include: {
                         amenities: true,
                         tags: true,
                         images: true,
-                        comments: {
-                            include: {
-                                user: {
-                                    select: {
-                                        id: true,
-                                        displayName: true,
-                                        profileImageUrl: true,
-                                    }
-                                }
-                            }
-                        }
+
                     }
                 },
                 favorites: true,
@@ -146,7 +132,7 @@ app.post('/', async (c) => {
             property: {
                 moveInDate: listing.property!.moveInDate, // Add this line
                 moveOutDate: listing.property!.moveOutDate, // Add this line
-          numberOfBedrooms: listing.property!.numberOfBedrooms,
+                numberOfBedrooms: listing.property!.numberOfBedrooms,
                 numberOfBathrooms: listing.property!.numberOfBathrooms,
                 maxOccupancy: listing.property!.maxOccupancy,
                 isLookingForRoomate: listing.property!.isLookingForRoomate,
@@ -190,28 +176,16 @@ app.get('/', async (c) => {
 
             include: {
                 user: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                        profileImageUrl: true,
-                        email: true,
+                    include: {
+                        preferences: true,
                     }
                 },
+
                 property: {
                     include: {
                         amenities: true,
                         tags: true,
-                        comments: {
-                            include: {
-                                user: {
-                                    select: {
-                                        id: true,
-                                        displayName: true,
-                                        profileImageUrl: true,
-                                    }
-                                }
-                            }
-                        },
+
                         images: true,
                     }
                 },
@@ -245,7 +219,7 @@ app.get('/', async (c) => {
                 numberOfBathrooms: listing.property.numberOfBathrooms,
                 moveInDate: listing.property!.moveInDate, // Add this line
                 moveOutDate: listing.property!.moveOutDate, // Add this line
-             maxOccupancy: listing.property.maxOccupancy,
+                maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
                 rating: listing.property.rating,
                 amenities: listing.property.amenities.map(a => a.amenity),
@@ -272,6 +246,7 @@ app.get('/', async (c) => {
         return c.json({ error: 'Failed to fetch properties' }, 500);
     }
 });
+
 
 
 app.get('/recommended-listings', async (c) => {
@@ -309,15 +284,20 @@ app.get('/recommended-listings', async (c) => {
                 } : undefined
             },
             include: {
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                },
                 property: {
                     include: {
                         amenities: true,
-                        categories: true,
-                        images: true,
+                        tags: true,
 
+                        images: true,
                     }
                 },
-                user: true
+                favorites: true,
             },
             orderBy: {
                 createdAt: 'desc'
@@ -339,7 +319,7 @@ app.get('/recommended-listings', async (c) => {
             property: listing.property ? {
                 moveInDate: listing.property!.moveInDate, // Add this line
                 moveOutDate: listing.property!.moveOutDate, // Add this line
-            numberOfBedrooms: listing.property.numberOfBedrooms,
+                numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
                 maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
@@ -430,7 +410,11 @@ app.get('/pair-up', async (c) => {
 
                     }
                 },
-                user: true
+                user: {
+                    include: {
+                        preferences: true,
+                    }
+                }
 
             },
             orderBy: {
@@ -456,7 +440,7 @@ app.get('/pair-up', async (c) => {
                 numberOfBathrooms: listing.property.numberOfBathrooms,
                 moveInDate: listing.property!.moveInDate, // Add this line
                 moveOutDate: listing.property!.moveOutDate, // Add this line
-            maxOccupancy: listing.property.maxOccupancy,
+                maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
                 rating: listing.property.rating,
                 amenities: listing.property.amenities.map(a => a.amenity),
@@ -508,7 +492,11 @@ app.get('/favorites', async (c) => {
                                 images: true
                             }
                         },
-                        user: true
+                        user: {
+                            include: {
+                                preferences: true,
+                            }
+                        }
 
                     }
                 }
