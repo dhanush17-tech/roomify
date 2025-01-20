@@ -1,359 +1,684 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/propertyModel.dart';
+import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
-import 'package:roomify_app/views/home/property_details.dart';
-import 'package:roomify_app/views/home/search_screen.dart';
+import 'package:roomify_app/views/home/favourites.dart';
+import 'package:roomify_app/views/home/property_search_screen.dart';
+import 'package:roomify_app/views/messaging/chat_home.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
+import 'package:roomify_app/views/property/property_details.dart';
+import 'package:roomify_app/views/roomate_match/roommate_match.dart';
+import 'package:roomify_app/widgets/location_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:fade_shimmer/fade_shimmer.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:roomify_app/providers/chat_provider.dart';
+import 'package:roomify_app/widgets/roomify_verified.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  User user;
+  double latitude;
+  double longitude;
+  HomeScreen(
+      {required this.user, required this.latitude, required this.longitude});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Check if user has location set
+      if (widget.user.latitude == 0.0 ||
+          widget.user.longitude == 0.0 ||
+          widget.user.latitude == null ||
+          widget.user.longitude == null) {
+        final profileProvider = context.read<ProfileProvider>();
+        // Update user location with current location
+        await profileProvider.updateUserLocation(
+            widget.latitude, widget.longitude);
+      }
+
+      context.read<PropertyProvider>().loadFavorites();
+      _requestNotificationPermission();
+    });
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    try {
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      print('User granted permission: ${settings.authorizationStatus}');
+
+      // Get FCM token for this device
+      String? token = await messaging.getToken();
+      if (token != null) {
+        // TODO: Send this token to your backend
+        print('FCM Token: $token');
+        await context.read<ProfileProvider>().updateFcmToken(token);
+        print('FCM Token updated to Database');
+        print('Subscribed to general topic');
+        await FirebaseMessaging.instance.subscribeToTopic('general');
+      }
+    } catch (e) {
+      print('Failed to get notification permission: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Hi Anika!',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: null,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.grey),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.chat_bubble_outline, color: Colors.grey),
-            onPressed: () {},
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search for rooms, roommates or items...",
-                prefixIcon: Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: Colors.grey.shade200,
-                contentPadding: EdgeInsets.symmetric(vertical: 15),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Recommended Section
-            SectionHeader(
-                title: "Recommended",
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => SearchScreen()));
-                }),
-            Text("based on your preferences",
-                style: TextStyle(color: Colors.grey)),
-            SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Column(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title and Profile
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ItemCard(
-                        title: "Cozy Studio Apartment",
-                        location: "Yaba, Lagos",
-                        price: "\$40/month",
-                        rating: 4.3,
-                        bathrooms: 1,
-                        bedrooms: 1,
-                        imagePath: "assets/test_images/house.png",
+                      //an option to change the location
+                      LocationSelector(),
+                      SizedBox(height: 10),
+                      Text(
+                        'Find The Best',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      SizedBox(width: 10),
-                      ItemCard(
-                        title: "Cozy Single Apartment",
-                        location: "Yaba, Lagos",
-                        price: "\$45/month",
-                        rating: 4.5,
-                        bathrooms: 1,
-                        bedrooms: 1,
-                        imagePath: "assets/test_images/house.png",
+
+                      RichText(
+                        text: TextSpan(
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: 'Apartments',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: blackTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' & ',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: blackTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Houses',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 10,
-                  )
+                  Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ChatHome()));
+                      },
+                      child: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.grey[200],
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Image.asset(
+                              'assets/icons/send.png',
+                              width: 22,
+                              color: Colors.orange,
+                            ),
+                            Positioned(
+                              top: -20,
+                              left: 20,
+                              child: Consumer<ChatProvider>(
+                                builder: (context, chatProvider, child) {
+                                  final totalUnread =
+                                      chatProvider.getTotalUnreadCount();
+                                  if (totalUnread == 0)
+                                    return SizedBox.shrink();
+
+                                  return Container(
+                                    padding: EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      totalUnread > 99
+                                          ? '99+'
+                                          : totalUnread.toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-            // SizedBox(height: 20),
 
-            // // Find Your Ideal Roommate Section
-            // SectionHeader(title: "Find Your Ideal Roommate", onTap: () {}),
-            // SizedBox(height: 20),
-            // SingleChildScrollView(
-            //   scrollDirection: Axis.horizontal,
-            //   child: Row(
-            //     children: [
-            //       RoommateCard(
-            //           name: "David E.",
-            //           age: 22,
-            //           university: "ASU",
-            //           imagePath: "assets/test_images/house.png"),
-            //       SizedBox(width: 40),
-            //       RoommateCard(
-            //           name: "Fatima K.",
-            //           age: 20,
-            //           university: "NYU",
-            //           imagePath: "assets/test_images/house.png"),
-            //     ],
-            //   ),
-            // ),
-            SizedBox(height: 20),
+              SizedBox(height: 20),
 
-            // Featured Items Section
-            SectionHeader(
-                title: "Featured Items",
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => SearchScreen()));
-                }),
-            SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+              // Search Bar
+              Hero(
+                tag: 'home_search_field',
+                child: Material(
+                  color: Colors.transparent,
+                  child: TextField(
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SearchMapScreen(
+                                    query: '',
+                                  )));
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search for apartments, houses...",
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey.shade200,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Property Type Filter
+
+              // Popular Section
+              Text(
+                'Popular',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              SizedBox(height: 16),
+
+              // Property Cards
+              Consumer<PropertyProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return _fadeShimmerSearchListView();
+                  }
+
+                  _fadeController.forward();
+
+                  if (!provider.isLoading && provider.recommendations.isEmpty) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.home_rounded,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No recommendations available',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 32),
+                              child: Text(
+                                'Check back later for personalized property suggestions',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: AnimationLimiter(
+                      child: ListView.separated(
+                        separatorBuilder: (context, index) =>
+                            SizedBox(height: 20),
+                        shrinkWrap: true,
+                        physics: BouncingScrollPhysics(),
+                        itemCount: provider.recommendations.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final listing = provider.recommendations[index];
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            delay: Duration(milliseconds: 00),
+                            child: SlideAnimation(
+                              duration: Duration(milliseconds: 2000),
+                              curve: Curves.fastLinearToSlowEaseIn,
+                              horizontalOffset: 0,
+                              verticalOffset: 150.0,
+                              child: FlipAnimation(
+                                duration: Duration(milliseconds: 2000),
+                                curve: Curves.fastLinearToSlowEaseIn,
+                                flipAxis: FlipAxis.y,
+                                child: PropertyCard(
+                                    listing, widget.latitude, widget.longitude),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fadeShimmerSearchListView() {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: 5, // Number of shimmer items to show
+      separatorBuilder: (context, index) => SizedBox(height: 20),
+      itemBuilder: (context, index) {
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FadeShimmer(
+                height: 200,
+                width: double.infinity,
+                radius: 12,
+                highlightColor: Colors.grey[200]!,
+                baseColor: Colors.grey[300]!,
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  FeaturedItemCard(
-                    title: "Modern Desk",
-                    location: "Boston, MA",
-                    price: "\$100",
-                    imagePath: "assets/test_images/house.png",
+                  FadeShimmer(
+                    height: 15,
+                    width: 100,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
                   ),
-                  SizedBox(width: 20),
-                  FeaturedItemCard(
-                    title: "Office Chair",
-                    location: "San Franc., CA",
-                    price: "\$75",
-                    imagePath: "assets/test_images/house.png",
+                  FadeShimmer(
+                    height: 15,
+                    width: 50,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
                   ),
                 ],
               ),
+              SizedBox(height: 8),
+              FadeShimmer(
+                height: 20,
+                width: double.infinity,
+                radius: 4,
+                highlightColor: Colors.grey[200]!,
+                baseColor: Colors.grey[300]!,
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  FadeShimmer(
+                    height: 15,
+                    width: 150,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                  Spacer(),
+                  FadeShimmer(
+                    height: 15,
+                    width: 80,
+                    radius: 4,
+                    highlightColor: Colors.grey[200]!,
+                    baseColor: Colors.grey[300]!,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// New Property Card Widget
+class PropertyCard extends StatelessWidget {
+  final Listing listing;
+  final double latitude;
+  final double longitude;
+
+  const PropertyCard(this.listing, this.latitude, this.longitude);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+      child: GestureDetector(
+        onTap: () {
+          // Track the property view
+          context.read<PropertyProvider>().trackPropertyView(listing.id);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PropertyDetailsScreen(
+                listing,
+                latitude,
+                longitude,
+              ),
             ),
-          ],
+          );
+        },
+        child: Container(
+          margin: EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Property Image
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Hero(
+                      tag: 'property_image_${listing.id}',
+                      child: CachedNetworkImage(
+                        imageUrl: listing.property!.imageUrls != null
+                            ? listing.property!.imageUrls![0]
+                            : listing.imageUrls![0],
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        errorWidget: (context, url, error) => Icon(Icons.error),
+                      ),
+                    ),
+                  ),
+                  listing.property!.isRoomifyChoice == true
+                      ? Positioned(
+                          top: 8,
+                          left: 8,
+                          child: RoomifyVerified(),
+                        )
+                      : SizedBox.shrink(),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Consumer<PropertyProvider>(
+                      builder: (context, provider, child) {
+                        if (provider.isLoading) {
+                          return Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.grey),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return FavoriteButton(
+                          isFavorite: provider.isFavorite(listing.id),
+                          onTap: () => provider.toggleFavorite(listing),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 8),
+
+              // Property Details
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '\$${listing.price}/month',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 4),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  listing.title,
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 4),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.grey, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      listing.location,
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                    Spacer(),
+                    Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
+                    SizedBox(width: 4),
+                    Text('${listing.property?.numberOfBedrooms}'),
+                    SizedBox(width: 16),
+                    Icon(Icons.bathtub_outlined, color: Colors.grey, size: 20),
+                    SizedBox(width: 4),
+                    Text('${listing.property?.numberOfBathrooms}'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class ItemCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String price;
-  final double rating;
-  final int bathrooms;
-  final int bedrooms;
-  final String imagePath;
+class FavoriteButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback onTap;
 
-  ItemCard({
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.rating,
-    required this.bathrooms,
-    required this.bedrooms,
-    required this.imagePath,
+  const FavoriteButton({
+    required this.isFavorite,
+    required this.onTap,
   });
+
+  @override
+  _FavoriteButtonState createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<FavoriteButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+    _animateIconChange();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _animateIconChange() {
+    _controller.forward().then((_) {
+      _controller.reverse();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (c) => PropertyDetailsScreen()));
+        widget.onTap();
+        _animateIconChange();
       },
-      child: Container(
-        width: 250,
-        padding: EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Image.asset(imagePath,
-                  height: 120, width: double.infinity, fit: BoxFit.cover),
-            ),
-            SizedBox(height: 10),
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                Text(location, style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.orange, size: 14),
-                SizedBox(width: 5),
-                Text(rating.toString(), style: TextStyle(fontSize: 12)),
-                Spacer(),
-                Icon(Icons.bathtub, color: Colors.grey, size: 14),
-                SizedBox(width: 5),
-                Text(bathrooms.toString(), style: TextStyle(fontSize: 12)),
-                Spacer(),
-                Icon(Icons.bed, color: Colors.grey, size: 14),
-                SizedBox(width: 5),
-                Text(bedrooms.toString(), style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 10),
-            Container(
-                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.blue.withOpacity(0.1)),
-                child: Text(price,
-                    style: AppTextStyles.small(
-                      color: Colors.blue,
-                    ))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onTap;
-
-  SectionHeader({required this.title, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-                context, MaterialPageRoute(builder: (c) => SearchScreen()));
-          },
-          child: Text(
-            "View All",
-            style: TextStyle(
-              color: Colors.blue,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class RoommateCard extends StatelessWidget {
-  final String name;
-  final int age;
-  final String university;
-  final String imagePath;
-
-  RoommateCard({
-    required this.name,
-    required this.age,
-    required this.university,
-    required this.imagePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 70,
-          height: 60,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.all(6),
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              image: DecorationImage(
-                fit: BoxFit.cover,
-                image: AssetImage(imagePath),
-              )),
-        ),
-        SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('$age', style: TextStyle(color: Colors.grey)),
-            Text(university, style: TextStyle(color: Colors.grey)),
-          ],
-        )
-      ],
-    );
-  }
-}
-
-class FeaturedItemCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String price;
-  final String imagePath;
-
-  FeaturedItemCard({
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.imagePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.asset(imagePath,
-                height: 100, width: double.infinity, fit: BoxFit.cover),
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: blackTextColor.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-          SizedBox(height: 8),
-          Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-          Text(location, style: TextStyle(color: Colors.grey)),
-          Text(price,
-              style:
-                  TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-        ],
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 100),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(
+                scale: animation,
+                child: child,
+              );
+            },
+            child: Icon(
+              widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+              key: ValueKey<bool>(widget.isFavorite),
+              color: widget.isFavorite ? Colors.red : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }

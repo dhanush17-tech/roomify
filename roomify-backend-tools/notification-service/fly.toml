@@ -1,0 +1,22 @@
+# fly.toml app configuration file generated for notification-service-delicate-field-6176 on 2025-01-14T15:04:30-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'notification-service-delicate-field-6176'
+primary_region = 'phx'
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

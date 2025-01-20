@@ -1,22 +1,325 @@
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:roomify_app/firebase_options.dart';
+import 'package:roomify_app/providers/chat_provider.dart';
+import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/providers/marketplace_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/providers/roommateMatch_provider.dart';
+import 'package:roomify_app/providers/search_provider.dart';
+import 'package:roomify_app/repository/auth_repo.dart';
+import 'package:roomify_app/repository/chat_repo.dart';
+import 'package:roomify_app/repository/marketplace_repo.dart';
+import 'package:roomify_app/repository/profile_repo.dart';
+import 'package:roomify_app/repository/properties_repo.dart';
+import 'package:roomify_app/repository/rommate_match_repo.dart';
+import 'package:roomify_app/repository/search_repo.dart';
+import 'package:roomify_app/utils.dart';
 import 'package:roomify_app/utils/colors.dart';
-
+import 'package:provider/provider.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/views/auth/forgot_passoword.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'views/onboarding/splash_screen.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
-  runApp(const MyApp());
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings();
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      handleNotificationTap(response.payload, navigatorKey);
+    },
+  );
+
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Got a message whilst in the foreground!');
+    print('Message data: ${message.data}');
+    if (message.notification != null) {
+      showNotification(message);
+    }
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    handleNotificationTap(message.data.toString(), navigatorKey);
+  });
+
+  MapboxOptions.setAccessToken(mapboxToken);
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  final position = await getCurrentLocation();
+  runApp(MyApp(
+      navigatorKey: navigatorKey,
+      latitude: position.lat.toDouble(),
+      longitude: position.lng.toDouble()));
+}
+
+Future<Position> getCurrentLocation() async {
+  bool serviceEnabled;
+  geo.LocationPermission permission;
+
+  // Test if location services are enabled.
+  serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    // Location services are not enabled don't continue
+    // accessing the position and request users of the
+    // App to enable the location services.
+    return Future.error('Location services are disabled.');
+  }
+
+  permission = await geo.Geolocator.checkPermission();
+  if (permission == geo.LocationPermission.denied) {
+    permission = await geo.Geolocator.requestPermission();
+    if (permission == geo.LocationPermission.denied) {
+      // Permissions are denied, next time you could try
+      // requesting permissions again (this is also where
+      // Android's shouldShowRequestPermissionRationale
+      // returned true. According to Android guidelines
+      // your App should show an explanatory UI now.
+      return Position(0, 0);
+    }
+  }
+
+  if (permission == geo.LocationPermission.deniedForever) {
+    // Permissions are denied forever, handle appropriately.
+    return Future.error(
+        'Location permissions are permanently denied, we cannot request permissions.');
+  }
+  final location = await geo.Geolocator.getCurrentPosition();
+  return Position(location.longitude, location.latitude);
+}
+
+void showNotification(RemoteMessage message) async {
+  RemoteNotification? notification = message.notification;
+  AndroidNotification? android = message.notification?.android;
+
+  if (notification != null) {
+    flutterLocalNotificationsPlugin.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription:
+              'This channel is used for important notifications.',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: android?.smallIcon,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      payload: message.data.toString(),
+    );
+  }
+}
+
+Future<void> handleNotificationTap(
+    String? payload, GlobalKey<NavigatorState> navigatorKey) async {
+  if (payload != null) {
+    try {
+      final fixedPayload = payload
+          .replaceAllMapped(
+            RegExp(r'(\w+):'), // Match keys
+            (match) => '"${match[1]}":', // Enclose keys in double quotes
+          )
+          .replaceAllMapped(
+            RegExp(r':\s?([^",{}]+)'), // Match values not enclosed in quotes
+            (match) => match[1]!.startsWith('"')
+                ? ': ${match[1]}' // Value already quoted, keep it as is
+                : ': "${match[1]}"', // Enclose unquoted values in double quotes
+          )
+          .replaceAllMapped(
+              RegExp(r'"""'), // Remove excessive triple quotes
+              (_) => '"');
+
+      final data = Map<String, dynamic>.from(
+        json.decode(fixedPayload),
+      );
+
+      if (data['type'] == 'chat' && data['roomId'] != null) {
+        final chatProvider = navigatorKey.currentContext?.read<ChatProvider>();
+        if (chatProvider != null) {
+          final chatRoom = await chatProvider.createOrGetChatRoom(
+            data['senderId'],
+          );
+          if (chatRoom != null) {
+            Navigator.push(
+              navigatorKey.currentContext!,
+              MaterialPageRoute(
+                builder: (context) => ChatMessageScreen(room: chatRoom),
+                settings: RouteSettings(
+                  name: 'ChatMessageScreen',
+                  arguments: ChatMessageScreen(room: chatRoom),
+                ),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error handling notification tap: $e');
+    }
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GlobalKey<NavigatorState> navigatorKey;
+  final double latitude;
+  final double longitude;
+
+  const MyApp(
+      {super.key,
+      required this.navigatorKey,
+      required this.latitude,
+      required this.longitude});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData.from(
-          colorScheme: ColorScheme.fromSeed(seedColor: orangeColor)),
-      debugShowCheckedModeBanner: false,
-      home: Material(color: Color(4294375672), child: SplashScreen()),
-    );
+    return MultiProvider(
+        providers: [
+          Provider<AuthRepository>(
+            create: (_) => AuthRepository(),
+          ),
+          Provider<PropertyRepository>(
+            create: (_) => PropertyRepository(),
+          ),
+          Provider<MarketplaceRepository>(
+            create: (_) => MarketplaceRepository(),
+          ),
+          Provider<ProfileUpdateRepo>(
+            create: (_) => ProfileUpdateRepo(),
+          ),
+          ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
+            create: (context) => AuthProvider(
+                context.read<AuthRepository>(), ),
+            update: (context, authRepo, previous) =>
+                previous ?? AuthProvider(authRepo, ),
+          ),
+          ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo,
+              ProfileProvider>(
+            create: (context) => ProfileProvider(
+              context.read<ProfileUpdateRepo>(),
+              context,
+            ),
+            update: (context, authRepo, profileRepo, previous) =>
+                previous ?? ProfileProvider(profileRepo, context),
+          ),
+          ChangeNotifierProxyProvider2<AuthRepository, PropertyRepository,
+              PropertyProvider>(
+            create: (context) => PropertyProvider(
+              context.read<PropertyRepository>(),
+              context,
+            ),
+            update: (context, authRepo, propRepo, previous) =>
+                previous ?? PropertyProvider(propRepo, context),
+          ),
+          ChangeNotifierProxyProvider2<AuthRepository, MarketplaceRepository,
+              MarketplaceProvider>(
+            create: (context) => MarketplaceProvider(
+              context.read<MarketplaceRepository>(),
+              context,
+            ),
+            update: (context, authRepo, marketRepo, previous) =>
+                previous ?? MarketplaceProvider(marketRepo, context),
+          ),
+          Provider<RoommateMatchRepository>(
+            create: (_) => RoommateMatchRepository(),
+          ),
+          ChangeNotifierProxyProvider<RoommateMatchRepository,
+              RoommateMatchProvider>(
+            create: (context) => RoommateMatchProvider(
+              context.read<RoommateMatchRepository>(),
+            ),
+            update: (context, repository, previous) =>
+                previous ?? RoommateMatchProvider(repository),
+          ),
+          ChangeNotifierProvider<SearchProvider>(
+            create: (context) => SearchProvider(
+              SearchRepository(),
+              context,
+            ),
+          ),
+          Provider<ChatRepository>(
+            create: (_) => ChatRepository(),
+          ),
+          ChangeNotifierProxyProvider<ChatRepository, ChatProvider>(
+            create: (context) => ChatProvider(
+              context.read<ChatRepository>(),
+              AuthProvider(
+                context.read<AuthRepository>(),
+              ),
+            ),
+            update: (context, repository, previous) =>
+                previous ??
+                ChatProvider(
+                  repository,
+                  AuthProvider(
+                    context.read<AuthRepository>(),
+                  ),
+                ),
+          ),
+        ],
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          theme: ThemeData.from(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: orangeColor,
+            ).copyWith(
+              secondary: Colors.orange,
+              primary: Colors.orange,
+            ),
+            textTheme: GoogleFonts.rubikTextTheme(),
+          ),
+          debugShowCheckedModeBanner: false,
+          home: Material(
+            color: Color(4294375672),
+            child: SplashScreen(
+              latitude: latitude,
+              longitude: longitude,
+            ),
+          ),
+        ));
   }
 }

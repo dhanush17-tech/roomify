@@ -1,4 +1,4 @@
-package com.example.roomify_app
+package com.roommate.roomifyApp
 
 import io.flutter.embedding.android.FlutterActivity
 

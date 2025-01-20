@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 class SplashScreen extends StatefulWidget {
+  double latitude;
+  double longitude;
+  SplashScreen({required this.latitude, required this.longitude});
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -18,17 +27,17 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
 
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutBack, // Creates a pop-in effect
+      curve: Curves.fastLinearToSlowEaseIn, // Creates a pop-in effect
     );
 
     // Start the animation after a 2-second delay
-    Future.delayed(Duration(milliseconds: 1500), () {
+    Future.delayed(Duration(seconds: 1), () {
       _controller.forward();
     });
     delayedNavigation();
@@ -41,12 +50,52 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   delayedNavigation() {
-    Future.delayed((Duration(seconds: 3)), () {
-      return Navigator.pushAndRemoveUntil(context,
-          MaterialPageRoute(builder: (c) => MainScreen()), (route) => false);
+    Future.delayed((Duration(seconds: 2)), () async {
+      await _checkAuth();
+
+      if (isLoggedIn == true) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (c) => MainScreen(
+                latitude:widget.latitude,
+                longitude: widget.longitude,
+            )), (route) => false);
+      } else {
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+                builder: (c) => SignUpLoginScreen(
+                      widget.latitude,
+                      widget.longitude,
+                    )),
+            (route) => false);
+      }
     });
   }
 
+  Future<void> _checkAuth() async {
+    final userProvider = context.read<AuthProvider>();
+    _handleIncomingLinks();
+    try {
+      final token = await AuthRepository().getToken();
+      if (token != null) {
+        print('Token: $token');
+        // Get user profile using stored token
+        await userProvider.loadUserProfile();
+        setState(() {
+          isLoggedIn = true;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoggedIn = false;
+      });
+      print('Auto-login failed: $e');
+    }
+  }
+
+  void _handleIncomingLinks() {}
+
+  bool isLoggedIn = false;
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -84,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
         );
       },
     );
-  } 
+  }
 }
 
 class CircleRevealClipper extends CustomClipper<Path> {

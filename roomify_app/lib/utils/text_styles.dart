@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:roomify_app/utils/colors.dart';
 
 class AppTextStyles {
   static TextStyle title({
-    Color color = Colors.black,
+    Color color = blackTextColor,
     FontWeight fontWeight = FontWeight.bold,
     double fontSize = 24,
   }) {
@@ -14,7 +15,7 @@ class AppTextStyles {
   }
 
   static TextStyle subtitle({
-    Color color = Colors.black87,
+    Color color = blackTextColor,
     FontWeight fontWeight = FontWeight.w600,
     double fontSize = 18,
   }) {
@@ -26,7 +27,7 @@ class AppTextStyles {
   }
 
   static TextStyle body({
-    Color color = Colors.black54,
+    Color color = blackTextColor,
     FontWeight fontWeight = FontWeight.normal,
     double fontSize = 16,
   }) {
@@ -62,7 +63,7 @@ class AppTextStyles {
   }
 
   static TextStyle small({
-    Color color = Colors.black45,
+    Color color = blackTextColor,
     FontWeight fontWeight = FontWeight.bold,
     double fontSize = 12,
   }) {

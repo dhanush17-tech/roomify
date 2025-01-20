@@ -1,0 +1,1197 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomify_app/models/chatModel.dart';
+import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/propertyModel.dart';
+import 'package:roomify_app/models/userModel.dart';
+import 'package:roomify_app/providers/chat_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/utils/colors.dart';
+import 'package:roomify_app/utils/text_styles.dart';
+import 'package:roomify_app/views/home/home_screen.dart';
+import 'package:roomify_app/views/messaging/message_screen.dart';
+import 'package:roomify_app/views/property/add_property.dart';
+import 'package:roomify_app/views/property/report_listing.dart';
+import 'package:roomify_app/views/roomate_match/roommate_match.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
+
+class TransitDetails {
+  final int walkScore;
+  final int transitScore;
+  final List<TransitRoute> railLines;
+  final List<TransitRoute> busLines;
+
+  TransitDetails({
+    required this.walkScore,
+    required this.transitScore,
+    required this.railLines,
+    required this.busLines,
+  });
+
+  factory TransitDetails.fromJson(Map<String, dynamic> json) {
+    return TransitDetails(
+      walkScore: json['walkScore'] ?? 0,
+      transitScore: json['transitScore'] ?? 0,
+      railLines: (json['transitDetails']?['railLines'] as List<dynamic>?)
+              ?.map((route) => TransitRoute.fromJson(route))
+              .toList() ??
+          [],
+      busLines: (json['transitDetails']?['busLines'] as List<dynamic>?)
+              ?.map((route) => TransitRoute.fromJson(route))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class TransitRoute {
+  final String name;
+  final double distance;
+  final String description;
+  final String agency;
+  final String type;
+
+  TransitRoute({
+    required this.name,
+    required this.distance,
+    required this.description,
+    required this.agency,
+    required this.type,
+  });
+
+  factory TransitRoute.fromJson(Map<String, dynamic> json) {
+    return TransitRoute(
+      name: json['name'] ?? 'Unknown Route',
+      distance: (json['distance'] ?? 0.0).toDouble(),
+      description: json['description'] ?? '',
+      agency: json['agency'] ?? 'Unknown Agency',
+      type: json['type'] ?? 'Unknown',
+    );
+  }
+}
+
+class PropertyDetailsScreen extends StatefulWidget {
+  Listing property;
+  final double latitude;
+  final double longitude;
+
+  PropertyDetailsScreen(this.property, this.latitude, this.longitude);
+
+  @override
+  _PropertyDetailsScreenState createState() => _PropertyDetailsScreenState();
+}
+
+class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  bool isOwnListing() {
+    final currentUserId = context.read<AuthProvider>().user?.id;
+    return currentUserId == widget.property.user?.id;
+  }
+
+  void navigateToChat(BuildContext context, User propertyOwner) async {
+    if (!mounted) return;
+
+    try {
+      // Get or create chat room with property owner
+      final chatRoom = await context.read<ChatProvider>().createOrGetChatRoom(
+            propertyOwner.id,
+          );
+
+      if (!mounted) return;
+
+      // Navigate to chat screen
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatMessageScreen(room: chatRoom),
+          settings: RouteSettings(
+            name: 'ChatMessageScreen',
+            arguments: ChatMessageScreen(room: chatRoom),
+          ),
+        ),
+      );
+
+      // After returning from chat screen
+      if (mounted) {
+        setState(() {
+          // Update any necessary state
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to open chat: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocationDetails();
+  }
+
+  Map<String, dynamic>? _locationDetails;
+  bool _loadingLocationDetails = false;
+  TransitDetails? _transitDetails;
+  bool _isLoadingTransit = false;
+  String? _error;
+
+  Future<void> _loadLocationDetails() async {
+    if (!mounted) return;
+
+    setState(() {
+      _loadingLocationDetails = true;
+    });
+
+    try {
+      final details = await context
+          .read<PropertyProvider>()
+          .getLocationDetails(widget.property.id);
+      if (mounted) {
+        setState(() {
+          _locationDetails = details;
+          _loadingLocationDetails = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingLocationDetails = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Main content
+          CustomScrollView(
+            slivers: [
+              // App Bar with image
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 400,
+                backgroundColor: Colors.white,
+                leading: IconButton(
+                  icon: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.arrow_back, color: blackTextColor),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.only(left: 13),
+                ),
+                actions: [
+                  if (isOwnListing())
+                    // Show edit button for own listings
+                    IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.edit, color: orangeColor),
+                      ),
+                      onPressed: () async {
+                        final updatedListing = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddPropertyScreen(
+                              existingListing: widget.property,
+                            ),
+                          ),
+                        );
+
+                        // If we got an updated listing back, update the UI
+                        if (updatedListing != null && mounted) {
+                          setState(() {
+                            widget.property = updatedListing;
+                          });
+                        }
+                      },
+                    )
+                  else
+                    // Show favorite button for other listings
+                    ...[
+                    GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (C) => ReportScreen(
+                                        listingId: widget.property.id,
+                                        listingType: widget.property.title,
+                                        latitude: widget.latitude,
+                                        longitude: widget.longitude,
+                                      )));
+                        },
+                        child: Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20)),
+                          child: Row(
+                            children: [
+                              Text("Report listing",
+                                  style: TextStyle(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        )),
+                    SizedBox(
+                      width: 15,
+                    ),
+                    Consumer<PropertyProvider>(
+                      builder: (ctx, provider, _) => FavoriteButton(
+                        isFavorite: provider.isFavorite(widget.property.id),
+                        onTap: () => provider.toggleFavorite(widget.property),
+                      ),
+                    ),
+                    SizedBox(width: 13),
+                  ]
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    children: [
+                      // Main image carousel
+                      PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentPage = index;
+                          });
+                        },
+                        itemCount: widget.property.property!.imageUrls != null
+                            ? widget.property.property!.imageUrls!.length
+                            : widget.property.imageUrls!.length,
+                        itemBuilder: (context, index) {
+                          final imageUrl =
+                              widget.property.property!.imageUrls != null
+                                  ? widget.property.property!.imageUrls![index]
+                                  : widget.property.imageUrls![index];
+                          return ClipRRect(
+                            borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(40),
+                                bottomRight: Radius.circular(40)),
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.error),
+                            ),
+                          );
+                        },
+                      ),
+
+                      // Page indicators at bottom
+                      Positioned(
+                        bottom: 20,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            widget.property.property!.imageUrls != null
+                                ? widget.property.property!.imageUrls!.length
+                                : widget.property.imageUrls!.length,
+                            (index) => Container(
+                              margin: EdgeInsets.symmetric(horizontal: 4),
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _currentPage == index
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.4),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Content
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Rating and Title section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Left side - Rating, title, location
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Rating
+
+                                // Title
+                                Text(
+                                  widget.property.title,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                // Location
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined,
+                                        color: Colors.grey, size: 20),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      widget.property.location,
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Right side - Price
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                "\$ ${widget.property.price}",
+                                style: TextStyle(
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "per month",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // Action buttons
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 5),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.bed_outlined),
+                                        onPressed: () {},
+                                      ),
+                                      Text(
+                                        widget
+                                            .property.property!.numberOfBedrooms
+                                            .toString(),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.bathtub_outlined),
+                                        onPressed: () {},
+                                      ),
+                                      Text(
+                                        widget.property.property!
+                                            .numberOfBathrooms
+                                            .toString(),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12.0, horizontal: 12.0),
+                                    child: RichText(
+                                      text: TextSpan(
+                                        text: "Max occupancy of ",
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            color: blackTextColor),
+                                        children: <TextSpan>[
+                                          TextSpan(
+                                            text:
+                                                "${widget.property.property!.maxOccupancy}",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: blackTextColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Agent info
+
+                      SizedBox(
+                        height: 20,
+                      ),
+                      Text(
+                        widget.property.description ?? '',
+                        style: AppTextStyles.small(
+                          fontWeight: FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(
+                        height: 20,
+                      ),
+                      Text('Amenities',
+                          style: AppTextStyles.title(
+                              fontSize: 15, color: orangeColor)),
+                      // Add preferences section
+                      if (widget.property.property!.amenities!.isNotEmpty)
+                        buildPreferencesSection(
+                            widget.property.property!.amenities!),
+
+                      // Row(children: [
+                      //   Chip(
+                      //     label: Text('Move-in on 2nd Feb 2025'),
+                      //     backgroundColor: orangeColor.withOpacity(0.1),
+                      //     labelStyle: AppTextStyles.small(
+                      //         color: orangeColor, fontWeight: FontWeight.bold),
+                      //     side: BorderSide.none,
+                      //     shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(20)),
+                      //   ),
+                      //   SizedBox(width: 10),
+                      //   Chip(
+                      //     label: Text('Move-in on 2nd Feb 2025'),
+                      //     backgroundColor: orangeColor.withOpacity(0.1),
+                      //     labelStyle: AppTextStyles.small(
+                      //         color: orangeColor, fontWeight: FontWeight.bold),
+                      //     side: BorderSide.none,
+                      //     shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(20)),
+                      //   ),
+                      // ]),
+                      SizedBox(height: 20),
+                      if (widget.property.property?.categories.isNotEmpty ==
+                          true) ...[
+                        Text(
+                          'Categories',
+                          style: AppTextStyles.title(
+                              fontSize: 15, color: orangeColor),
+                        ),
+                        SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.property.property!.categories
+                              .map((category) => Chip(
+                                    label: Text(
+                                        category.displayName.split("").first +
+                                            category.displayName
+                                                .substring(1)
+                                                .toLowerCase()),
+                                    backgroundColor: Color(4293718257),
+                                    labelStyle: AppTextStyles.small(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.normal,
+                                    ),
+                                    side: BorderSide.none,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                      if (widget.property.property?.moveInDate != null ||
+                          widget.property.property?.moveOutDate != null) ...[
+                        SizedBox(height: 20),
+                        Text(
+                          'Availability',
+                          style: AppTextStyles.title(
+                              fontSize: 15, color: orangeColor),
+                        ),
+                        SizedBox(height: 12),
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey[200]!,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (widget.property.property?.moveInDate != null)
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.login,
+                                              size: 16, color: Colors.green),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Move-in',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        widget.property.property?.moveInDate ==
+                                                'Anytime'
+                                            ? 'Available Anytime'
+                                            : widget.property.property
+                                                    ?.moveInDate ??
+                                                'Not specified',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (widget.property.property?.moveOutDate !=
+                                  null) ...[
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: Colors.grey[300],
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 16.0),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.logout,
+                                                size: 16, color: Colors.red),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Move-out',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 16.0),
+                                        child: Text(
+                                          widget.property.property?.moveOutDate
+                                                  .toString() ??
+                                              'Not specified',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (widget.property.property?.isLookingForRoomate ==
+                          true) ...[
+                        SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: orangeColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: orangeColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.people_outline, color: orangeColor),
+                              SizedBox(width: 8),
+                              Text(
+                                'Looking for Roommate',
+                                style: TextStyle(
+                                  color: orangeColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      _buildLocationDetailsSection(),
+                      SizedBox(height: 130),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+              height: MediaQuery.of(context).viewInsets.bottom == 0
+                  ? 20
+                  : MediaQuery.of(context).viewInsets.bottom),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ExpandableUserCard(user: widget.property.user!),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildPreferencesSection(List preferences) {
+    final preferencesList = preferences ?? [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (preferencesList.isNotEmpty)
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: List<Widget>.generate(preferencesList.length, (index) {
+              return Chip(
+                label: Text('${preferencesList[index]}'),
+                backgroundColor: Color(4293718257),
+                labelStyle: AppTextStyles.small(
+                    color: Colors.grey, fontWeight: FontWeight.normal),
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+              );
+            }),
+          ),
+      ],
+    );
+  }
+
+  String _formatYearMonth(String? yearMonth) {
+    if (yearMonth == null) return 'Not specified';
+    final parts = yearMonth.split('-');
+    final year = parts[0];
+    final month = DateTime(0, int.parse(parts[1])).toString().split(' ')[1];
+    return '$month $year';
+  }
+
+  Widget _buildLocationDetailsSection() {
+    if (_loadingLocationDetails) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_locationDetails == null) {
+      return SizedBox.shrink();
+    }
+
+    // Parse the transit details from the response
+    final transitDetails = TransitDetails.fromJson(_locationDetails!);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (transitDetails.walkScore > 0) ...[
+          SizedBox(height: 24),
+          Text(
+            'Transit & Location',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: blackTextColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: orangeColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.directions_walk, color: orangeColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Walk Score ${transitDetails.walkScore}',
+                      style: TextStyle(
+                        color: orangeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 15),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: orangeColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.train_rounded, color: orangeColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Transit Score ${transitDetails.transitScore}',
+                      style: TextStyle(
+                        color: orangeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (transitDetails.railLines.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Text(
+                'Rail lines ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: blackTextColor,
+                ),
+              ),
+              Icon(Icons.train, color: blackTextColor, size: 18),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey[200]!,
+                width: 1,
+              ),
+            ),
+            child: Column(children: [
+              ...transitDetails.railLines
+                  .map((route) => _buildTransitRouteItem(route)),
+            ]),
+          ),
+        ],
+        if (transitDetails.busLines.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Text(
+                'Bus lines ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: blackTextColor,
+                ),
+              ),
+              Icon(Icons.directions_bus, color: blackTextColor, size: 18),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey[200]!,
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                ...transitDetails.busLines
+                    .map((route) => _buildTransitRouteItem(route)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTransitRouteItem(TransitRoute route) {
+    return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(route.name),
+                  Text(route.description,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
+              Text(
+                '${route.distance.toStringAsFixed(1)} miles away',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ]));
+  }
+}
+
+class ExpandableUserCard extends StatefulWidget {
+  final User user;
+  final bool isMarketplace;
+  final VoidCallback? onTap;
+
+  ExpandableUserCard({
+    required this.user,
+    this.isMarketplace = false,
+    this.onTap,
+  });
+
+  @override
+  _ExpandableUserCardState createState() => _ExpandableUserCardState();
+}
+
+class _ExpandableUserCardState extends State<ExpandableUserCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    if (!widget.isMarketplace) {
+      setState(() {
+        isExpanded = !isExpanded;
+        if (isExpanded) {
+          _controller.forward();
+        } else {
+          _controller.reverse();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 26,
+        right: 26,
+        bottom: 26,
+      ),
+      child: GestureDetector(
+        onTap: widget.isMarketplace ? widget.onTap : _toggleExpand,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: blackTextColor.withOpacity(0.2),
+                    spreadRadius: 40.0,
+                    blurRadius: 100.0,
+                    offset: Offset(10, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: blackTextColor,
+                          backgroundImage: widget.user.profilePhotoUrl != null
+                              ? CachedNetworkImageProvider(
+                                  widget.user.profilePhotoUrl!,
+                                )
+                              : null,
+                        ),
+                      ),
+                      SizedBox(width: 5),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.user.displayName,
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              widget.user.university != null
+                                  ? "${widget.user.university} | ${widget.user.age}yo"
+                                  : "${widget.user.age}yo",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w200,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        duration: Duration(milliseconds: 300),
+                        turns: isExpanded ? 0.25 : 0,
+                        child: Icon(Icons.arrow_forward_ios_outlined),
+                      ),
+                    ],
+                  ),
+                  SizeTransition(
+                    sizeFactor: _controller,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 5),
+                          Divider(),
+                          if (widget.user.bio != null) ...[
+                            Text(
+                              'Bio',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: orangeColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(widget.user.bio!,
+                                style: AppTextStyles.small(
+                                    fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                          if (widget.user.preferences!.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            Text(
+                              'Preferences',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: orangeColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            buildPreferencesSection(widget.user.preferences!),
+                          ],
+                          SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () async {
+                              final chatRoom = await context
+                                  .read<ChatProvider>()
+                                  .createOrGetChatRoom(
+                                    widget.user.id,
+                                  );
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ChatMessageScreen(room: chatRoom),
+                                  settings: RouteSettings(
+                                    name: 'ChatMessageScreen',
+                                    arguments:
+                                        ChatMessageScreen(room: chatRoom),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12.0, horizontal: 12.0),
+                                      child: Center(
+                                        child: Text(
+                                          'Contact',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        width: 3, color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(Icons.arrow_forward_ios_rounded),
+                                    onPressed: null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String text) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.grey),
+      ],
+    );
+  }
+}

@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.1
+  sdk: ^3.5.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -31,7 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -39,6 +38,34 @@ dependencies:
   card_swiper: ^3.0.1
   flutter_card_swiper: ^7.0.2
   flutter_staggered_grid_view:
+  google_fonts:
+  intl: ^0.19.0
+  provider: ^6.1.2
+  path_provider: ^2.1.5
+  flutter_secure_storage: ^9.2.2
+  image_picker:
+  dio:
+  geolocator: ^10.0.0
+  web_socket_channel: ^3.0.1
+  timeago: ^3.7.0
+  url_launcher: ^6.3.1
+  mapbox_maps_flutter: ^2.4.1
+  
+  permission_handler: 
+  latlng: ^2.0.7
+  cached_network_image: 
+  flutter_staggered_animations: ^1.1.1
+  fade_shimmer: ^2.0.1
+  screenshot: ^3.0.0
+  firebase_core:  
+  firebase_messaging: 
+  flutter_local_notifications: 
+  share_plus:
+  file_picker:
+  photo_view:
+  # advance_pdf_viewer2: 
+  easy_image_viewer: ^1.5.1
+
 
 dev_dependencies:
   flutter_test:
@@ -52,7 +79,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 # For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
+# pdf_viewer_plugin page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:

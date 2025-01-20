@@ -12,6 +12,9 @@ import '2_onbroading.dart';
 import '3_onbroading.dart';
 
 class OnboardingScreen extends StatefulWidget {
+  final double latitude;
+  final double longitude;
+  OnboardingScreen(this.latitude, this.longitude);
   @override
   _OnboardingScreenState createState() => _OnboardingScreenState();
 }
@@ -96,7 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 horizontal: 30, vertical: 20),
                             decoration: BoxDecoration(
                               color: _currentIndex == 0
-                                  ? Colors.black.withOpacity(0.1)
+                                  ? blackTextColor.withOpacity(0.1)
                                   : orangeColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(16),
                               border: _currentIndex == 0
@@ -157,7 +160,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (c) => SignUpLoginScreen()),
+                                      builder: (c) => SignUpLoginScreen(
+                                            widget.latitude,
+                                            widget.longitude,
+                                          )),
                                   (route) => false);
                             },
                             style: ElevatedButton.styleFrom(
@@ -179,7 +185,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (c) => SignUpLoginScreen()),
+                                      builder: (c) => SignUpLoginScreen(
+                                            widget.latitude,
+                                            widget.longitude,
+                                          )),
                                   (route) => false);
                             },
                             style: ElevatedButton.styleFrom(
