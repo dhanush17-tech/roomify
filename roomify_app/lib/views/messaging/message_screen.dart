@@ -335,7 +335,10 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                         // the profile listings for the other user
 
                         if (_isLoadingListings == false &&
-                            otherUserListings.isNotEmpty) ...[
+                            otherUserListings
+                                .where((listing) =>
+                                    listing.type == ListingType.Property)
+                                .isNotEmpty) ...[
                           Text(
                             'Listings',
                             style: AppTextStyles.title(
@@ -362,6 +365,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     ),
                   ),
                 ),
+                SizedBox(height: 10),
               ],
             ),
           ),
@@ -442,12 +446,17 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: CachedNetworkImage(
-                  imageUrl: listing.property?.imageUrls?.first ?? '',
-                  fit: BoxFit.cover,
-                  height: 120,
-                  width: double.infinity,
-                ),
+                child: listing.property?.imageUrls?.isNotEmpty ?? false
+                    ? CachedNetworkImage(
+                        imageUrl: listing.property?.imageUrls?.first ?? '',
+                        fit: BoxFit.cover,
+                        height: 120,
+                        width: 300,
+                      )
+                    : Placeholder(
+                        fallbackWidth: 300,
+                        fallbackHeight: 120,
+                      ),
               ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -479,12 +488,15 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       children: [
                         Icon(Icons.bathtub, color: Colors.grey, size: 20),
                         SizedBox(width: 5),
-                        Text(listing.property!.numberOfBathrooms.toString(),
+                        Text(
+                            listing.property?.numberOfBathrooms.toString() ??
+                                '',
                             style: TextStyle(fontSize: 14)),
                         SizedBox(width: 20),
                         Icon(Icons.bed, color: Colors.grey, size: 20),
                         SizedBox(width: 5),
-                        Text(listing.property!.numberOfBedrooms.toString(),
+                        Text(
+                            listing.property?.numberOfBedrooms.toString() ?? '',
                             style: TextStyle(fontSize: 14)),
                         Spacer(),
                         Align(
@@ -508,7 +520,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                         ),
                       ],
                     ),
-                    SizedBox(height: 15),
                   ],
                 ),
               ),

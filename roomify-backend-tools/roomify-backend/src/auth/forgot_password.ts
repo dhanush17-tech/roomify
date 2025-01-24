@@ -1,11 +1,8 @@
-
-import nodemailer from 'nodemailer';
-import { Hono } from 'hono';
-import { scryptSync, randomBytes } from 'crypto';
+import { Context, Hono } from 'hono';
+import { randomBytes } from 'crypto';
 import { hashPassword, verifyPassword } from '../helper/helper';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-
 
 const app = new Hono<{
     Bindings: Env,
@@ -14,12 +11,14 @@ const app = new Hono<{
     }
 }>();
 
+// Request password reset
 app.post('/', async (c) => {
     try {
         const { email } = await c.req.json();
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
+        // Find user
         const user = await prisma.user.findUnique({
             where: { email }
         });
@@ -28,109 +27,152 @@ app.post('/', async (c) => {
             return c.json({ error: 'User not found' }, 404);
         }
 
-        const resetToken = randomBytes(32).toString('hex');
-        const salt = randomBytes(16).toString('hex');
-        const tokenHash = await hashPassword(resetToken, salt);
+        // Delete any existing reset tokens for this user
+        await prisma.passwordReset.deleteMany({
+            where: { userId: user.id }
+        });
 
+        // Generate plain token for email
+        const resetToken = randomBytes(32).toString('hex');
+
+        // Hash token for storage
+        const hashedToken = await hashPassword(resetToken,);
+
+        // Store hashed token
         await prisma.passwordReset.create({
             data: {
                 userId: user.id,
-                token: tokenHash,
+                token: hashedToken,
                 expiresAt: new Date(Date.now() + 3600000), // 1 hour
             }
         });
-        console.log("This is the resetToken: ", resetToken);
 
-        await sendResetEmail(email, resetToken);
+        console.log('Reset token generated:', resetToken);
+        console.log('Hashed token stored:', hashedToken);
 
-        return c.json({ message: 'Reset email sent' });
+        // Send email with plain token
+        await sendResetEmail(email, resetToken, c);
+
+        return c.json({ message: 'Reset email sent successfully' });
     } catch (error) {
-        console.error('Password reset error:', error);
-        return c.json({ error: 'Failed to process request' }, 500);
+        console.error('Password reset request error:', error);
+        return c.json({ error: 'Failed to process reset request' }, 500);
     }
 });
 
+// Confirm password reset
 app.post('/confirm', async (c) => {
     try {
         const { token, password } = await c.req.json();
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
-        // Find valid reset token
-        const resetRequest = await prisma.passwordReset.findFirst({
+
+        // Get all valid reset tokens
+        const resetRequests = await prisma.passwordReset.findMany({
             where: {
                 expiresAt: {
                     gt: new Date()
                 }
-            },
-            orderBy: {
-                expiresAt: 'desc'
             },
             include: {
                 user: true
             }
         });
 
+        // Find matching token
+        const resetRequest = resetRequests.find(request =>
+            verifyPassword(token, request.token)
+        );
+
         if (!resetRequest) {
-            return c.json({ error: 'Invalid or expired token' }, 400);
+            return c.json({ error: 'Invalid or expired reset token' }, 400);
         }
 
-        // Verify token
-        const isValid = verifyPassword(token, resetRequest.token);
-        if (!isValid) {
-            return c.json({ error: 'Invalid token' }, 400);
-        }
+        // Hash new password
+        const hashedPassword = await hashPassword(password,);
 
-        // Generate new password hash
-        const salt = randomBytes(16).toString('hex');
-        const hashedPassword = await hashPassword(password, salt);
-
-        // Update password and delete reset token
+        // Update password and clean up
         await prisma.$transaction([
+            // Update user password
             prisma.user.update({
                 where: { id: resetRequest.userId },
                 data: { passwordHash: hashedPassword }
             }),
+            // Delete all reset tokens for this user
             prisma.passwordReset.deleteMany({
                 where: { userId: resetRequest.userId }
             })
         ]);
 
-        return c.json({ message: 'Password updated successfully' });
+        return c.json({ message: 'Password reset successful' });
     } catch (error) {
-        console.error('Password reset error:', error);
+        console.error('Password reset confirmation error:', error);
         return c.json({ error: 'Failed to reset password' }, 500);
     }
 });
 
-async function sendResetEmail(email: string, resetToken: string) {
-    const frontendUrl = `https://reset-password?token=${resetToken}`;
+async function sendResetEmail(email: string, resetToken: string, c: Context) {
+    const deepLinkUrl = 'https://roomify.app/reset-password?token=' + resetToken;
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.roomify.app';
+    const appStoreUrl = 'https://apps.apple.com/app/roomify/id123456789';
+
+    const emailContent = `
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Reset Your Roomify Password</h2>
+                <p>You requested to reset your password. Click the button below if you have the Roomify app installed:</p>
+                <p>
+                    <a href="${deepLinkUrl}" style="background-color: #E67E22; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
+                        Reset Password in App
+                    </a>
+                </p>
+                <p style="margin-top: 20px;">Don't have the Roomify app installed? Download it here:</p>
+                <p>
+                    <a href="${playStoreUrl}" style="color: #E67E22; text-decoration: none; margin-right: 15px;">Download for Android</a>
+                    <a href="${appStoreUrl}" style="color: #E67E22; text-decoration: none;">Download for iOS</a>
+                </p>
+                <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                    After installing the app, click the "Reset Password in App" button above or copy this link:
+                    <br>
+                    <span style="color: #888; word-break: break-all;">${deepLinkUrl}</span>
+                </p>
+                <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                    This reset link will expire in 1 hour.
+                    <br>
+                    If you didn't request this password reset, please ignore this email.
+                </p>
+            </body>
+        </html>
+    `;
+
     const payload = {
-        from: 'hi@geekydan.dev',
+        from: 'Roomify <hi@geekydan.dev>',
         to: email,
-        subject: 'Password Reset Request',
-        html: `Click <a href="${frontendUrl}">here</a> to reset your password.`,
+        subject: 'Reset Your Roomify Password',
+        html: emailContent,
     };
 
-    console.log('Email payload:', payload);
+    try {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
 
-    const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer re_hUWMWbHL_MZf3ckdjYypRLvCi76Bm3iae`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-    });
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Email API failed:', errorText);
+            throw new Error(`Failed to send email: ${errorText}`);
+        }
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Email API failed:', errorText);
-        throw new Error(`Failed to send email: ${errorText}`);
+        console.log('Password reset email sent successfully');
+    } catch (error) {
+        console.error('Failed to send password reset email:', error);
+        throw error;
     }
-
-    console.log('Email sent successfully.');
 }
-
-
 
 export default app;

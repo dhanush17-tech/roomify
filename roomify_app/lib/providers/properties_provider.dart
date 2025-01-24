@@ -23,8 +23,6 @@ class PropertyProvider extends ChangeNotifier {
   List<PropertyLead> get leads => _leads;
   List<Listing> get favorites => _favorites;
 
-  Map<int, Map<String, dynamic>> _locationDetailsCache = {};
-
   Future<void> loadLeads() async {
     try {
       _isLoading = true;
@@ -238,18 +236,10 @@ class PropertyProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>> getLocationDetails(int propertyId) async {
     try {
-      // Check cache first
-      if (_locationDetailsCache.containsKey(propertyId)) {
-        return _locationDetailsCache[propertyId]!;
-      }
-
       _isLoading = true;
       notifyListeners();
 
       final details = await _repository.getLocationDetails(propertyId);
-
-      // Cache the results
-      _locationDetailsCache[propertyId] = details;
 
       _isLoading = false;
       notifyListeners();

@@ -65,6 +65,7 @@ dependencies:
   photo_view:
   # advance_pdf_viewer2: 
   easy_image_viewer: ^1.5.1
+  app_links: ^6.3.3
 
 
 dev_dependencies:

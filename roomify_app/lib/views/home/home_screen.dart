@@ -477,18 +477,26 @@ class PropertyCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: Hero(
                       tag: 'property_image_${listing.id}',
-                      child: CachedNetworkImage(
-                        imageUrl: listing.property!.imageUrls != null
-                            ? listing.property!.imageUrls![0]
-                            : listing.imageUrls![0],
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        errorWidget: (context, url, error) => Icon(Icons.error),
-                      ),
+                      child: listing.property?.imageUrls?.isEmpty ?? true
+                          ? Container(
+                              height: 200,
+                              width: double.infinity,
+                              color: Colors.grey,
+                              child: Center(
+                                child: Text('No Image'),
+                              ),
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: listing.property!.imageUrls![0],
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.error),
+                            ),
                     ),
                   ),
                   listing.property!.isRoomifyChoice == true

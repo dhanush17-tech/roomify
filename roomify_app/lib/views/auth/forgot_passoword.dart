@@ -160,7 +160,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
 class ResetPasswordScreen extends StatefulWidget {
   final String token;
-  final double latitude;  
+  final double latitude;
   final double longitude;
 
   const ResetPasswordScreen(this.token, this.latitude, this.longitude);
@@ -179,25 +179,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Reset Password',
-          style: TextStyle(color: blackTextColor),
-        ),
-      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.05),
               Text(
-                'Enter your new password',
+                "Reset Password",
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "Enter your new password",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
                 ),
               ),
               SizedBox(height: 30),
@@ -240,6 +243,31 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+              ),
+              SizedBox(height: 10),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SignUpLoginScreen(
+                                  widget.latitude,
+                                  widget.longitude,
+                                )),
+                        (route) => false);
+
+                    // Navigate back to Login screen
+                  },
+                  child: Text(
+                    "Back to Login",
+                    style: TextStyle(
+                      color: orangeColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -295,8 +323,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         context,
         MaterialPageRoute(
             builder: (context) => SignUpLoginScreen(
-              widget.latitude,
-            widget.longitude,
+                  widget.latitude,
+                  widget.longitude,
                 )),
         (route) => false,
       );

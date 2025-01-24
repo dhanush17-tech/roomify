@@ -144,5 +144,27 @@
 -- Check all document requests with related messages and users
 
 -- Check if messages are being created with correct type
-SELECT latitude, longitude from user
- 
+
+-- Delete all listings and related data
+DELETE FROM PropertyLead;
+DELETE FROM PropertyAmenity;
+DELETE FROM PropertyTag;
+DELETE FROM PropertyCategory;
+DELETE FROM PropertyImage;
+DELETE FROM Comment;
+DELETE FROM Favorite;
+DELETE FROM MarketplaceImage;
+DELETE FROM MarketplaceCategory;
+DELETE FROM MarketplaceItem;
+DELETE FROM Property;
+DELETE FROM Listing;
+
+-- Reset auto-increment counters
+UPDATE sqlite_sequence SET seq = 0 WHERE name = 'listings';
+UPDATE sqlite_sequence SET seq = 0 WHERE name = 'comments';
+UPDATE sqlite_sequence SET seq = 0 WHERE name = 'property_leads';
+
+-- Verify deletions
+SELECT COUNT(*) as listing_count FROM listings;
+SELECT COUNT(*) as property_count FROM properties;
+SELECT COUNT(*) as marketplace_count FROM marketplace_items;

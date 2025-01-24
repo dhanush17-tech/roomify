@@ -234,6 +234,9 @@ export class ChatRoom {
                                             user: {
                                                 select: {
                                                     id: true,
+                                                    email: true,
+                                                    displayName: true,
+                                                    profileImageUrl: true,
                                                     fcmToken: true,
                                                 }
                                             }
@@ -252,7 +255,8 @@ export class ChatRoom {
                                         sendChatNotification(
                                             participant.user.fcmToken,
                                             message,
-                                            message.sender
+                                            message.sender,
+                                            participant.user
                                         );
                                     }
                                 }
@@ -294,7 +298,7 @@ export class ChatRoom {
                     'Connection': 'Upgrade'
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Authorization or WebSocket error:', error);
             return new Response(`Unauthorized: ${error.message}`, { status: 401 });
         }
@@ -304,13 +308,16 @@ export class ChatRoom {
 async function sendNotification(recipientFCMToken: string, data: any) {
     try {
         if (recipientFCMToken) {
-            const response = await fetch('https://notification-service-delicate-field-6176.fly.dev/send-notification', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
+            const response = await fetch(
+                // 'https://notification-service-delicate-field-6176.fly.dev/send-notification'
+                'http://localhost:3000/send-notification'
+                , {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
 
             if (!response.ok) {
                 throw new Error('Failed to send notification');
@@ -324,14 +331,15 @@ async function sendNotification(recipientFCMToken: string, data: any) {
     }
 }
 
-async function sendChatNotification(recipientFCMToken: string, message: any, sender: any) {
+async function sendChatNotification(recipientFCMToken: string, message: any, sender: any, recipient: any) {
     const notificationData = {
         recipientFCMToken,
         type: 'chat',
         message: {
-            content: message.content,
+            content: `[${recipient.email}]: ${message.content}`,
             roomId: message.roomId,
-            id: message.id
+            id: message.id,
+            recipientEmail: recipient.email
         },
         sender: {
             id: sender.id,

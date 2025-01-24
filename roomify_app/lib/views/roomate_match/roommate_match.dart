@@ -687,7 +687,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
       builder: (context, provider, _) {
         final user = context.watch<AuthProvider>().user;
 
-        if (provider.isLoading || provider.matches.isEmpty) {
+        if (provider.isLoading && provider.matches.isEmpty) {
           return Scaffold(
             body: SafeArea(
               child: Padding(
@@ -729,7 +729,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                           Flexible(
                             child: Stack(
                               children: [
-                                isExhausted
+                                provider.matches.isEmpty || isExhausted
                                     ? Center(
                                         child: Column(
                                           mainAxisAlignment:
@@ -746,7 +746,6 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                                 color: Colors.grey[800],
                                               ),
                                             ),
-                                            SizedBox(height: 8),
                                             Text(
                                               'Check back later for new potential matches',
                                               style: TextStyle(

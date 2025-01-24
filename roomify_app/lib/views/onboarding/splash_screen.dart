@@ -1,19 +1,25 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/repository/auth_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
-import 'package:roomify_app/views/auth/forgot_passoword.dart';
+import 'package:roomify_app/views/auth/reset_password.dart';
 import 'package:roomify_app/views/auth/login.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
-
-import 'package:url_launcher/url_launcher.dart';
+import 'package:app_links/app_links.dart';
 
 class SplashScreen extends StatefulWidget {
-  double latitude;
-  double longitude;
-  SplashScreen({required this.latitude, required this.longitude});
+  final double latitude;
+  final double longitude;
+
+  const SplashScreen({
+    Key? key,
+    required this.latitude,
+    required this.longitude,
+  }) : super(key: key);
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -22,6 +28,9 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+  bool isLoggedIn = false;
 
   @override
   void initState() {
@@ -33,69 +42,82 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.fastLinearToSlowEaseIn, // Creates a pop-in effect
+      curve: Curves.fastLinearToSlowEaseIn,
     );
 
-    // Start the animation after a 2-second delay
     Future.delayed(Duration(seconds: 1), () {
       _controller.forward();
     });
-    delayedNavigation();
+
+     delayedNavigation();
+  }
+
+ 
+
+  Future<void> delayedNavigation() async {
+    await Future.delayed(Duration(seconds: 2));
+    if (!mounted) return;
+
+    await _checkAuth();
+
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (c) => MainScreen(
+            latitude: widget.latitude,
+            longitude: widget.longitude,
+          ),
+        ),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (c) => SignUpLoginScreen(
+            widget.latitude,
+            widget.longitude,
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
+  Future<void> _checkAuth() async {
+    if (!mounted) return;
+
+    final userProvider = context.read<AuthProvider>();
+    try {
+      final token = await AuthRepository().getToken();
+      if (token != null) {
+        await userProvider.loadUserProfile();
+        if (mounted) {
+          setState(() {
+            isLoggedIn = true;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoggedIn = false;
+        });
+      }
+      print('Auto-login failed: $e');
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _linkSubscription?.cancel();
     super.dispose();
   }
 
-  delayedNavigation() {
-    Future.delayed((Duration(seconds: 2)), () async {
-      await _checkAuth();
-
-      if (isLoggedIn == true) {
-        Navigator.pushAndRemoveUntil(context,
-            MaterialPageRoute(builder: (c) => MainScreen(
-                latitude:widget.latitude,
-                longitude: widget.longitude,
-            )), (route) => false);
-      } else {
-        Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-                builder: (c) => SignUpLoginScreen(
-                      widget.latitude,
-                      widget.longitude,
-                    )),
-            (route) => false);
-      }
-    });
-  }
-
-  Future<void> _checkAuth() async {
-    final userProvider = context.read<AuthProvider>();
-    _handleIncomingLinks();
-    try {
-      final token = await AuthRepository().getToken();
-      if (token != null) {
-        print('Token: $token');
-        // Get user profile using stored token
-        await userProvider.loadUserProfile();
-        setState(() {
-          isLoggedIn = true;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        isLoggedIn = false;
-      });
-      print('Auto-login failed: $e');
-    }
-  }
-
-  void _handleIncomingLinks() {}
-
-  bool isLoggedIn = false;
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -104,7 +126,6 @@ class _SplashScreenState extends State<SplashScreen>
       builder: (context, child) {
         return Stack(
           children: [
-            // First screen (orange background)
             Container(
               color: Color(0xFFE67E22),
               child: Center(
@@ -115,7 +136,6 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-            // Second screen with animation
             ClipPath(
               clipper: CircleRevealClipper(_animation.value),
               child: Container(

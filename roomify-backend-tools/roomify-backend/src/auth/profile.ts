@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { uploadToR2 } from '../helper/helper';
+import { uploadToR2, deleteFromR2 } from '../helper/helper';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -283,11 +283,20 @@ app.delete('/listings/:id', async (c) => {
         const listing = await prisma.listing.findFirst({
             where: {
                 id: listingId,
-                userId: userId // Ensure the listing belongs to the user
+                userId: userId
             },
             include: {
-                property: true,
-                marketplace: true
+                property: {
+                    include: {
+                        images: true,
+                        amenities: true,
+                        tags: true,
+                        categories: true
+                    }
+                },
+                marketplace: true,
+                favorites: true,
+                reports: true
             }
         });
 
@@ -295,63 +304,82 @@ app.delete('/listings/:id', async (c) => {
             return c.json({ error: 'Listing not found or unauthorized' }, 404);
         }
 
+        // Store image URLs to delete later
+        const imageUrls = listing.property?.images.map(img => img.imageUrl) || [];
+
         // Create an array of operations for batch transaction
         const operations = [];
 
+        // First delete all records that reference the listing directly
+        operations.push(
+            // Delete favorites that reference the listing
+            prisma.favorite.deleteMany({
+                where: { listingId }
+            }),
+
+            // Delete reports that reference the listing
+            prisma.report.deleteMany({
+                where: { listingId }
+            })
+        );
+
         if (listing.property) {
-            // Add property related operations
+            // Then delete all property-related records
             operations.push(
-                prisma.propertyAmenity.deleteMany({
-                    where: { propertyId: listing.property.listingId }
-                }),
-                prisma.propertyTag.deleteMany({
-                    where: { propertyId: listing.property.listingId }
-                }),
-                prisma.propertyImage.deleteMany({
-                    where: { propertyId: listing.property.listingId }
-                }),
-                prisma.propertyCategory.deleteMany({
-                    where: { propertyId: listing.property.listingId }
-                }),
+                // Delete property leads
                 prisma.propertyLead.deleteMany({
-                    where: { propertyId: listingId }
+                    where: { propertyId: listing.property.listingId }
                 }),
+
+                // Delete comments
                 prisma.comment.deleteMany({
                     where: { propertyId: listing.property.listingId }
                 }),
-                prisma.favorite.deleteMany({
-                    where: {
-                        OR: [
-                            { listingId: listingId },
-                            { propertyId: listing.property.listingId }
-                        ]
-                    }
+
+                // Delete property related records
+                prisma.propertyAmenity.deleteMany({
+                    where: { propertyId: listing.property.listingId }
                 }),
+
+                prisma.propertyTag.deleteMany({
+                    where: { propertyId: listing.property.listingId }
+                }),
+
+                prisma.propertyCategory.deleteMany({
+                    where: { propertyId: listing.property.listingId }
+                }),
+
+                prisma.propertyImage.deleteMany({
+                    where: { propertyId: listing.property.listingId }
+                }),
+
+                // Delete the property record
                 prisma.property.delete({
-                    where: { listingId: listing.property.listingId }
+                    where: { listingId }
                 })
             );
         }
 
         if (listing.marketplace) {
-            // Add marketplace related operations
             operations.push(
+                // Delete marketplace images
                 prisma.marketplaceImage.deleteMany({
                     where: { itemId: listing.marketplace.listingId }
                 }),
+
+                // Delete marketplace categories
                 prisma.marketplaceCategory.deleteMany({
                     where: { itemId: listing.marketplace.listingId }
                 }),
-                prisma.favorite.deleteMany({
-                    where: { marketplaceItemListingId: listing.marketplace.listingId }
-                }),
+
+                // Delete the marketplace item
                 prisma.marketplaceItem.delete({
-                    where: { listingId: listing.id }
+                    where: { listingId }
                 })
             );
         }
 
-        // Add the final listing deletion
+        // Finally, delete the listing itself
         operations.push(
             prisma.listing.delete({
                 where: { id: listingId }
@@ -361,10 +389,26 @@ app.delete('/listings/:id', async (c) => {
         // Execute all operations in a batch transaction
         await prisma.$transaction(operations);
 
+        // After successful database deletion, delete images from R2
+        for (const imageUrl of imageUrls) {
+            const fileName = imageUrl.split('/').pop();
+            if (fileName) {
+                try {
+                    await deleteFromR2(fileName, "propertyImages", c);
+                } catch (e) {
+                    console.error('Failed to delete image from R2:', e);
+                    // Continue even if image deletion fails
+                }
+            }
+        }
+
         return c.json({ success: true });
     } catch (error) {
         console.error('Delete listing error:', error);
-        return c.json({ error: 'Failed to delete listing' }, 500);
+        return c.json({
+            error: 'Failed to delete listing',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
     }
 });
 

@@ -6,4 +6,5 @@ interface Env {
 	DB: D1Database;
 	BUCKET: R2Bucket;
 	CHATROOM: DurableObject;
+	RESEND_API_KEY: string;
  } 

@@ -195,73 +195,76 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     setState(() => _isLoading = true);
 
-    try {
-      List<File> allImages = [];
-      allImages.addAll(_selectedImages);
+    // try {
+    List<File> allImages = [];
+    allImages.addAll(_selectedImages);
 
-      // Convert existing image URLs to files
-      for (String imageUrl in _existingImageUrls) {
-        try {
-          final response = await http.get(Uri.parse(imageUrl));
-          if (response.statusCode == 200) {
-            final tempDir = await getTemporaryDirectory();
-            final fileName = imageUrl.split('/').last;
-            final tempFile = File('${tempDir.path}/$fileName');
-            await tempFile.writeAsBytes(response.bodyBytes);
-            allImages.add(tempFile);
-          }
-        } catch (e) {
-          print('Error downloading existing image: $e');
+    // Convert existing image URLs to files
+    for (String imageUrl in _existingImageUrls) {
+      try {
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          final tempDir = await getTemporaryDirectory();
+          final fileName = imageUrl.split('/').last;
+          final tempFile = File('${tempDir.path}/$fileName');
+          await tempFile.writeAsBytes(response.bodyBytes);
+          allImages.add(tempFile);
         }
-      }
-
-      final listing = Listing(
-        id: widget.existingListing?.id ?? DateTime.now().millisecondsSinceEpoch,
-        createdAt: widget.existingListing?.createdAt ?? DateTime.now(),
-        title: capitalizeWords(_titleController.text.trim()),
-        description: _descriptionController.text.trim(),
-        location: _locationController.text.trim(),
-        price: int.parse(_priceController.text),
-        property: Property(
-          numberOfBathrooms: int.parse(_bathroomsController.text),
-          numberOfBedrooms: int.parse(_bedroomsController.text),
-          amenities: _selectedAmenities,
-          isLookingForRoomate: isLookingForRoomate,
-          maxOccupancy: int.parse(_maxOccController.text),
-          moveInDate: moveInDate,
-          moveOutDate: moveOutDate,
-          categories: _selectedCategory != null ? [_selectedCategory!] : [],
-          imageUrls: [], // Clear existing URLs as we're sending all images
-        ),
-        latitude: latitude,
-        longitude: longitude,
-        type: ListingType.Property,
-        user: user,
-        isFavourite: widget.existingListing?.isFavourite ?? false,
-        imageUrls: [], // Clear existing URLs as we're sending all images
-      );
-
-      if (widget.existingListing != null) {
-        final updatedListing = await context
-            .read<PropertyProvider>()
-            .updateProperty(listing, allImages);
-        _showSuccessSnackBar('Property updated successfully');
-        Navigator.pop(context, updatedListing); // Return the updated listing
-        Navigator.pop(context);
-      } else {
-        final createdListing = await context
-            .read<PropertyProvider>()
-            .createProperty(listing, allImages);
-        _showSuccessSnackBar('Property added successfully');
-        Navigator.pop(context, createdListing); // Return the created listing
-      }
-    } catch (e) {
-      _showErrorSnackBar(e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      } catch (e) {
+        print('Error downloading existing image: $e');
       }
     }
+
+    final listing = Listing(
+      id: widget.existingListing?.id ?? DateTime.now().millisecondsSinceEpoch,
+      createdAt: widget.existingListing?.createdAt ?? DateTime.now(),
+      title: capitalizeWords(_titleController.text.trim()),
+      description: _descriptionController.text.trim(),
+      location: _locationController.text.trim(),
+      price: int.parse(_priceController.text),
+      property: Property(
+        numberOfBathrooms: int.parse(_bathroomsController.text),
+        numberOfBedrooms: int.parse(_bedroomsController.text),
+        amenities: _selectedAmenities,
+        isLookingForRoomate: isLookingForRoomate,
+        maxOccupancy: int.parse(_maxOccController.text),
+        moveInDate: moveInDate,
+        moveOutDate: moveOutDate,
+        categories: _selectedCategory != null ? [_selectedCategory!] : [],
+        imageUrls: [], // Clear existing URLs as we're sending all images
+      ),
+      latitude: latitude,
+      longitude: longitude,
+      type: ListingType.Property,
+      user: user,
+      isFavourite: widget.existingListing?.isFavourite ?? false,
+      imageUrls: [], // Clear existing URLs as we're sending all images
+    );
+
+    if (widget.existingListing != null) {
+      final updatedListing = await context
+          .read<PropertyProvider>()
+          .updateProperty(listing, allImages);
+      _showSuccessSnackBar('Property updated successfully');
+      if (mounted) {
+        Navigator.of(context).pop(updatedListing);
+      }
+    } else {
+      final createdListing = await context
+          .read<PropertyProvider>()
+          .createProperty(listing, allImages);
+      _showSuccessSnackBar('Property added successfully');
+      if (mounted) {
+        Navigator.of(context).pop(createdListing);
+      }
+    }
+    // } catch (e) {
+    //   _showErrorSnackBar(e.toString());
+    // } finally {
+    //   if (mounted) {
+    //     setState(() => _isLoading = false);
+    //   }
+    // }
   }
 
   void _showErrorSnackBar(String message) {

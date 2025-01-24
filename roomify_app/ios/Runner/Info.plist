@@ -30,12 +30,16 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.yourdomain.roomify</string>
+			<string>com.roomify.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>roomify</string>
 			</array>
 		</dict>
+	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:roomify.app</string>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>

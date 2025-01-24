@@ -5,15 +5,22 @@ import { sign } from "hono/jwt";
 import { PrismaClient } from '@prisma/client';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { verify } from "hono/jwt";
- 
-export async function hashPassword(password: string, salt: string,): Promise<string> {
 
-    const hash = crypto.scryptSync(password, salt, 64);
-    return `${salt}:${hash.toString('hex')}`;
+export async function hashPassword(password: string,): Promise<string> {
+    const salt = 'roomify_password_salt';
+    
+
+    // Hash the password with the salt
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+
+    // Return in format salt:hash
+    return `${salt}:${hash}`;
 }
 
 function hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    // Use a consistent salt for token hashing
+    const salt = 'roomify_token_salt'; // Using a constant salt for tokens
+    return crypto.scryptSync(token, salt, 64).toString('hex');
 }
 
 async function signAndStoreToken(payload: any, c: Context): Promise<string> {
@@ -94,10 +101,23 @@ export const validateToken = async (c: Context, next: Next) => {
 };
 
 function verifyPassword(password: string, storedHash: string): boolean {
-    const [salt, originalHash] = storedHash.split(':');
-    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-    console.log(originalHash);
-    return hash === originalHash;
+    try {
+        // Split the stored hash into salt and hash
+        const [salt, originalHash] = storedHash.split(':');
+
+        if (!salt || !originalHash) {
+            return false;
+        }
+
+        // Hash the provided password with the same salt
+        const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+
+        // Compare the hashes
+        return hash === originalHash;
+    } catch (error) {
+        console.error('Password verification error:', error);
+        return false;
+    }
 }
 
 

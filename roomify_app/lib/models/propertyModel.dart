@@ -36,14 +36,16 @@ class Property {
       isLookingForRoomate: json['isLookingForRoomate'] ?? false,
       maxOccupancy: json['maxOccupancy'] ?? 0,
       moveInDate: json['moveInDate'] != null
-          ? DateTime.parse(json['moveInDate'].length == 7
-                  ? json['moveInDate'] + '-01'
-                  : json['moveInDate'])
-              .toLocal()
-              .toString()
-              .split('-')
-              .sublist(0, 2)
-              .join('-')
+          ? json['moveInDate'] == 'Anytime'
+              ? 'Anytime'
+              : DateTime.parse(json['moveInDate'].length == 7
+                      ? json['moveInDate'] + '-01'
+                      : json['moveInDate'])
+                  .toLocal()
+                  .toString()
+                  .split('-')
+                  .sublist(0, 2)
+                  .join('-')
           : null,
       moveOutDate: json['moveOutDate'] != null
           ? DateTime.parse(json['moveOutDate'].length == 7

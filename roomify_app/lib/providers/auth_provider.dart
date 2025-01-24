@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 import 'package:roomify_app/models/userModel.dart';
@@ -9,6 +11,7 @@ import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/providers/marketplace_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/providers/search_provider.dart';
+import 'package:roomify_app/utils/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
@@ -211,20 +214,17 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> resetPassword(
-      String? token, String password, Function onSuccess) async {
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
     try {
-      _isLoading = true;
-      notifyListeners();
-      if (token != null) {
-        await _authRepository.resetPassword(token: token, password: password);
-        onSuccess;
-      }
+      await _authRepository.resetPassword(
+        token: token,
+        password: newPassword,
+      );
     } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading;
-      notifyListeners();
+      throw Exception('Failed to reset password: ${e.toString()}');
     }
   }
 

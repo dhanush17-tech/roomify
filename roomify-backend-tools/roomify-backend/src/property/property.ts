@@ -293,7 +293,7 @@ app.get('/recommended-listings', async (c) => {
             where: {
                 reported: false,
                 property: {
-                     OR: [
+                    OR: [
                         { moveInDate: 'Anytime' },
                         {
                             moveInDate: {
@@ -982,11 +982,14 @@ app.put('/:id', async (c) => {
         const existingListing = await prisma.listing.findUnique({
             where: { id: listingId },
             include: {
+                user: true,
+
                 property: {
                     include: {
                         images: true,
                         amenities: true,
                         tags: true,
+
                         categories: true,
                     }
                 }
@@ -1105,6 +1108,7 @@ app.put('/:id', async (c) => {
         const updatedListing = await prisma.listing.findUnique({
             where: { id: listingId },
             include: {
+                user: true,
                 property: {
                     include: {
                         amenities: true,
@@ -1129,6 +1133,7 @@ app.put('/:id', async (c) => {
             location: updatedListing.location,
             price: updatedListing.price,
             latitude: updatedListing.latitude,
+            user: updatedListing.user,
             longitude: updatedListing.longitude,
             property: {
                 categories: updatedListing.property.categories.map(c => c.category),
@@ -1224,11 +1229,13 @@ app.get('/:id/location-details', async (c) => {
                         transitDetails: true,
                         lastLocationDetailsUpdate: true,
                         walkScore: true,
+                        transitScore: true,
                     }
                 }
             }
         });
 
+ 
         if (!listing) {
             return c.json({ error: 'Listing not found' }, 404);
         }
@@ -1244,12 +1251,17 @@ app.get('/:id/location-details', async (c) => {
         const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
         if (
             listing.property?.walkScore &&
+            listing.property?.transitScore||0 &&
             (parsedTransitDetails.railLines.length > 0 || parsedTransitDetails.busLines.length > 0) &&
             listing.property?.lastLocationDetailsUpdate &&
             (new Date().getTime() - listing.property.lastLocationDetailsUpdate.getTime()) < CACHE_DURATION
         ) {
+            console.log("This is the transit score", listing.property?.transitScore);
+
             return c.json({
+
                 walkScore: listing.property.walkScore,
+                transitScore: listing.property.transitScore,
                 transitDetails: parsedTransitDetails
             });
         }
@@ -1337,6 +1349,7 @@ app.get('/:id/location-details', async (c) => {
                 }
             });
         }
+        console.log("This is the transit score", walkScoreData.transit?.score);
 
         return c.json({
             transitScore: walkScoreData.transit?.score || 0,

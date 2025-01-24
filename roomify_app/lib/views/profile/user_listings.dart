@@ -47,9 +47,9 @@ class _UserListingScreenState extends State<UserListingScreen>
               ),
             ),
             PinterestGrid(
-             reportedListings,
-          widget.latitude,
-             widget.longitude,
+              reportedListings,
+              widget.latitude,
+              widget.longitude,
               showDeleteIcon: true,
               onTapDelete: (listing) =>
                   _showDeleteConfirmation(context, listing),

@@ -31,6 +31,8 @@ import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'views/onboarding/splash_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:app_links/app_links.dart';
+import 'package:roomify_app/views/auth/reset_password.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -88,6 +90,21 @@ void main() async {
   MapboxOptions.setAccessToken(mapboxToken);
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final position = await getCurrentLocation();
+
+  // Initialize AppLinks
+  final appLinks = AppLinks();
+
+  // Handle app links while the app is in the foreground
+  appLinks.uriLinkStream.listen((uri) {
+    handleDeepLink(uri, navigatorKey);
+  });
+
+  // Get the initial link if the app was launched from a link
+  final appLink = await appLinks.getInitialLink();
+  if (appLink != null) {
+    handleDeepLink(appLink, navigatorKey);
+  }
+
   runApp(MyApp(
       navigatorKey: navigatorKey,
       latitude: position.lat.toDouble(),
@@ -204,6 +221,25 @@ Future<void> handleNotificationTap(
   }
 }
 
+// Update handleDeepLink function to handle both https and roomify schemes
+void handleDeepLink(Uri uri, GlobalKey<NavigatorState> navigatorKey) {
+  // Extract the path and query parameters regardless of scheme
+  final path = uri.path;
+  final params = uri.queryParameters;
+
+  // Handle reset password
+  if (path == '/reset-password' || path == 'reset-password') {
+    final token = params['token'];
+    if (token != null) {
+      navigatorKey.currentState?.pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ResetPasswordScreen(token, 0.0, 0.0),
+        ),
+      );
+    }
+  }
+}
+
 class MyApp extends StatelessWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final double latitude;
@@ -233,9 +269,13 @@ class MyApp extends StatelessWidget {
           ),
           ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
             create: (context) => AuthProvider(
-                context.read<AuthRepository>(), ),
+              context.read<AuthRepository>(),
+            ),
             update: (context, authRepo, previous) =>
-                previous ?? AuthProvider(authRepo, ),
+                previous ??
+                AuthProvider(
+                  authRepo,
+                ),
           ),
           ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo,
               ProfileProvider>(

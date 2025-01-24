@@ -42,8 +42,8 @@ app.get('/', async (c) => {
                 NOT: {
                     // exclude current user from the list and the matches should not be professional
                     id: currentUserId,
-                    isProfessional: true
                 },
+                isProfessional: false,
                 AND: [
                     {
                         OR: [
