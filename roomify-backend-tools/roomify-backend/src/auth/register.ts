@@ -20,7 +20,7 @@ app.post('/register', async (c: Context<{
     try {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
-        const { email, password, displayName, age, university, location } = await c.req.json();
+        const { email, password, displayName, age, university, location, isProfessional } = await c.req.json();
 
         // Validate required fields
         if (!email || !password || !displayName) {
@@ -37,11 +37,10 @@ app.post('/register', async (c: Context<{
         });
 
         if (existingUser) {
-            return c.json({ error: 'User already exists' }, 400);
+            return c.json({ error: 'Email already exists' }, 400);
         }
 
-        const salt = randomBytes(16).toString('hex');
-        const hashedPassword = await hashPassword(password, salt);
+         const hashedPassword = await hashPassword(password,);
 
         const user = await prisma.user.create({
             data: {
@@ -51,12 +50,13 @@ app.post('/register', async (c: Context<{
                 age,
                 university,
                 location,
+                isProfessional
             },
         });
 
         const token = await signAndStoreToken({ sub: user.id, }, c);
 
-        return c.json({ token });
+        return c.json({ user, token });
     } catch (error) {
         console.error('Registration error:', error);
         return c.json({ error: 'Failed to register' }, 500);

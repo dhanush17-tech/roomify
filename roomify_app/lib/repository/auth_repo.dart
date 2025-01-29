@@ -8,53 +8,82 @@ import 'package:roomify_app/utils.dart';
 
 class AuthRepository {
   final Dio _dio;
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String REMEMBER_ME_TOKEN_KEY = 'auth_token';
+  static const String SESSION_TOKEN_KEY = 'session_token';
 
   AuthRepository() : _dio = Dio() {
     _dio.options.baseUrl = baseUrl;
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Add token to header
-          final token = await getToken();
-          options.headers['Authorization'] = 'Bearer $token';
-          options.headers['X-Custom-Auth-Key'] = 'roomify-secret';
-          return handler.next(options);
+          try {
+            // Add token to header
+            final token = await getTokenOrThrow();
+            options.headers['Authorization'] = 'Bearer $token';
+            options.headers['X-Custom-Auth-Key'] = 'roomify-secret';
+            return handler.next(options);
+          } catch (e) {
+            // If there's an error getting the token, return 401
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 401,
+                  statusMessage: 'Unauthorized',
+                ),
+                type: DioExceptionType.badResponse,
+                error: 'Authentication required',
+              ),
+            );
+          }
         },
-        onError: (error, handler) {
-          print('Error: ${error.message}');
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401) {
+            // Clear tokens on unauthorized response
+            await deleteToken();
+          }
           return handler.next(error);
         },
       ),
     );
   }
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   Future<User> login({
     required String email,
     required String password,
+    bool rememberMe = true,
   }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {
           'Content-Type': 'application/json',
+          'X-Custom-Auth-Key': 'roomify-secret',
         },
         body: jsonEncode({
           'email': email,
           'password': password,
+          'rememberMe': rememberMe,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
-        print('Token: $token');
-        await saveToken(token);
+
+        if (token == null || token.isEmpty) {
+          throw Exception('Invalid token received from server');
+        }
+
+        // Save token using the saveToken method
+        await saveToken(token, isSession: !rememberMe);
+
         final userProfile = await getUserProfile(token);
         return User.fromJson(userProfile);
       } else {
         final errorData = jsonDecode(response.body);
-        // Handle specific error cases
         switch (response.statusCode) {
           case 401:
             throw Exception('Invalid email or password');
@@ -75,12 +104,13 @@ class AuthRepository {
   }
 
   Future<User> register({
+    required String displayName,
     required String email,
     required String password,
-    required String displayName,
     int? age,
     String? university,
     String? location,
+    required bool isProfessional,
   }) async {
     try {
       final response = await http.post(
@@ -89,30 +119,27 @@ class AuthRepository {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
+          'displayName': displayName,
           'email': email,
           'password': password,
-          'displayName': displayName,
-          'age': age, // Optional
-          'university': university, // Optional
-          'location': location, // Optional
+          'age': age,
+          'university': university,
+          'location': location,
+          'isProfessional': isProfessional,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
-
-        // Save token to secure storage
         await saveToken(token);
-
-        final userProfile = await getUserProfile(token);
-        return User.fromJson(userProfile);
+        return User.fromJson(data['user']);
       } else {
         final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? 'Registration failed');
+        throw Exception(errorData['error']);
       }
     } catch (e) {
-      throw Exception('Registration failed: $e');
+      throw Exception('Failed to register: ${e.toString()}');
     }
   }
 
@@ -139,15 +166,23 @@ class AuthRepository {
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'X-Custom-Auth-Key': 'roomify-secret',
         },
       );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        // Clear tokens if unauthorized
+        await deleteToken();
+        throw Exception('Session expired. Please log in again.');
       } else {
         throw Exception('Failed to get profile');
       }
     } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
       throw Exception('Failed to get profile: $e');
     }
   }
@@ -161,6 +196,7 @@ class AuthRepository {
     String? bio,
     int? age,
     String? gender,
+    String? location,
     String? status,
     File? profileImage,
   }) async {
@@ -174,6 +210,7 @@ class AuthRepository {
         if (age != null) 'age': age.toString(),
         if (gender != null) 'gender': gender!,
         if (status != null) 'status': status!,
+        if (location != null) 'location': location!,
         if (profileImage != null)
           'profilePhoto': await MultipartFile.fromFile(profileImage.path,
               filename: "${userId}")
@@ -219,20 +256,51 @@ class AuthRepository {
     }
   }
 
-  Future<String> getToken() async {
-    final token = await _secureStorage.read(key: 'auth_token');
-    if (token == null) {
-      throw Exception('No token found');
+  Future<String?> getToken() async {
+    try {
+      // Try to get session token first
+      String? token = await _secureStorage.read(key: SESSION_TOKEN_KEY);
+
+      // If no session token, try to get remember me token
+      if (token == null) {
+        token = await _secureStorage.read(key: REMEMBER_ME_TOKEN_KEY);
+      }
+
+      return token;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<String> getTokenOrThrow() async {
+    final token = await getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Authentication required. Please log in again.');
     }
     return token;
   }
 
-  Future<void> saveToken(String token) async {
-    await _secureStorage.write(key: 'auth_token', value: token);
+  Future<void> saveToken(String token, {bool isSession = false}) async {
+    try {
+      final key = isSession ? SESSION_TOKEN_KEY : REMEMBER_ME_TOKEN_KEY;
+
+      // Delete any existing tokens first
+      await deleteToken();
+
+      // Save the new token
+      await _secureStorage.write(
+        key: key,
+        value: token,
+      );
+    } catch (e) {
+      throw Exception('Failed to save authentication token');
+    }
   }
 
   Future<void> deleteToken() async {
-    await _secureStorage.delete(key: 'auth_token');
+    // Clear both types of tokens
+    await _secureStorage.delete(key: REMEMBER_ME_TOKEN_KEY);
+    await _secureStorage.delete(key: SESSION_TOKEN_KEY);
   }
 
   Future<void> requestPasswordReset({required String email}) async {

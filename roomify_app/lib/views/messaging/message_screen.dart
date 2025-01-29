@@ -243,14 +243,16 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          otherUser.age.toString() + ' years old',
-                          style: TextStyle(
-                            color: orangeColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        otherUser.isProfessional == true
+                            ? Text(
+                                otherUser.age.toString() + ' years old',
+                                style: TextStyle(
+                                  color: orangeColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            : SizedBox.shrink(),
                       ],
                     ),
                     Spacer(),
@@ -289,78 +291,80 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (otherUser.bio != null) ...[
-                          Text(
-                            'Bio',
-                            style: AppTextStyles.title(
-                                fontSize: 15, color: orangeColor),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            otherUser.bio!,
-                            style: AppTextStyles.small(
-                              fontWeight: FontWeight.normal,
-                              fontSize: 14,
+                        if (otherUser.isProfessional == false) ...[
+                          if (otherUser.bio != null) ...[
+                            Text(
+                              'Bio',
+                              style: AppTextStyles.title(
+                                  fontSize: 15, color: orangeColor),
                             ),
-                          ),
+                            SizedBox(height: 8),
+                            Text(
+                              otherUser.bio!,
+                              style: AppTextStyles.small(
+                                fontWeight: FontWeight.normal,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            if (otherUser.preferences?.isNotEmpty == true) ...[
+                              Text(
+                                'Preferences',
+                                style: AppTextStyles.title(
+                                    fontSize: 15, color: orangeColor),
+                              ),
+                              SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8.0,
+                                runSpacing: 4.0,
+                                children: otherUser.preferences!.map((pref) {
+                                  return Chip(
+                                    label: Text(pref.preference),
+                                    backgroundColor:
+                                        Colors.grey.withOpacity(0.2),
+                                    labelStyle: AppTextStyles.small(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    side: BorderSide.none,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ],
                           SizedBox(height: 16),
-                        ],
-                        if (otherUser.preferences?.isNotEmpty == true) ...[
-                          Text(
-                            'Preferences',
-                            style: AppTextStyles.title(
-                                fontSize: 15, color: orangeColor),
-                          ),
-                          SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8.0,
-                            runSpacing: 4.0,
-                            children: otherUser.preferences!.map((pref) {
-                              return Chip(
-                                label: Text(pref.preference),
-                                backgroundColor: Colors.grey.withOpacity(0.2),
-                                labelStyle: AppTextStyles.small(
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                side: BorderSide.none,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                        SizedBox(height: 16),
-                        // the profile listings for the other user
-
-                        if (_isLoadingListings == false &&
-                            otherUserListings
-                                .where((listing) =>
-                                    listing.type == ListingType.Property)
-                                .isNotEmpty) ...[
-                          Text(
-                            'Listings',
-                            style: AppTextStyles.title(
-                                fontSize: 15, color: orangeColor),
-                          ),
-                          SizedBox(height: 8),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                ...otherUserListings
-                                    .where((listing) =>
-                                        listing.type == ListingType.Property)
-                                    .map((listing) => Padding(
-                                          padding: EdgeInsets.only(right: 16),
-                                          child: _buildPropertyCard(listing),
-                                        )),
-                              ],
+                          // the profile listings for the other user
+                          if (_isLoadingListings == false &&
+                              otherUserListings
+                                  .where((listing) =>
+                                      listing.type == ListingType.Property)
+                                  .isNotEmpty) ...[
+                            Text(
+                              'Listings',
+                              style: AppTextStyles.title(
+                                  fontSize: 15, color: orangeColor),
                             ),
-                          ),
-                        ]
+                            SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  ...otherUserListings
+                                      .where((listing) =>
+                                          listing.type == ListingType.Property)
+                                      .map((listing) => Padding(
+                                            padding: EdgeInsets.only(right: 16),
+                                            child: _buildPropertyCard(listing),
+                                          )),
+                                ],
+                              ),
+                            ),
+                          ]
+                        ],
                       ],
                     ),
                   ),

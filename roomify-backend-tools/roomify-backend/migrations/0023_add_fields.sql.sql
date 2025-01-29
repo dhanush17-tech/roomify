@@ -1,2 +1,2 @@
--- AlterTable
-ALTER TABLE "Property" ADD COLUMN "transit_score" INTEGER DEFAULT 0;
+-- CreateIndex
+CREATE UNIQUE INDEX "PropertyLead_userId_propertyId_key" ON "PropertyLead"("userId", "propertyId");

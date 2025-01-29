@@ -267,4 +267,6 @@ class ProfileProvider extends ChangeNotifier {
       throw e;
     }
   }
+
+  
 }

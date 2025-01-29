@@ -114,6 +114,7 @@ function verifyPassword(password: string, storedHash: string): boolean {
 
         // Compare the hashes
         return hash === originalHash;
+        
     } catch (error) {
         console.error('Password verification error:', error);
         return false;

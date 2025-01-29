@@ -20,12 +20,24 @@ app.get('/', async (c) => {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
+
                 favorites: {
                     include: {
                         listing: true
                     }
                 },
-                listings: true,
+                listings: {
+                    include: {
+                        property: {
+                            include: {
+                                categories: true,
+                                amenities: true,
+                                floorPlans: true,
+                                images: true
+                            }
+                        }
+                    }
+                },
                 preferences: true,
                 socialLinks: true,
             }
@@ -97,6 +109,7 @@ app.put('/', async (c) => {
             age: parseInt(formData.get('age') as string) || undefined,
             location: formData.get('location'),
             gender: formData.get('gender'),
+
             profileImageUrl: profileImageUrl, // Add profile image URL to update data
             status: formData.get('status'),
         };
@@ -105,6 +118,7 @@ app.put('/', async (c) => {
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: {
+
                 displayName: updateData.displayName as string,
                 email: updateData.email as string,
                 bio: updateData.bio as string,
@@ -241,10 +255,10 @@ app.get('/listings', async (c) => {
             ...listing,
             property: listing.property ? {
                 ...listing.property,
-                categories: listing.property.categories.map(c => c.category),
-                amenities: listing.property.amenities.map(a => a.amenity),
-                tags: listing.property.tags.map(t => t.tag),
-                imageUrls: listing.property.images.map(i => i.imageUrl)
+                categories: listing.property.categories,
+                amenities: listing.property.amenities,
+                tags: listing.property.tags,
+                images: listing.property.images 
             } : null,
             marketplace: listing.marketplace ? {
                 ...listing.marketplace,

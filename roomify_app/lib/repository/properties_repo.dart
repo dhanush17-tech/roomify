@@ -25,7 +25,7 @@ class PropertyRepository {
     );
   }
 
-  Future<List<Listing>> getRecommendedListings(
+  Future<List<Listing>> getRecommendedProperties(
       double latitude, double longitude) async {
     try {
       final response = await _dio.get(
@@ -33,7 +33,7 @@ class PropertyRepository {
         queryParameters: {
           'latitude': latitude,
           'longitude': longitude,
-          'radius': 30, // Default 10km radius
+          'radius': 30, // Default 30km radius
         },
       );
 
@@ -50,7 +50,7 @@ class PropertyRepository {
     }
   }
 
-  Future<List<Listing>> getPairUpListings() async {
+  Future<List<Listing>> getPairUpProperties() async {
     try {
       final response = await _dio.get('/api/properties/pair-up');
 
@@ -60,7 +60,7 @@ class PropertyRepository {
             .map((json) => Listing.fromJson(json as Map<String, dynamic>))
             .toList();
       } else {
-        throw Exception('Failed to fetch pair-up listings');
+        throw Exception('Failed to fetch pair-up properties');
       }
     } catch (e) {
       throw Exception('Failed to connect to server: $e');
@@ -82,7 +82,11 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> createProperty(Listing listing, List<File> images) async {
+  Future<Listing> createProperty(
+    Listing listing, {
+    List<File> images = const [],
+    List<File> floorPlanImages = const [],
+  }) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
@@ -95,7 +99,7 @@ class PropertyRepository {
       request.headers.addAll(_headers);
       request.fields['listing'] = jsonEncode(listing.toJson());
 
-      // Add images
+      // Add property images
       for (var image in images) {
         final fileName = image.path.split('/').last;
         final stream = http.ByteStream(image.openRead());
@@ -107,7 +111,21 @@ class PropertyRepository {
           length,
           filename: fileName,
         );
+        request.files.add(multipartFile);
+      }
 
+      // Add floor plan images
+      for (var image in floorPlanImages) {
+        final fileName = image.path.split('/').last;
+        final stream = http.ByteStream(image.openRead());
+        final length = await image.length();
+
+        final multipartFile = http.MultipartFile(
+          'floorPlanImages',
+          stream,
+          length,
+          filename: fileName,
+        );
         request.files.add(multipartFile);
       }
 
@@ -118,7 +136,6 @@ class PropertyRepository {
         final data = json.decode(response.body)['listing'];
         return Listing.fromJson(data);
       } else {
-        // Parse error message from response if available
         final errorData = json.decode(response.body);
         final errorMessage = errorData['error'] ?? 'Failed to create property';
         throw Exception(errorMessage);
@@ -135,34 +152,11 @@ class PropertyRepository {
     }
   }
 
-  Future<List<Listing>> getProperties() async {
-    final token = await AuthRepository().getToken();
-    final _headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/properties'),
-        headers: _headers,
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body)['listings'];
-        return data.map((item) => Listing.fromJson(item)).toList();
-      } else {
-        throw Exception('Failed to load properties');
-      }
-    } catch (e) {
-      throw Exception('Failed to load properties: $e');
-    }
-  }
-
-  Future<void> addFavorite(int listingId) async {
+  Future<void> addFavorite(int propertyId) async {
     try {
       final response = await _dio.post(
         '$baseUrl/api/properties/favorites',
-        data: json.encode({'listingId': listingId}),
+        data: json.encode({'propertyId': propertyId}),
       );
 
       if (response.statusCode != 200) {
@@ -173,10 +167,10 @@ class PropertyRepository {
     }
   }
 
-  Future<void> removeFavorite(int listingId) async {
+  Future<void> removeFavorite(int propertyId) async {
     try {
       final response = await _dio.delete(
-        '$baseUrl/api/properties/favorites/$listingId',
+        '$baseUrl/api/properties/favorites/$propertyId',
       );
 
       if (response.statusCode != 200) {
@@ -191,12 +185,8 @@ class PropertyRepository {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Location services are not enabled don't continue
-      // accessing the position and request users of the
-      // App to enable the location services.
       return Future.error('Location services are disabled.');
     }
 
@@ -204,34 +194,26 @@ class PropertyRepository {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        // Permissions are denied, next time you could try
-        // requesting permissions again (this is also where
-        // Android's shouldShowRequestPermissionRationale
-        // returned true. According to Android guidelines
-        // your App should show an explanatory UI now.
         return Future.error('Location permissions are denied');
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      // Permissions are denied forever, handle appropriately.
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
 
-    // When we reach here, permissions are granted and we can
-    // continue accessing the position of the device.
     return await Geolocator.getCurrentPosition();
   }
 
-  Future<Map<String, dynamic>> reportListing(
-    int listingId,
+  Future<Map<String, dynamic>> reportProperty(
+    int propertyId,
     String reason,
     String details,
   ) async {
     try {
       final response = await _dio.post(
-        '/api/properties/report/$listingId',
+        '/api/properties/report/$propertyId',
         data: {
           'reason': reason,
           'details': details,
@@ -246,9 +228,9 @@ class PropertyRepository {
     } on DioException catch (e) {
       if (e.response?.statusCode == 400 &&
           e.response?.data['error'] ==
-              'You have already reported this listing') {
+              'You have already reported this property') {
         throw AlreadyReportedException(
-            'You have already reported this listing');
+            'You have already reported this property');
       }
       throw Exception('Failed to submit report: ${e.message}');
     } catch (e) {
@@ -256,7 +238,12 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> updateProperty(Listing listing, List<File> images) async {
+  Future<Listing> updateProperty(Listing listing,
+      {List<File> images = const [],
+      List<File> floorPlanImages = const [],
+      List<String> deletedImageUrls = const [],
+      List<String> deletedFloorPlanUrls = const [],
+      List<String> deletedDocumentUrls = const []}) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
@@ -270,8 +257,11 @@ class PropertyRepository {
 
       request.headers.addAll(_headers);
       request.fields['listing'] = jsonEncode(listing.toJson());
+      request.fields['deletedImageUrls'] = jsonEncode(deletedImageUrls);
+      request.fields['deletedFloorPlanUrls'] = jsonEncode(deletedFloorPlanUrls);
+      request.fields['deletedDocumentUrls'] = jsonEncode(deletedDocumentUrls);
 
-      // Add images
+      // Add new property images
       for (var image in images) {
         final fileName = image.path.split('/').last;
         final stream = http.ByteStream(image.openRead());
@@ -283,7 +273,21 @@ class PropertyRepository {
           length,
           filename: fileName,
         );
+        request.files.add(multipartFile);
+      }
 
+      // Add new floor plan images
+      for (var image in floorPlanImages) {
+        final fileName = image.path.split('/').last;
+        final stream = http.ByteStream(image.openRead());
+        final length = await image.length();
+
+        final multipartFile = http.MultipartFile(
+          'floorPlanImages',
+          stream,
+          length,
+          filename: fileName,
+        );
         request.files.add(multipartFile);
       }
 
@@ -294,7 +298,6 @@ class PropertyRepository {
         final data = json.decode(response.body)['listing'];
         return Listing.fromJson(data);
       } else {
-        // Parse error message from response if available
         final errorData = json.decode(response.body);
         final errorMessage = errorData['error'] ?? 'Failed to update property';
         throw Exception(errorMessage);
@@ -343,19 +346,125 @@ class PropertyRepository {
     try {
       final response =
           await _dio.get('/api/properties/$propertyId/location-details');
-
       if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Failed to fetch location details');
+        return {
+          'walkScore': response.data['walkScore'] ?? 0,
+          'transitScore': response.data['transitScore'] ?? 0,
+          'transitDetails': response.data['transitDetails'] ??
+              {'railLines': [], 'busLines': []},
+          'isRoomifyChoice': response.data['isRoomifyChoice'] ?? false,
+          'floorPlans': response.data['floorPlans'] ?? [],
+        };
       }
+      throw Exception('Failed to fetch location details');
     } catch (e) {
       throw Exception('Failed to fetch location details: $e');
     }
   }
+
+  Future<Listing> addFloorPlan(Listing listing,
+      {List<File> images = const [],
+      List<File> floorPlanImages = const []}) async {
+    try {
+      final token = await AuthRepository().getToken();
+      final _headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      var request = http.MultipartRequest('POST',
+          Uri.parse('$baseUrl/api/properties/${listing.id}/floor-plans'));
+      request.headers.addAll(_headers);
+      request.fields['listing'] = jsonEncode(listing.toJson());
+
+      // Add property images
+      for (var image in images) {
+        final fileName = image.path.split('/').last;
+        final stream = http.ByteStream(image.openRead());
+        final length = await image.length();
+
+        final multipartFile = http.MultipartFile(
+          'images',
+          stream,
+          length,
+          filename: fileName,
+        );
+        request.files.add(multipartFile);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return Listing.fromJson(json.decode(response.body)['listing']);
+      } else {
+        throw Exception('Failed to add floor plan');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  Future<Listing> updateFloorPlan(int listingId, String floorPlanId,
+      Map<String, dynamic> floorPlanData) async {
+    try {
+      final response = await _dio.put(
+        '/api/properties/$listingId/floor-plans/$floorPlanId',
+        data: floorPlanData,
+      );
+
+      if (response.statusCode == 200) {
+        return Listing.fromJson(response.data['listing']);
+      } else {
+        throw Exception('Failed to update floor plan');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  Future<Listing> updateFloorPlanImage(
+      int listingId, String floorPlanId, File imageFile) async {
+    try {
+      FormData formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: 'floor_plan_$floorPlanId.jpg',
+        ),
+      });
+
+      final response = await _dio.put(
+        '/api/properties/$listingId/floor-plans/$floorPlanId/image',
+        data: formData,
+      );
+
+      if (response.statusCode == 200) {
+        return Listing.fromJson(response.data['listing']);
+      } else {
+        throw Exception('Failed to update floor plan image');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  Future<Listing> deleteFloorPlan(int listingId, String floorPlanId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/properties/$listingId/floor-plans/$floorPlanId',
+      );
+
+      if (response.statusCode == 200) {
+        return Listing.fromJson(response.data['listing']);
+      } else {
+        throw Exception('Failed to delete floor plan');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
 }
 
-// Add this custom exception class
 class AlreadyReportedException implements Exception {
   final String message;
   AlreadyReportedException(this.message);

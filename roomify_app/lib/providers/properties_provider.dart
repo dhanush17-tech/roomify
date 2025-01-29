@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
@@ -51,15 +52,19 @@ class PropertyProvider extends ChangeNotifier {
   String? get error => _error;
   List<Listing> get recommendations => _recommendations;
 
-  Future<Listing> createProperty(Listing property, List<File> images) async {
+  Future<Listing> createProperty(
+    Listing listing, {
+    List<File> images = const [],
+    List<File> floorPlanImages = const [],
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       // Make the API call and wait for response
-      final createdProperty =
-          await _repository.createProperty(property, images);
+      final createdProperty = await _repository.createProperty(listing,
+          images: images, floorPlanImages: floorPlanImages);
 
       // Only refresh providers if the API call was successful
       await Provider.of<AuthProvider>(context, listen: false)
@@ -87,7 +92,7 @@ class PropertyProvider extends ChangeNotifier {
       notifyListeners();
 
       _recommendations =
-          await _repository.getRecommendedListings(latitude, longitude);
+          await _repository.getRecommendedProperties(latitude, longitude);
 
       _isLoading = false;
       notifyListeners();
@@ -104,7 +109,7 @@ class PropertyProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      _pairUpListings = await _repository.getPairUpListings();
+      _pairUpListings = await _repository.getPairUpProperties();
 
       _isLoading = false;
       notifyListeners();
@@ -177,15 +182,20 @@ class PropertyProvider extends ChangeNotifier {
     await loadFavorites();
   }
 
-  Future<Listing> updateProperty(Listing listing, List<File> newImages) async {
+  Future<Listing> updateProperty(
+    Listing listing, {
+    List<File> images = const [],
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       // Pass both the listing and new images to repository
-      final updatedListing =
-          await _repository.updateProperty(listing, newImages);
+      final updatedListing = await _repository.updateProperty(
+        listing,
+        images: images,
+      );
 
       // Update recommendations if the listing exists there
       final recommendationIndex =
@@ -250,6 +260,116 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       throw e;
+    }
+  }
+
+  Future<Listing> addFloorPlan(Listing? listing,
+      {List<File> images = const []}) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final updatedListing =
+          await _repository.addFloorPlan(listing!, images: images);
+      _updatePropertyInLists(updatedListing);
+      _isLoading = false;
+      notifyListeners();
+      return updatedListing;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  Future<Listing> updateFloorPlan(int propertyId, String floorPlanId,
+      Map<String, dynamic> floorPlanData) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final updatedListing = await _repository.updateFloorPlan(
+          propertyId, floorPlanId, floorPlanData);
+      _updatePropertyInLists(updatedListing);
+
+      _isLoading = false;
+      notifyListeners();
+      return updatedListing;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  Future<Listing> updateFloorPlanImage(
+      int propertyId, String floorPlanId, File imageFile) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final updatedListing = await _repository.updateFloorPlanImage(
+          propertyId, floorPlanId, imageFile);
+      _updatePropertyInLists(updatedListing);
+
+      _isLoading = false;
+      notifyListeners();
+      return updatedListing;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  Future<Listing> deleteFloorPlan(int propertyId, String floorPlanId) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final updatedListing =
+          await _repository.deleteFloorPlan(propertyId, floorPlanId);
+      _updatePropertyInLists(updatedListing);
+
+      _isLoading = false;
+      notifyListeners();
+      return updatedListing;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  // Helper method to update property in all lists
+  void _updatePropertyInLists(Listing listing) {
+    // Update in recommendations
+    final recommendationIndex =
+        _recommendations.indexWhere((item) => item.id == listing.id);
+    if (recommendationIndex != -1) {
+      _recommendations[recommendationIndex].property = listing.property;
+    }
+
+    // Update in pair-up listings
+    final pairUpIndex =
+        _pairUpListings.indexWhere((item) => item.id == listing.id);
+    if (pairUpIndex != -1) {
+      _pairUpListings[pairUpIndex].property = listing.property;
+    }
+
+    // Update in favorites
+    final favoriteIndex =
+        _favorites.indexWhere((item) => item.id == listing.id);
+    if (favoriteIndex != -1) {
+      _favorites[favoriteIndex].property = listing.property;
     }
   }
 }

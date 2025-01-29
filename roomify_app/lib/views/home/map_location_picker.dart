@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/utils.dart';
@@ -326,7 +327,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
         await context
             .read<ProfileProvider>()
             .updateLocation(lat as double, lng as double);
-
+        await context.read<AuthProvider>().refreshAllProviders(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location updated successfully')),
         );

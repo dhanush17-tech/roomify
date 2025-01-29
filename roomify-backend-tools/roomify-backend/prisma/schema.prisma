@@ -91,6 +91,10 @@ model Listing {
 }
 
 model Property {
+  title               String?
+  description         String?
+  price               Float?
+  location            String?
   listingId           Int     @id @map("listing_id")
   numberOfBedrooms    Int     @map("number_of_bedrooms")
   numberOfBathrooms   Int     @map("number_of_bathrooms")
@@ -101,11 +105,19 @@ model Property {
   moveOutDate         String? @map("move_out_date")
   isRoomifyChoice     Boolean @default(false)
 
-  // Location details
-  walkScore                 Int?      @default(0) @map("walk_score")
-  transitDetails            String?   @default("[]") @map("transit_details")
-  lastLocationDetailsUpdate DateTime? @default(now()) @map("last_location_details_update")
-  transitScore              Int?      @default(0) @map("transit_score")
+  //location details
+  transitScore        Int?
+  walkScore           Int?
+  transitDetails      String?
+  lastLocationDetailsUpdate DateTime? @map("last_location_details_update")
+  
+  // Professional user fields
+  companyName         String?
+  companyWebsite      String?
+  companyDescription  String?
+  isProfessionalListing Boolean @default(false)
+
+
   // Relations
   listing    Listing            @relation(fields: [listingId], references: [id])
   amenities  PropertyAmenity[]
@@ -114,6 +126,26 @@ model Property {
   comments   Comment[]
   categories PropertyCategory[]
   favorites  Favorite[]
+  floorPlans FloorPlan[]
+}
+
+model FloorPlan {
+  id              String   @id @default(cuid())
+  propertyId      Int
+  imageUrl        String
+  bedrooms        Int
+  bathrooms       Int
+  unitsAvailable  Int      @default(0)
+  squareFootage   Float?
+  price           Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  name            String
+
+
+  property        Property @relation(fields: [propertyId], references: [listingId])
+
+  @@index([propertyId])
 }
 
 model PropertyAmenity {

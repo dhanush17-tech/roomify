@@ -35,7 +35,7 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _repository.reportListing(
+      await _repository.reportProperty(
         widget.listingId,
         reasonForReport,
         _detailsController.text,

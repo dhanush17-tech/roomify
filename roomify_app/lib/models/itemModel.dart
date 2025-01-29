@@ -109,13 +109,16 @@ class Listing {
       'location': location,
       'price': price,
       'isFavorite': isFavourite,
+
       if (property != null)
         'property': property?.toJson(), // Only include if not null
       'latitude': latitude,
       'longitude': longitude,
       'imageUrls': imageUrls,
       'moveInDate': property?.moveInDate,
-      'moveOutDate': property?.moveOutDate, 
+      'moveOutDate': property?.moveOutDate,
+      'floorPlans':
+          property?.floorPlans?.map((floorPlan) => floorPlan.toJson()).toList(),
       'reportStatus': {
         'hasActiveReport': hasActiveReport,
         'reports': reports.map((report) => report.toJson()).toList(),
@@ -144,16 +147,17 @@ class Listing {
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
       imageUrls: List<String>.from(json['imageUrls'] ?? []),
-      property:
-          json["property"] != null 
-            ? Property.fromJson({
-                ...json["property"],
-                // Convert string categories to PropertyCategory enum
-                'categories': (json['property']['categories'] as List<dynamic>?)
-                    ?.map((cat) => PropertyCategory.fromString(cat.toString()))
-                    .toList() ?? [],
-              })
-            : null,
+      property: json["property"] != null
+          ? Property.fromJson({
+              ...json["property"],
+              // Convert string categories to PropertyCategory enum
+              'categories': (json['property']['categories'] as List<dynamic>?)
+                      ?.map(
+                          (cat) => PropertyCategory.fromString(cat.toString()))
+                      .toList() ??
+                  [],
+            })
+          : null,
       marketplaceItem: json["marketplace"] != null
           ? MarketplaceItem.fromJson(json["marketplace"])
           : null,

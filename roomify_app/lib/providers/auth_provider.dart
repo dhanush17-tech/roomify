@@ -48,8 +48,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(BuildContext context, String email, String password,
-      Function onSuccess) async {
+  Future<void> login(
+      BuildContext context, String email, String password, Function onSuccess,
+      {bool rememberMe = true}) async {
     try {
       _setLoading(true);
       _setError(null);
@@ -61,6 +62,7 @@ class AuthProvider extends ChangeNotifier {
       final user = await _authRepository.login(
         email: email,
         password: password,
+        rememberMe: rememberMe,
       );
 
       _setUser(user);
@@ -97,26 +99,30 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> register(
-      {required BuildContext context,
-      required String email,
-      required String password,
-      required String displayName,
-      required int age,
-      required String university,
-      required String location,
-      required Function onSuccess}) async {
+  Future<void> register({
+    required BuildContext context,
+    required String email,
+    required String password,
+    required String displayName,
+    int? age,
+    String? university,
+    String? location,
+    required bool isProfessional,
+    required Function onSuccess,
+  }) async {
     try {
       _setLoading(true);
       _setError(null);
 
       final user = await _authRepository.register(
-          displayName: displayName,
-          email: email,
-          password: password,
-          age: age,
-          university: university,
-          location: location);
+        displayName: displayName,
+        email: email,
+        password: password,
+        age: isProfessional ? null : age,
+        university: isProfessional ? null : university,
+        location: isProfessional ? null : location,
+        isProfessional: isProfessional,
+      );
 
       _setUser(user);
       await refreshAllProviders(context);
@@ -138,6 +144,7 @@ class AuthProvider extends ChangeNotifier {
     String? bio,
     int? age,
     String? gender,
+    String? location,
     File? profileImage,
   }) async {
     try {
@@ -154,6 +161,7 @@ class AuthProvider extends ChangeNotifier {
           university: university,
           bio: bio,
           age: age,
+          location: location,
           gender: gender,
           profileImage: profileImage);
 

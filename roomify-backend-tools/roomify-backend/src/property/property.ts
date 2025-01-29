@@ -98,6 +98,17 @@ app.post('/', async (c) => {
                             create: imageUrls.map(url => ({
                                 imageUrl: url
                             }))
+                        },
+                        floorPlans: {
+                            create: listingData.floorPlans.map((floorPlan: any) => ({
+                                imageUrl: floorPlan.imageUrl,
+                                unitsAvailable: floorPlan.unitsAvailable,
+                                price: floorPlan.price,
+                                bedrooms: floorPlan.bedrooms,
+                                bathrooms: floorPlan.bathrooms,
+                                squareFootage: floorPlan.squareFootage,
+                                name: floorPlan.name,
+                            }))
                         }
                     }
                 }
@@ -113,7 +124,8 @@ app.post('/', async (c) => {
                         amenities: true,
                         tags: true,
                         categories: true,
-                        images: true
+                        images: true,
+                        floorPlans: true
                     }
                 }
             }
@@ -137,8 +149,9 @@ app.post('/', async (c) => {
             latitude: listing.latitude,
             longitude: listing.longitude,
             imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
+            floorPlans: listing.property!.floorPlans,
             property: {
-                categories: listing.property!.categories.map(c => c.category),
+                categories: listing.property!.categories,
                 moveInDate: listing.property!.moveInDate, // Add this line
                 moveOutDate: listing.property!.moveOutDate, // Add this line
                 numberOfBedrooms: listing.property!.numberOfBedrooms,
@@ -146,8 +159,8 @@ app.post('/', async (c) => {
                 maxOccupancy: listing.property!.maxOccupancy,
                 isLookingForRoomate: listing.property!.isLookingForRoomate,
                 rating: listing.property!.rating,
-                amenities: listing.property!.amenities.map(a => a.amenity),
-                tags: listing.property!.tags?.map(t => t.tag) ?? [],
+                amenities: listing.property!.amenities,
+                tags: listing.property!.tags ?? [],
                 comments: []
             },
             marketplaceItem: null
@@ -170,31 +183,48 @@ app.post('/', async (c) => {
 
 app.get('/', async (c) => {
     try {
-        const payload = c.get('jwtPayload');
-        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
-        const userId = payload.sub;
-
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Only filter by date if it's not "Anytime"
-        const currentDate = new Date().toISOString().slice(0, 7); // Get current date in YYYY-MM format
+        const userId = c.get('jwtPayload')?.sub;
 
         const listings = await prisma.listing.findMany({
             where: {
                 type: 'Property',
-                NOT: { userId },
                 reported: false,
-                property: {
-                    OR: [
-                        { moveInDate: 'Anytime' },
-                        {
-                            moveInDate: {
-                                gte: currentDate
+                OR: [
+                    // For normal users' listings with valid move-in dates
+                    {
+                        user: {
+                            isProfessional: false
+                        },
+                        property: {
+                            OR: [
+                                { moveInDate: 'Anytime' },
+                                {
+                                    moveInDate: {
+                                        gte: new Date().toISOString().slice(0, 7) // Current date in YYYY-MM format
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // For professional users' listings with available units
+                    {
+                        user: {
+                            isProfessional: true
+                        },
+                        property: {
+                            floorPlans: {
+                                some: {
+                                    unitsAvailable: {
+                                        gt: 0
+                                    }
+                                }
                             }
                         }
-                    ]
-                }
+                    }
+                ]
             },
             include: {
                 user: {
@@ -208,9 +238,12 @@ app.get('/', async (c) => {
                         tags: true,
                         categories: true,
                         images: true,
+                        floorPlans: true,
                     }
                 },
-                favorites: true,
+                favorites: {
+                    where: userId ? { userId } : undefined
+                }
             },
             orderBy: {
                 createdAt: 'desc'
@@ -221,7 +254,6 @@ app.get('/', async (c) => {
             id: listing.id,
             type: 'Property',
             title: listing.title,
-
             description: listing.description,
             createdAt: listing.createdAt.toISOString(),
             user: {
@@ -229,6 +261,7 @@ app.get('/', async (c) => {
                 displayName: listing.user.displayName,
                 profileImageUrl: listing.user.profileImageUrl,
                 email: listing.user.email,
+                isProfessional: listing.user.isProfessional
             },
             location: listing.location,
             price: listing.price,
@@ -237,18 +270,16 @@ app.get('/', async (c) => {
             longitude: listing.longitude,
             imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
             property: listing.property ? {
-                isRoomifyChoice: listing.property.isRoomifyChoice,
-                categories: listing.property.categories.map(c => c.category),
+                categories: listing.property.categories,
                 numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
-                moveInDate: listing.property!.moveInDate, // Add this line
-                moveOutDate: listing.property!.moveOutDate, // Add this line
                 maxOccupancy: listing.property.maxOccupancy,
-                isLookingForRoomate: listing.property.isLookingForRoomate,
-                rating: listing.property.rating,
-                amenities: listing.property.amenities.map(a => a.amenity),
-                tags: listing.property.tags.map(t => t.tag),
-
+                amenities: listing.property.amenities,
+                tags: listing.property.tags,
+                floorPlans: listing.property.floorPlans,
+                walkScore: listing.property.walkScore,
+                transitScore: listing.property.transitScore,
+                transitDetails: listing.property.transitDetails ? JSON.parse(listing.property.transitDetails) : { railLines: [], busLines: [] }
             } : null,
             marketplaceItem: null
         }));
@@ -276,56 +307,59 @@ app.get('/recommended-listings', async (c) => {
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
-        const currentDate = new Date().toISOString().slice(0, 7); // Get current date in YYYY-MM format
+        const currentDate = new Date().toISOString().slice(0, 7);
 
-        // Get current user
+        // Get current user with preferences and details
         const currentUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                university: true,
+            include: {
                 preferences: true,
-                socialLinks: true,
             }
         });
 
-        // Find listings
+        if (!currentUser) {
+            return c.json({ error: 'User not found' }, 404);
+        }
+
+        // Find all listings (both regular and professional)
         const listings = await prisma.listing.findMany({
             where: {
                 reported: false,
-                property: {
-                    OR: [
-                        { moveInDate: 'Anytime' },
-                        {
-                            moveInDate: {
-                                gte: currentDate
-                            }
-                        }
-                    ]
-                },
                 type: 'Property',
                 NOT: { userId: userId },
-
                 OR: [
+                    // For regular users' listings
                     {
                         user: {
-                            university: currentUser!.university,
-                            preferences: {
+                            isProfessional: false
+                        },
+                        property: {
+                            OR: [
+                                { moveInDate: 'Anytime' },
+                                {
+                                    moveInDate: {
+                                        gte: currentDate
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // For professional users' listings with available units
+                    {
+                        user: {
+                            isProfessional: true
+                        },
+                        property: {
+                            floorPlans: {
                                 some: {
-                                    preference: {
-                                        in: currentUser!.preferences.map(p => p.preference)
+                                    unitsAvailable: {
+                                        gt: 0
                                     }
                                 }
                             }
-
-                        },
-                    },
-                    {
-                        property: {
-                            isRoomifyChoice: true
                         }
                     }
                 ]
-
             },
             include: {
                 user: {
@@ -336,100 +370,116 @@ app.get('/recommended-listings', async (c) => {
                 property: {
                     include: {
                         amenities: true,
-
-                        tags: true,
                         categories: true,
-
                         images: true,
+                        floorPlans: true,
                     }
                 },
-                favorites: true,
-            },
-            orderBy: {
-                createdAt: 'desc'
+                favorites: {
+                    where: { userId }
+                }
             }
         });
 
-        //nearby listings
-        const nearbyListings = listings.filter(listing => {
-            if (!listing.latitude || !listing.longitude) return false;
-            const distance = calculateDistance(
-                latitude,
-                longitude,
-                listing.latitude,
-                listing.longitude
-            );
+        // Calculate similarity scores and filter by distance
+        const scoredListings = listings
+            .map(listing => {
+                // Calculate distance
+                const distance = listing.latitude && listing.longitude
+                    ? calculateDistance(latitude, longitude, listing.latitude, listing.longitude)
+                    : Infinity;
 
-            return distance <= radius;
-        })
-            .sort((a, b) => {
-                const distanceA = calculateDistance
-                    (
-                        latitude,
-                        longitude,
-                        a.latitude!,
-                        a.longitude!
-                    );
-                const distanceB = calculateDistance(
-                    latitude,
-                    longitude,
-                    b.latitude!,
-                    b.longitude!
-                );
-                return distanceA - distanceB;
-            });
+                // Skip if outside radius
+                if (distance > radius) return null;
 
-        const formattedListings = nearbyListings.map(listing => ({
-            id: listing.id,
+                let similarityScore = 0;
+
+                // For non-professional users, calculate full similarity score
+                if (!listing.user.isProfessional) {
+                    // University match (highest weight)
+                    if (currentUser.university && listing.user.university === currentUser.university) {
+                        similarityScore += 30;
+                    }
+
+                    // Age similarity (if both users have age)
+                    if (currentUser.age && listing.user.age) {
+                        const ageDiff = Math.abs(currentUser.age - listing.user.age);
+                        if (ageDiff <= 2) similarityScore += 25;
+                        else if (ageDiff <= 5) similarityScore += 15;
+                        else if (ageDiff <= 10) similarityScore += 5;
+                    }
+
+                    // Preference matching
+                    const currentUserPrefs = new Set(currentUser.preferences.map(p => p.preference));
+                    const listingUserPrefs = new Set(listing.user.preferences.map(p => p.preference));
+                    const commonPrefs = [...currentUserPrefs].filter(x => listingUserPrefs.has(x));
+                    similarityScore += (commonPrefs.length * 10); // 10 points per matching preference
+                } else {
+                    // For professional listings, focus on location and available units
+                    const hasAvailableUnits = listing.property?.floorPlans?.some(plan => plan.unitsAvailable > 0);
+                    if (hasAvailableUnits) {
+                        similarityScore += 20; // Bonus for having available units
+                    }
+                }
+
+                // Distance score (closer = better, max 25 points)
+                const distanceScore = Math.max(0, 25 - (distance * 2)); // Lose 2 points per mile
+                similarityScore += distanceScore;
+
+                // Roomify Choice bonus
+                if (listing.property?.isRoomifyChoice) {
+                    similarityScore += 15;
+                }
+
+                return {
+                    listing,
+                    similarityScore,
+                    distance
+                };
+            })
+            .filter(item => item !== null)
+            .sort((a, b) => b!.similarityScore - a!.similarityScore);
+
+        const formattedListings = scoredListings.map(item => ({
+            id: item!.listing.id,
             type: 'Property',
-            title: listing.title,
-
-            description: listing.description,
-            createdAt: listing.createdAt.toISOString(),
-            user: listing.user,
-            location: listing.location,
-            price: listing.price,
-            latitude: listing.latitude,
-            longitude: listing.longitude,
-            imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
-            property: listing.property ? {
-                isRoomifyChoice: listing.property.isRoomifyChoice,
-                categories: listing.property.categories.map(c => c.category),
-                moveInDate: listing.property!.moveInDate, // Add this line
-                moveOutDate: listing.property!.moveOutDate, // Add this line
-                numberOfBedrooms: listing.property.numberOfBedrooms,
-                numberOfBathrooms: listing.property.numberOfBathrooms,
-                maxOccupancy: listing.property.maxOccupancy,
-                isLookingForRoomate: listing.property.isLookingForRoomate,
-                rating: listing.property.rating,
-                amenities: listing.property.amenities.map(a => a.amenity),
-
+            title: item!.listing.title,
+            description: item!.listing.description,
+            createdAt: item!.listing.createdAt.toISOString(),
+            user: {
+                id: item!.listing.user.id,
+                displayName: item!.listing.user.displayName,
+                profileImageUrl: item!.listing.user.profileImageUrl,
+                email: item!.listing.user.email,
+                university: item!.listing.user.university,
+                age: item!.listing.user.age,
+                preferences: item!.listing.user.preferences,
+                isProfessional: item!.listing.user.isProfessional
+            },
+            location: item!.listing.location,
+            price: item!.listing.price,
+            isFavorite: item!.listing.favorites.length > 0,
+            latitude: item!.listing.latitude,
+            longitude: item!.listing.longitude,
+            distance: item!.distance.toFixed(1),
+            similarityScore: item!.similarityScore,
+            imageUrls: item!.listing.property?.images.map(img => img.imageUrl) ?? [],
+            property: item!.listing.property ? {
+                isRoomifyChoice: item!.listing.property.isRoomifyChoice,
+                categories: item!.listing.property.categories,
+                moveInDate: item!.listing.property.moveInDate,
+                moveOutDate: item!.listing.property.moveOutDate,
+                numberOfBedrooms: item!.listing.property.numberOfBedrooms,
+                numberOfBathrooms: item!.listing.property.numberOfBathrooms,
+                maxOccupancy: item!.listing.property.maxOccupancy,
+                isLookingForRoomate: item!.listing.property.isLookingForRoomate,
+                rating: item!.listing.property.rating,
+                amenities: item!.listing.property.amenities,
+                floorPlans: item!.listing.property.floorPlans,
             } : null,
             marketplaceItem: null
         }));
-
-
-        // Calculate distances and sort
-        const recommendedListings = listings
-        // .map(listing => ({
-        //     ...listing,
-        //     distance: calculateDistance(
-        //         latitude,
-        //         longitude,
-        //         listing.property?.latitude || 0,
-        //         listing.property?.longitude || 0
-        //     )
-        // }))
-        // .filter(listing => listing.distance <= radius)
-        // .sort((a, b) => {
-        //     // First sort by university match
-        //     const aMatch = a.user.university === currentUser?.university;
-        //     const bMatch = b.user.university === currentUser?.university;
-        //     if (aMatch !== bMatch) return bMatch ? 1 : -1;
-
-        //     // Then sort by distance
-        //     return a.distance - b.distance;
-        // });
+        console.log("this is formatted listings", formattedListings);
         return c.json({
             results: formattedListings
         });
@@ -441,7 +491,6 @@ app.get('/recommended-listings', async (c) => {
             details: error instanceof Error ? error.message : 'Unknown error'
         }, 500);
     }
-
 });
 
 
@@ -516,7 +565,7 @@ app.get('/pair-up', async (c) => {
             imageUrls: listing.property?.images.map(img => img.imageUrl) ?? [],
             property: listing.property ? {
                 isRoomifyChoice: listing.property.isRoomifyChoice,
-                categories: listing.property.categories.map(c => c.category),
+                categories: listing.property.categories,
                 numberOfBedrooms: listing.property.numberOfBedrooms,
                 numberOfBathrooms: listing.property.numberOfBathrooms,
                 moveInDate: listing.property!.moveInDate, // Add this line
@@ -524,7 +573,7 @@ app.get('/pair-up', async (c) => {
                 maxOccupancy: listing.property.maxOccupancy,
                 isLookingForRoomate: listing.property.isLookingForRoomate,
                 rating: listing.property.rating,
-                amenities: listing.property.amenities.map(a => a.amenity),
+                amenities: listing.property.amenities,
 
             } : null,
             marketplaceItem: null
@@ -592,14 +641,14 @@ app.get('/favorites', async (c) => {
                 ...f.listing,
                 marketplaceItem: {
                     ...f.listing.marketplace,
-                    categories: f.listing.marketplace?.categories.map(c => c.category),
+                    categories: f.listing.marketplace?.categories,
                 },
                 property: f.listing.property ? {
                     ...f.listing.property,
-                    categories: f.listing.property.categories.map(c => c.category),
-                    amenities: f.listing.property.amenities.map(a => a.amenity),
-                    tags: f.listing.property.tags.map(t => t.tag),
-                    imageUrls: f.listing.property.images.map(i => i.imageUrl)
+                    categories: f.listing.property.categories,
+                    amenities: f.listing.property.amenities,
+                    tags: f.listing.property.tags,
+                    imageUrls: f.listing.property.images
                 } : null
             }))
         });
@@ -973,187 +1022,269 @@ app.put('/:id', async (c) => {
         const listingId = parseInt(c.req.param('id'));
         const formData = await c.req.formData();
         const listingData = JSON.parse(formData.get('listing') as string);
+        console.log(listingData);
         const images = formData.getAll('images') as File[];
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Check if user owns the listing
+        // Check if listing exists
         const existingListing = await prisma.listing.findUnique({
             where: { id: listingId },
             include: {
                 user: true,
-
                 property: {
                     include: {
                         images: true,
                         amenities: true,
                         tags: true,
-
                         categories: true,
+                        floorPlans: true
                     }
                 }
             }
         });
 
-        if (!existingListing || existingListing.userId !== userId) {
-            return c.json({ error: 'Unauthorized or listing not found' }, 401);
-        }
-
-        // Delete existing images from R2 and database
-        const existingImages = existingListing.property?.images || [];
-        for (const image of existingImages) {
-            const fileName = image.imageUrl.split('/').pop(); // Get filename from URL
-            if (fileName) {
-                await deleteFromR2(fileName, "propertyImages", c);
-            }
-        }
-
-        // Handle new image uploads
+        // Upload images to R2
         const imageUrls: string[] = [];
         for (const image of images) {
             const { fileUrl } = await uploadToR2(image, "propertyImages", c);
             imageUrls.push(fileUrl);
         }
 
-        // Prepare all database operations
-        const transactions = [
-            // Delete existing relations
-            prisma.propertyImage.deleteMany({
-                where: { propertyId: listingId }
-            }),
-            prisma.propertyAmenity.deleteMany({
-                where: { propertyId: listingId }
-            }),
 
-            prisma.propertyCategory.deleteMany({
-                where: { propertyId: listingId }
-            }),
-
-            // Update basic listing info
-            prisma.listing.update({
-                where: { id: listingId },
+        // If listing doesn't exist, create new one
+        if (!existingListing) {
+            const newListing = await prisma.listing.create({
                 data: {
+                    type: 'Property',
                     title: listingData.title,
-                    description: listingData.description,
-                    price: listingData.price,
                     location: listingData.location,
+                    price: listingData.price,
                     latitude: listingData.latitude,
-                    longitude: listingData.longitude
-                }
-            }),
-
-            // Update property
-            prisma.property.update({
-                where: { listingId },
-                data: {
-                    moveInDate: listingData.property.moveInDate,
-                    moveOutDate: listingData.property.moveOutDate,
-                    numberOfBedrooms: listingData.property.numberOfBedrooms,
-                    numberOfBathrooms: listingData.property.numberOfBathrooms,
-                    maxOccupancy: listingData.property.maxOccupancy,
-                    isLookingForRoomate: listingData.property.isLookingForRoomate
-                }
-            })
-        ];
-
-        // Execute all delete operations first
-        await prisma.$transaction(transactions);
-
-        // Create new relations in separate transactions
-        const amenityCreations = listingData.property.amenities.map((amenity: string) =>
-            prisma.propertyAmenity.create({
-                data: {
-                    propertyId: listingId,
-                    amenity
-                }
-            })
-        );
-
-        const categoryCreations = listingData.property.categories.map((category: string) =>
-            prisma.propertyCategory.create({
-                data: {
-                    propertyId: listingId,
-                    category
-                }
-            })
-        );
-
-        // const tagCreations = listingData.property.tags !== null ? listingData.property.tags.map((tag: string) =>
-        //     prisma.propertyTag.create({
-        //         data: {
-        //             propertyId: listingId,
-        //             tag
-        //         }
-        //     })
-        // ) : [];
-
-        const imageCreations = imageUrls.map(url =>
-            prisma.propertyImage.create({
-                data: {
-                    propertyId: listingId,
-                    imageUrl: url
-                }
-            })
-        );
-
-        // Execute all creation operations
-        await prisma.$transaction([
-            ...amenityCreations,
-            ...categoryCreations,
-            ...imageCreations
-        ]);
-
-        // Fetch updated listing
-        const updatedListing = await prisma.listing.findUnique({
-            where: { id: listingId },
-            include: {
-                user: true,
-                property: {
-                    include: {
-                        amenities: true,
-                        categories: true,
-                        images: true
+                    longitude: listingData.longitude,
+                    description: listingData.description,
+                    userId: userId,
+                    property: {
+                        create: {
+                            moveInDate: listingData.property.moveInDate,
+                            moveOutDate: listingData.property.moveOutDate,
+                            numberOfBedrooms: listingData.property.numberOfBedrooms,
+                            numberOfBathrooms: listingData.property.numberOfBathrooms,
+                            maxOccupancy: listingData.property.maxOccupancy,
+                            isLookingForRoomate: listingData.property.isLookingForRoomate,
+                            rating: 0,
+                            amenities: {
+                                create: listingData.property.amenities?.map((amenity: string) => ({
+                                    amenity
+                                })) || []
+                            },
+                            categories: {
+                                create: listingData.property.categories?.map((category: string) => ({
+                                    category
+                                })) || []
+                            },
+                            tags: {
+                                create: listingData.property.tags?.map((tag: string) => ({
+                                    tag
+                                })) || []
+                            },
+                            images: {
+                                create: imageUrls.map(url => ({
+                                    imageUrl: url
+                                }))
+                            },
+                            floorPlans: {
+                                create: listingData.floorPlans?.map((floorPlan: any, index: number) => ({
+                                    name: floorPlan.name,
+                                    bedrooms: floorPlan.bedrooms,
+                                    bathrooms: floorPlan.bathrooms,
+                                    price: floorPlan.price,
+                                    squareFootage: floorPlan.squareFootage,
+                                    unitsAvailable: floorPlan.unitsAvailable,
+                                    imageUrl: floorPlan.imageUrl,
+                                })) || []
+                            }
+                        }
+                    }
+                },
+                include: {
+                    user: {
+                        include: {
+                            preferences: true,
+                        }
+                    },
+                    property: {
+                        include: {
+                            amenities: true,
+                            tags: true,
+                            categories: true,
+                            images: true,
+                            floorPlans: true
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        if (!updatedListing || !updatedListing.property) {
-            throw new Error('Failed to fetch updated listing');
+            return c.json({ listing: newListing });
         }
 
-        // Format response
-        const formattedListing = {
-            id: updatedListing.id,
-            type: 'Property',
-            title: updatedListing.title,
-            description: updatedListing.description,
-            createdAt: updatedListing.createdAt.toISOString(),
-            location: updatedListing.location,
-            price: updatedListing.price,
-            latitude: updatedListing.latitude,
-            user: updatedListing.user,
-            longitude: updatedListing.longitude,
-            property: {
-                categories: updatedListing.property.categories.map(c => c.category),
-                moveInDate: updatedListing.property.moveInDate,
-                moveOutDate: updatedListing.property.moveOutDate,
-                numberOfBedrooms: updatedListing.property.numberOfBedrooms,
-                numberOfBathrooms: updatedListing.property.numberOfBathrooms,
-                maxOccupancy: updatedListing.property.maxOccupancy,
-                isLookingForRoomate: updatedListing.property.isLookingForRoomate,
-                rating: updatedListing.property.rating,
-                amenities: updatedListing.property.amenities.map(a => a.amenity),
-                imageUrls: updatedListing.property.images.map(i => i.imageUrl)
+        else {   // Delete existing images from R2 and database
+            const existingImages = existingListing.property?.images || [];
+            for (const image of existingImages) {
+                const fileName = image.imageUrl.split('/').pop(); // Get filename from URL
+                if (fileName) {
+                    await deleteFromR2(fileName, "propertyImages", c);
+                }
             }
-        };
 
-        return c.json({
-            success: true,
-            listing: formattedListing
-        });
+            // Handle new image uploads
+            for (const image of images) {
+                const { fileUrl } = await uploadToR2(image, "propertyImages", c);
+                imageUrls.push(fileUrl);
+            }
 
+            // Prepare all database operations
+            const transactions = [
+                // Delete existing relations
+                prisma.propertyImage.deleteMany({
+                    where: { propertyId: listingId }
+                }),
+                prisma.propertyAmenity.deleteMany({
+                    where: { propertyId: listingId }
+                }),
+
+                prisma.propertyCategory.deleteMany({
+                    where: { propertyId: listingId }
+                }),
+
+                // Update basic listing info
+                prisma.listing.update({
+                    where: { id: listingId },
+                    data: {
+                        title: listingData.title,
+                        description: listingData.description,
+                        price: listingData.price,
+                        location: listingData.location,
+                        latitude: listingData.latitude,
+                        longitude: listingData.longitude
+                    }
+                }),
+
+                // Update property
+                prisma.property.update({
+                    where: { listingId },
+                    data: {
+                        moveInDate: listingData.property.moveInDate,
+                        moveOutDate: listingData.property.moveOutDate,
+                        numberOfBedrooms: listingData.property.numberOfBedrooms,
+                        numberOfBathrooms: listingData.property.numberOfBathrooms,
+                        maxOccupancy: listingData.property.maxOccupancy,
+                        isLookingForRoomate: listingData.property.isLookingForRoomate
+                    }
+                })
+            ];
+
+            // Execute all delete operations first
+            await prisma.$transaction(transactions);
+
+            // Create new relations in separate transactions
+            const amenityCreations = listingData.property.amenities.map((amenity: string) =>
+                prisma.propertyAmenity.create({
+                    data: {
+                        propertyId: listingId,
+                        amenity
+                    }
+                })
+            );
+
+            const categoryCreations = listingData.property.categories.map((category: string) =>
+                prisma.propertyCategory.create({
+                    data: {
+                        propertyId: listingId,
+                        category
+                    }
+                })
+            );
+
+            // const tagCreations = listingData.property.tags !== null ? listingData.property.tags.map((tag: string) =>
+            //     prisma.propertyTag.create({
+            //         data: {
+            //             propertyId: listingId,
+            //             tag
+            //         }
+            //     })
+            // ) : [];
+
+            const imageCreations = imageUrls.map(url =>
+                prisma.propertyImage.create({
+                    data: {
+                        propertyId: listingId,
+                        imageUrl: url
+                    }
+                })
+            );
+
+            // Execute all creation operations
+            await prisma.$transaction([
+                ...amenityCreations,
+                ...categoryCreations,
+                ...imageCreations
+            ]);
+
+            // Fetch updated listing
+            const updatedListing = await prisma.listing.findUnique({
+                where: { id: listingId },
+                include: {
+                    user: true,
+                    property: {
+                        include: {
+                            amenities: true,
+                            categories: true,
+                            images: true,
+                            floorPlans: true
+                        }
+                    }
+                }
+            });
+
+            if (!updatedListing || !updatedListing.property) {
+                throw new Error('Failed to fetch updated listing');
+            }
+
+
+            // Format response
+            const formattedListing = {
+                id: updatedListing.id,
+                type: 'Property',
+                title: updatedListing.title,
+                description: updatedListing.description,
+                createdAt: updatedListing.createdAt.toISOString(),
+                location: updatedListing.location,
+                price: updatedListing.price,
+                latitude: updatedListing.latitude,
+                user: updatedListing.user,
+                longitude: updatedListing.longitude,
+                property: {
+                    categories: updatedListing.property.categories,
+                    moveInDate: updatedListing.property.moveInDate,
+                    moveOutDate: updatedListing.property.moveOutDate,
+                    numberOfBedrooms: updatedListing.property.numberOfBedrooms,
+                    numberOfBathrooms: updatedListing.property.numberOfBathrooms,
+                    maxOccupancy: updatedListing.property.maxOccupancy,
+                    isLookingForRoomate: updatedListing.property.isLookingForRoomate,
+                    rating: updatedListing.property.rating,
+                    amenities: updatedListing.property.amenities,
+                    imageUrls: updatedListing.property.images,
+                    floorPlans: updatedListing.property.floorPlans
+                }
+            };
+
+            return c.json({
+                success: true,
+                listing: formattedListing
+            });
+        }
     } catch (error) {
         console.error('Update property error:', error);
         return c.json({
@@ -1235,7 +1366,7 @@ app.get('/:id/location-details', async (c) => {
             }
         });
 
- 
+
         if (!listing) {
             return c.json({ error: 'Listing not found' }, 404);
         }
@@ -1251,15 +1382,13 @@ app.get('/:id/location-details', async (c) => {
         const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
         if (
             listing.property?.walkScore &&
-            listing.property?.transitScore||0 &&
-            (parsedTransitDetails.railLines.length > 0 || parsedTransitDetails.busLines.length > 0) &&
+            listing.property?.transitScore &&
+            listing.property?.transitDetails &&
             listing.property?.lastLocationDetailsUpdate &&
             (new Date().getTime() - listing.property.lastLocationDetailsUpdate.getTime()) < CACHE_DURATION
         ) {
-            console.log("This is the transit score", listing.property?.transitScore);
-
+            const parsedTransitDetails = JSON.parse(listing.property.transitDetails);
             return c.json({
-
                 walkScore: listing.property.walkScore,
                 transitScore: listing.property.transitScore,
                 transitDetails: parsedTransitDetails
@@ -1349,7 +1478,6 @@ app.get('/:id/location-details', async (c) => {
                 }
             });
         }
-        console.log("This is the transit score", walkScoreData.transit?.score);
 
         return c.json({
             transitScore: walkScoreData.transit?.score || 0,
@@ -1360,6 +1488,449 @@ app.get('/:id/location-details', async (c) => {
         console.error('Error fetching location details:', error);
         return c.json({
             error: 'Failed to fetch location details',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+// Add endpoint to update unit availability
+app.put('/floor-plan/:id/units', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const floorPlanId = c.req.param('id');
+        const { availableUnits, squareFootage, price, name, bedrooms, bathrooms, imageUrl, } = await c.req.json();
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Verify user owns the property
+        const floorPlan = await prisma.floorPlan.findUnique({
+            where: { id: floorPlanId },
+            include: {
+                property: {
+                    include: {
+                        listing: {
+                            include: {
+                                user: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!floorPlan || floorPlan.property.listing.user.id !== userId) {
+            return c.json({ error: 'Unauthorized or floor plan not found' }, 401);
+        }
+
+        // Update available units
+        const updatedListing = await prisma.listing.update({
+            where: { id: floorPlan.property.listingId },
+            data: {
+                property: {
+                    update: {
+                        where: {
+                            floorPlans: { some: { id: floorPlanId } }
+                        },
+                        data: {
+                            floorPlans: {
+                                update: {
+                                    where: { id: floorPlanId },
+                                    data: {
+                                        unitsAvailable: availableUnits,
+                                        squareFootage: squareFootage,
+                                        price: price,
+                                        name: name,
+                                        bedrooms: bedrooms,
+                                        bathrooms: bathrooms,
+                                        imageUrl: imageUrl
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            },
+            include: {
+                property: {
+                    include: {
+                        amenities: true,
+                        categories: true,
+                        images: true
+                    }
+                }
+            }
+        });
+
+        return c.json({ listing: updatedListing });
+    } catch (error) {
+        console.error('Update units error:', error);
+        return c.json({
+            error: 'Failed to update units',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+// Floor Plan Management Routes
+app.post('/:listingId/floor-plans', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const listingId = parseInt(c.req.param('listingId'));
+
+        const formData = await c.req.formData();
+        const listingData = JSON.parse(formData.get('listing') as string);
+
+        const images = formData.getAll('images') as File[];
+        const imageUrls: string[] = [];
+
+        // Upload each image to R2
+        for (const image of images) {
+            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
+            imageUrls.push(fileUrl);
+        }
+
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Check if listing exists
+        let listing = await prisma.listing.findUnique({
+            where: { id: listingId },
+            include: {
+                property: {
+                    include: {
+                        floorPlans: true,
+                        amenities: true,
+                        categories: true,
+                        images: true
+                    }
+                }
+            }
+        });
+
+        if (!listing) {
+            // Create new listing with property and floor plan
+            listing = await prisma.listing.create({
+                data: {
+                    type: 'Property',
+                    title: listingData.title || 'New Property',
+                    description: listingData.description || '',
+                    location: listingData.location || '',
+                    price: listingData.price || 0,
+                    latitude: listingData.latitude || 0,
+                    longitude: listingData.longitude || 0,
+                    userId: payload.sub,
+                    property: {
+                        create: {
+                            moveInDate: listingData.property.moveInDate || new Date().toISOString(),
+                            moveOutDate: listingData.property.moveOutDate,
+                            numberOfBedrooms: listingData.property.numberOfBedrooms || 0,
+                            numberOfBathrooms: listingData.property.numberOfBathrooms || 0,
+                            maxOccupancy: listingData.property.maxOccupancy || 0,
+                            isLookingForRoomate: listingData.property.isLookingForRoomate || false,
+                            amenities: {
+                                create: listingData.property.amenities?.map((amenity: string) => ({
+                                    amenity
+                                })) || []
+                            },
+                            categories: {
+                                create: listingData.property.categories?.map((category: string) => ({
+                                    category
+                                })) || []
+                            },
+                            tags: {
+                                create: listingData.property.tags?.map((tag: string) => ({
+                                    tag
+                                })) || []
+                            },
+                            images: {
+                                create: imageUrls.map(url => ({
+                                    imageUrl: url
+                                }))
+                            },
+                            floorPlans: {
+                                create: listingData.floorPlans.map((floorPlan: any) => ({
+                                    imageUrl: floorPlan.imageUrl,
+                                    unitsAvailable: floorPlan.unitsAvailable,
+                                    price: floorPlan.price,
+                                    bedrooms: floorPlan.bedrooms,
+                                    bathrooms: floorPlan.bathrooms,
+                                    squareFootage: floorPlan.squareFootage,
+                                    name: floorPlan.name,
+                                }))
+
+                            }
+                        }
+                    }
+                },
+                include: {
+                    property: {
+                        include: {
+                            floorPlans: true,
+                            amenities: true,
+                            categories: true,
+                            images: true
+                        }
+                    }
+                }
+            });
+        } else {
+            // Verify property ownership for existing listing
+            if (listing.userId !== payload.sub) {
+                return c.json({ error: 'Unauthorized' }, 401);
+            }
+
+
+            const floorPlanData = listingData.floorPlans[listingData.floorPlans.length - 1];
+            // Add floor plan to existing listing
+            listing = await prisma.listing.update({
+                where: { id: listingId },
+                data: {
+                    property: {
+                        update: {
+                            data: {
+                                floorPlans: {
+                                    create: {
+                                        name: floorPlanData.name,
+                                        bedrooms: floorPlanData.bedrooms,
+                                        bathrooms: floorPlanData.bathrooms,
+                                        price: floorPlanData.price,
+                                        squareFootage: floorPlanData.squareFootage,
+                                        unitsAvailable: floorPlanData.unitsAvailable,
+                                        imageUrl: floorPlanData.imageUrl,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                include: {
+                    property: {
+                        include: {
+                            floorPlans: true,
+                            amenities: true,
+                            categories: true,
+                            images: true
+                        }
+                    }
+                }
+            });
+        }
+
+        return c.json({ listing });
+    } catch (error) {
+        console.error('Add floor plan error:', error);
+        return c.json({
+            error: 'Failed to add floor plan',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+app.put('/:listingId/floor-plans/:floorPlanId', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const listingId = parseInt(c.req.param('listingId'));
+        const floorPlanId = c.req.param('floorPlanId');
+        const floorPlanData = await c.req.json();
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Verify property ownership
+        const property = await prisma.property.findUnique({
+            where: { listingId: listingId },
+            include: { listing: true }
+        });
+
+        if (!property || property.listing.userId !== payload.sub) {
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        // Update floor plan
+        const updatedListing = await prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                property: {
+                    update: {
+                        where: { floorPlans: { some: { id: floorPlanId } } },
+                        data: {
+                            floorPlans: {
+                                update: {
+                                    where: { id: floorPlanId },
+                                    data: {
+                                        name: floorPlanData.name,
+                                        bedrooms: floorPlanData.bedrooms,
+                                        bathrooms: floorPlanData.bathrooms,
+                                        price: floorPlanData.price,
+                                        squareFootage: floorPlanData.squareFootage,
+                                        unitsAvailable: floorPlanData.unitsAvailable,
+                                        imageUrl: floorPlanData.imageUrl,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            include: {
+
+                property: {
+                    include: {
+                        floorPlans: true
+                    }
+                }
+            }
+        });
+
+        return c.json({ listing: updatedListing });
+    } catch (error) {
+        console.error('Update floor plan error:', error);
+        return c.json({
+            error: 'Failed to update floor plan',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+app.put('/:listingId/floor-plans/:floorPlanId/image', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const listingId = parseInt(c.req.param('listingId'));
+        const floorPlanId = c.req.param('floorPlanId');
+        const formData = await c.req.formData();
+        const image = formData.get('image') as File;
+
+        if (!image) {
+            return c.json({ error: 'No image provided' }, 400);
+        }
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Verify property ownership
+        const property = await prisma.property.findUnique({
+            where: { listingId: listingId },
+            include: { listing: true }
+        });
+
+        if (!property || property.listing.userId !== payload.sub) {
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        // Upload image to R2
+        const { fileUrl } = await uploadToR2(image, "floorPlanImages", c);
+
+        // Update floor plan image
+        const updatedListing = await prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                property: {
+                    update: {
+                        where: { floorPlans: { some: { id: floorPlanId } } },
+                        data: {
+                            floorPlans: {
+                                update: {
+                                    where: { id: floorPlanId },
+                                    data: { imageUrl: fileUrl }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            include: {
+                property: {
+                    include: {
+                        floorPlans: true
+                    }
+                }
+            }
+        });
+
+        return c.json({ listing: updatedListing });
+    } catch (error) {
+        console.error('Update floor plan image error:', error);
+        return c.json({
+            error: 'Failed to update floor plan image',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+app.delete('/:listingId/floor-plans/:floorPlanId', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const listingId = parseInt(c.req.param('listingId'));
+        const floorPlanId = c.req.param('floorPlanId');
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Verify property ownership
+        const property = await prisma.property.findUnique({
+            where: { listingId: listingId },
+            include: { listing: true }
+        });
+
+        if (!property || property.listing.userId !== payload.sub) {
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        // Delete floor plan image from R2 if it exists
+        const floorPlan = await prisma.floorPlan.findUnique({
+            where: { id: floorPlanId }
+        });
+
+        if (floorPlan?.imageUrl) {
+            await deleteFromR2(floorPlan.imageUrl, "floorPlanImages", c);
+        }
+
+        // Delete floor plan
+        const updatedListing = await prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                property: {
+                    update: {
+                        data: {
+                            floorPlans: {
+                                delete: {
+                                    id: floorPlanId
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            include: {
+                property: {
+
+                    include: {
+
+                        floorPlans: true
+                    }
+                }
+            }
+        });
+
+        return c.json({ listing: updatedListing });
+    } catch (error) {
+        console.error('Delete floor plan error:', error);
+        return c.json({
+            error: 'Failed to delete floor plan',
             details: error instanceof Error ? error.message : 'Unknown error'
         }, 500);
     }

@@ -1,87 +1,148 @@
+import 'dart:convert';
+
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/userModel.dart';
 
 class Property {
-  final int numberOfBathrooms;
   final int numberOfBedrooms;
-  final List<String> amenities;
-  final bool isLookingForRoomate;
+  final int numberOfBathrooms;
   final int maxOccupancy;
-  final String? moveInDate;
-  final String? moveOutDate;
-  final List<PropertyCategory> categories;
-  final List<String>? imageUrls;
+  String moveInDate;
+  String? moveOutDate;
+  final bool isLookingForRoomate;
   final double? rating;
+  final List<String> amenities;
+  final List<String> categories;
+  final List<String> imageUrls;
+  final int? walkScore;
+  final int? transitScore;
+  final Map<String, dynamic> transitDetails;
+  final DateTime? lastLocationDetailsUpdate;
   final bool isRoomifyChoice;
+  final List<FloorPlan>? floorPlans;
 
   Property({
-    required this.numberOfBathrooms,
+    this.transitScore = 0,
+    this.walkScore = 0,
+    this.transitDetails = const {'railLines': [], 'busLines': []},
     required this.numberOfBedrooms,
-    required this.amenities,
-    required this.isLookingForRoomate,
+    required this.numberOfBathrooms,
     required this.maxOccupancy,
-    this.moveInDate,
+    required this.moveInDate,
     this.moveOutDate,
-    this.categories = const [],
-    this.imageUrls,
+    required this.isLookingForRoomate,
     this.rating,
+    required this.amenities,
+    required this.categories,
+    required this.imageUrls,
+    this.lastLocationDetailsUpdate,
     this.isRoomifyChoice = false,
+    this.floorPlans = const [],
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      numberOfBathrooms: json['numberOfBathrooms'] ?? 0,
-      numberOfBedrooms: json['numberOfBedrooms'] ?? 0,
-      amenities: List<String>.from(json['amenities'] ?? []),
-      isLookingForRoomate: json['isLookingForRoomate'] ?? false,
-      maxOccupancy: json['maxOccupancy'] ?? 0,
-      moveInDate: json['moveInDate'] != null
-          ? json['moveInDate'] == 'Anytime'
-              ? 'Anytime'
-              : DateTime.parse(json['moveInDate'].length == 7
-                      ? json['moveInDate'] + '-01'
-                      : json['moveInDate'])
-                  .toLocal()
-                  .toString()
-                  .split('-')
-                  .sublist(0, 2)
-                  .join('-')
-          : null,
-      moveOutDate: json['moveOutDate'] != null
-          ? DateTime.parse(json['moveOutDate'].length == 7
-                  ? json['moveOutDate'] + '-01'
-                  : json['moveOutDate'])
-              .toLocal()
-              .toString()
-              .split('-')
-              .sublist(0, 2)
-              .join('-')
-          : null,
-      categories: (json['categories'] as List<dynamic>?)
-              ?.map((cat) => PropertyCategory.fromString(cat.toString()))
+      numberOfBedrooms: json['numberOfBedrooms'] as int,
+      numberOfBathrooms: json['numberOfBathrooms'] as int,
+      maxOccupancy: json['maxOccupancy'] as int,
+      moveInDate: json['moveInDate'] as String,
+      moveOutDate: json['moveOutDate'] as String?,
+      isLookingForRoomate: json['isLookingForRoomate'] as bool,
+      rating:
+          json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      amenities: (json['amenities'] as List<dynamic>?)
+              ?.map((e) => e['amenity'] as String)
               .toList() ??
           [],
-      imageUrls: json['images'] != null
-          ? List<String>.from(json['images'].map((i) => i['imageUrl']))
+      categories: 
+      // (json['categories'] as List<dynamic>?)
+      //         ?.map((cat) => PropertyCategory.fromString(cat.toString()))
+      //         .toList() ??
+      [],
+      imageUrls: (json['images'] as List<dynamic>?)
+              ?.map((e) => e['imageUrl'] as String)
+              .toList() ??
+          [],
+      walkScore: json['walkScore'] as int? ?? 0,
+      transitScore: json['transitScore'] as int? ?? 0,
+      transitDetails: json['transitDetails'] != null
+          ? jsonDecode(json['transitDetails']) as Map<String, dynamic>
+          : {'railLines': [], 'busLines': []},
+      lastLocationDetailsUpdate: json['lastLocationDetailsUpdate'] != null
+          ? DateTime.parse(json['lastLocationDetailsUpdate'] as String)
           : null,
-      rating: json['rating']?.toDouble(),
-      isRoomifyChoice: json['isRoomifyChoice'] ?? false,
+      isRoomifyChoice: json['isRoomifyChoice'] as bool? ?? false,
+      floorPlans: json['floorPlans'] != null
+          ? (json['floorPlans'] as List<dynamic>)
+              .map((e) => FloorPlan.fromJson(e as Map<String, dynamic>))
+              .toList()
+          : [],
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'numberOfBathrooms': numberOfBathrooms,
-        'numberOfBedrooms': numberOfBedrooms,
-        'amenities': amenities,
-        'isLookingForRoomate': isLookingForRoomate,
-        'maxOccupancy': maxOccupancy,
-        'moveInDate': moveInDate,
-        'moveOutDate': moveOutDate,
-        'categories':
-            categories.map((cat) => cat.toString().split('.').last).toList(),
-        if (imageUrls != null) 'imageUrls': imageUrls,
-        if (rating != null) 'rating': rating,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'numberOfBedrooms': numberOfBedrooms,
+      'numberOfBathrooms': numberOfBathrooms,
+      'maxOccupancy': maxOccupancy,
+      'moveInDate': moveInDate,
+      'moveOutDate': moveOutDate,
+      'isLookingForRoomate': isLookingForRoomate,
+      'rating': rating,
+      'amenities': amenities,
+      'categories': categories,
+      'imageUrls': imageUrls,
+      'walkScore': walkScore,
+      'transitScore': transitScore,
+      'transitDetails': transitDetails,
+      'lastLocationDetailsUpdate': lastLocationDetailsUpdate?.toIso8601String(),
+      'isRoomifyChoice': isRoomifyChoice,
+      'floorPlans': floorPlans?.map((plan) => plan.toJson()).toList() ?? [],
+    };
+  }
+
+  Property copyWith({
+    int? id,
+    String? title,
+    String? description,
+    String? location,
+    double? price,
+    int? numberOfBedrooms,
+    int? numberOfBathrooms,
+    int? maxOccupancy,
+    String? moveInDate,
+    String? moveOutDate,
+    int? walkScore,
+    int? transitScore,
+    Map<String, dynamic>? transitDetails,
+    DateTime? lastLocationUpdate,
+    bool? isRoomifyChoice,
+    List<String>? imageUrls,
+    List<String>? categories,
+    List<String>? amenities,
+    List<String>? tags,
+    List<FloorPlan>? floorPlans,
+    bool? isLookingForRoomate,
+  }) {
+    return Property(
+      numberOfBedrooms: numberOfBedrooms ?? this.numberOfBedrooms,
+      numberOfBathrooms: numberOfBathrooms ?? this.numberOfBathrooms,
+      maxOccupancy: maxOccupancy ?? this.maxOccupancy,
+      moveInDate: moveInDate ?? this.moveInDate,
+      moveOutDate: moveOutDate ?? this.moveOutDate,
+      walkScore: walkScore ?? this.walkScore,
+      transitScore: transitScore ?? this.transitScore,
+      transitDetails: transitDetails ?? this.transitDetails,
+      lastLocationDetailsUpdate:
+          lastLocationUpdate ?? this.lastLocationDetailsUpdate,
+      isRoomifyChoice: isRoomifyChoice ?? this.isRoomifyChoice,
+      imageUrls: imageUrls ?? List<String>.from(this.imageUrls),
+      categories: categories ?? List<String>.from(this.categories),
+      amenities: amenities ?? List<String>.from(this.amenities),
+      floorPlans: floorPlans ?? List<FloorPlan>.from(this.floorPlans ?? []),
+      isLookingForRoomate: isLookingForRoomate ?? this.isLookingForRoomate,
+    );
+  }
 }
 
 enum PropertyCategory {
@@ -169,6 +230,109 @@ class PropertyLead {
       lastViewed: DateTime.now(),
       //DateTime.tryParse(json['lastViewed']) ?? DateTime.now(),
       propertyId: json['propertyId'],
+    );
+  }
+}
+
+class FloorPlan {
+  final String id;
+  final String name;
+  final String imageUrl;
+  final int bedrooms;
+  final int bathrooms;
+  final double price;
+  final double squareFeet;
+  final int availableUnits;
+
+  FloorPlan({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.bedrooms,
+    required this.bathrooms,
+    required this.price,
+    required this.squareFeet,
+    required this.availableUnits,
+  });
+
+  factory FloorPlan.fromJson(Map<String, dynamic> json) {
+    return FloorPlan(
+      id: json['id'],
+      name: json['name'],
+      imageUrl: json['imageUrl'],
+      bedrooms: json['bedrooms'],
+      bathrooms: json['bathrooms'],
+      price: json['price'].toDouble(),
+      squareFeet: json['squareFootage'].toDouble() ?? 0,
+      availableUnits: json['unitsAvailable'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'imageUrl': imageUrl,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'price': price,
+      'squareFootage': squareFeet,
+      'unitsAvailable': availableUnits,
+    };
+  }
+}
+
+class TransitDetails {
+  final int walkScore;
+  final int transitScore;
+  final List<TransitRoute> railLines;
+  final List<TransitRoute> busLines;
+
+  TransitDetails({
+    required this.walkScore,
+    required this.transitScore,
+    required this.railLines,
+    required this.busLines,
+  });
+
+  factory TransitDetails.fromJson(Map<String, dynamic> json) {
+    return TransitDetails(
+      walkScore: json['walkScore'] ?? 0,
+      transitScore: json['transitScore'] ?? 0,
+      railLines: (json['transitDetails']?['railLines'] as List<dynamic>?)
+              ?.map((route) => TransitRoute.fromJson(route))
+              .toList() ??
+          [],
+      busLines: (json['transitDetails']?['busLines'] as List<dynamic>?)
+              ?.map((route) => TransitRoute.fromJson(route))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class TransitRoute {
+  final String name;
+  final double distance;
+  final String description;
+  final String agency;
+  final String type;
+
+  TransitRoute({
+    required this.name,
+    required this.distance,
+    required this.description,
+    required this.agency,
+    required this.type,
+  });
+
+  factory TransitRoute.fromJson(Map<String, dynamic> json) {
+    return TransitRoute(
+      name: json['name'] ?? 'Unknown Route',
+      distance: (json['distance'] ?? 0.0).toDouble(),
+      description: json['description'] ?? '',
+      agency: json['agency'] ?? 'Unknown Agency',
+      type: json['type'] ?? 'Unknown',
     );
   }
 }

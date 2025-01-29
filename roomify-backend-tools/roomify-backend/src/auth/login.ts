@@ -13,45 +13,80 @@ const app = new Hono<{
     }
 }>();
 
- 
+
 
 app.post('/login', async (c) => {
     try {
         const { email, password } = await c.req.json();
+
+        if (!email || !password) {
+            return c.json({ error: 'Email and password are required' }, 400);
+        }
+
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
-    const user = await prisma.user.findUnique({
+
+        const user = await prisma.user.findUnique({
             where: { email },
             select: {
-                id: true,
+                preferences: true,
                 passwordHash: true,
-                isAdmin: true
+                id: true,
+                email: true,
+                displayName: true,
+                profileImageUrl: true,
+                isProfessional: true,
+                age: true,
+                university: true,
+                location: true,
+                bio: true,
+                gender: true,
+                status: true,
             },
         });
+        console.log(user);
 
         if (!user) {
-            throw new Error('Account not found');
+            return c.json({ error: 'Invalid email or password' }, 401);
         }
+        //decrypt the password to the original password
 
-        if (!verifyPassword(password, user.passwordHash)) {
-            throw new Error('Invalid email or password');
-        }
 
-        const token = await signAndStoreToken({
-            sub: user.id,
-            isAdmin: user.isAdmin  // Add this for admin users
-        }, c);
+        const isValidPassword = await verifyPassword(password, user.passwordHash);
+        if (!isValidPassword) {
+            return c.json({ error: 'Invalid email or password' }, 401);
+        } 
 
-        return c.json({ token });
+        const token = await sign({ sub: user.id }, c.env.JWT_SECRET);
+
+        return c.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                displayName: user.displayName,
+                profileImageUrl: user.profileImageUrl,
+                isProfessional: user.isProfessional ?? false,
+                age: user.age ?? null,
+                university: user.university ?? null,
+                location: user.location ?? null,
+                bio: user.bio ?? null,
+                gender: user.gender ?? null,
+                status: user.status ?? null,
+                preferences: user.preferences
+            },
+        });
     } catch (error) {
         console.error('Login error:', error);
-        const statusCode = error.message === 'Account not found' ? 404 : 401;
-        return c.json({ error: error.message }, statusCode);
+        return c.json({
+            error: 'Failed to login',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        }, 500);
     }
 });
 
 app.post('/signout', async (c) => {
-try {
+    try {
         const token = c.req.header('Authorization')?.split(' ')[1];
         if (!token) {
             return c.json({ error: 'No token provided' }, 401);
@@ -82,6 +117,18 @@ try {
             details: error.message
         }, 500);
     }
+});
+
+//todo: when the user email is given, change th euser to professional
+app.post('/make-professional', async (c) => {
+    const { email } = await c.req.json();
+    const adapter = new PrismaD1(c.env.DB);
+    const prisma = new PrismaClient({ adapter });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user) {
+        await prisma.user.update({ where: { id: user.id }, data: { isProfessional: true } });
+    }
+    return c.json({ message: 'User made professional' });
 });
 
 export default app;

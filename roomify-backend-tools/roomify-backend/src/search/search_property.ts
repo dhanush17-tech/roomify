@@ -237,9 +237,9 @@ app.get('/', async (c) => {
             ).toFixed(1),
             property: listing.property ? {
                 ...listing.property,
-                amenities: listing.property.amenities.map((a: { amenity: string }) => a.amenity),
-                categories: listing.property.categories.map((c: { category: string }) => c.category),
-                imageUrls: listing.property.images.map((i: { imageUrl: string }) => i.imageUrl)
+                amenities: listing.property.amenities,
+                categories: listing.property.categories,
+                imageUrls: listing.property.images
             } : null
         }));
 
@@ -401,7 +401,7 @@ app.get('/suggestions', async (c) => {
                 longitude: fullListing.longitude,
                 imageUrls: fullListing.property?.images.map(img => img.imageUrl) ?? [],
                 property: fullListing.property ? {
-                    categories: fullListing.property.categories.map(c => c.category),
+                    categories: fullListing.property.categories,
                     numberOfBedrooms: fullListing.property.numberOfBedrooms,
                     numberOfBathrooms: fullListing.property.numberOfBathrooms,
                     moveInDate: fullListing.property.moveInDate,
@@ -409,8 +409,8 @@ app.get('/suggestions', async (c) => {
                     maxOccupancy: fullListing.property.maxOccupancy,
                     isLookingForRoomate: fullListing.property.isLookingForRoomate,
                     rating: fullListing.property.rating,
-                    amenities: fullListing.property.amenities.map(a => a.amenity),
-                    tags: fullListing.property.tags.map(t => t.tag),
+                    amenities: fullListing.property.amenities,
+                    tags: fullListing.property.tags,
                 } : null,
                 marketplaceItem: null
             };

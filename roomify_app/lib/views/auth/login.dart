@@ -27,6 +27,12 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   final _loginEmailController = TextEditingController();
   final _loginPasswordController = TextEditingController();
   final _ageController = TextEditingController();
+  final _displayNameController = TextEditingController();
+  final _universityController = TextEditingController();
+  bool _isLogin = true;
+  bool _isProfessionalUser = false;
+  bool _rememberMe = true;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -43,6 +49,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     _locationController.dispose();
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
+    _ageController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -69,279 +76,525 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
       backgroundColor: Colors.white,
       body: Consumer<AuthProvider>(
         builder: (context, authViewModel, child) {
-          // Redirect if authenticated
-
           return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.05,
-                  ),
-                  Text(
-                    "Let's Get Started",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (authViewModel.error != null)
-                    Container(
-                      margin: EdgeInsets.symmetric(vertical: 10),
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 40),
+                      Text(
+                        "Get Started now",
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              authViewModel.error!,
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14,
-                              ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Make your next moveout faster with Roomify",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 32),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          indicator: BoxDecoration(
+                            color: orangeColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.grey[600],
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerHeight: 0,
+                          labelStyle: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          unselectedLabelStyle: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          tabs: [
+                            Tab(text: 'Log In'),
+                            Tab(text: 'Sign Up'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (authViewModel.error != null)
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            authViewModel.error!,
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  SizedBox(height: 20),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: TabBar(
-                        dividerHeight: 0,
-                        controller: _tabController,
-                        indicator: BoxDecoration(
-                          color: orangeColor,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        indicatorColor: Colors.transparent,
-                        labelColor: Colors.white,
-                        unselectedLabelColor: orangeColor,
-                        labelStyle: TextStyle(fontWeight: FontWeight.bold),
-                        tabs: [
-                          Tab(text: 'Sign Up'),
-                          Tab(text: 'Log In'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        // Sign Up Tab
-                        ListView(
-                          children: [
-                            InputField(
-                              controller: _nameController,
-                              label: "Name",
-                            ),
-                            InputField(
-                              controller: _emailController,
-                              label: "Email",
-                            ),
-                            InputField(
-                              controller: _passwordController,
-                              label: "Password",
-                              obscureText: true,
-                            ),
-                            InputField(
-                              controller: _ageController,
-                              label: "Age",
-                              keyboardType: TextInputType.number,
-                            ),
-                            InputField(
-                              controller: _collegeController,
-                              label: "College",
-                            ),
-                            InputField(
-                              controller: _locationController,
-                              label: "Preferred Location",
-                            ),
-                            SizedBox(height: 20),
-                            ElevatedButton(
-                              onPressed: authViewModel.isLoading
-                                  ? null
-                                  : () {
-                                      authViewModel.register(
-                                        context: context,
-                                        email: _emailController.text,
-                                        password: _passwordController.text,
-                                        displayName: _nameController.text,
-                                        university: _collegeController.text,
-                                        location: _locationController.text,
-                                        age: int.parse(_ageController.text),
-                                        onSuccess: () {
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (c) => MainScreen(
-                                                    latitude: widget.latitude,
-                                                    longitude:
-                                                        widget.longitude)),
-                                            (route) => false,
-                                          );
-                                        },
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: orangeColor,
-                                padding: EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: authViewModel.isLoading
-                                  ? CircularProgressIndicator(
-                                      color: Colors.white)
-                                  : Text(
-                                      "Sign Up",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                        // Login Tab
-                        ListView(
-                          children: [
-                            InputField(
-                              controller: _loginEmailController,
-                              label: "Email",
-                            ),
-                            InputField(
-                              controller: _loginPasswordController,
-                              label: "Password",
-                              obscureText: true,
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (c) => ForgotPasswordScreen(),
-                                  ),
-                                );
-                              },
-                              child: Align(
-                                alignment: Alignment.topRight,
-                                child: Text("Forgot Password?"),
-                              ),
-                            ),
-                            SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.05,
-                            ),
-                            ElevatedButton(
-                              onPressed: authViewModel.isLoading
-                                  ? null
-                                  : () {
-                                      if (_loginEmailController.text.isEmpty ||
-                                          _loginPasswordController
-                                              .text.isEmpty) {
-                                        _showErrorDialog(
-                                            'Please fill in all fields');
-                                        return;
-                                      }
-
-                                      authViewModel.login(
-                                        context,
-                                        _loginEmailController.text,
-                                        _loginPasswordController.text,
-                                        () {
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (c) => MainScreen(
-                                                    latitude: widget.latitude,
-                                                    longitude:
-                                                        widget.longitude)),
-                                            (route) => false,
-                                          );
-                                        },
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: orangeColor,
-                                padding: EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: authViewModel.isLoading
-                                  ? CircularProgressIndicator(
-                                      color: Colors.white)
-                                  : Text(
-                                      "Log In",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                            // Rest of your login UI...
-                          ],
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Login Tab
+                      SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            children: [
+                              _buildInputField(
+                                controller: _emailController,
+                                hintText: "Email",
+                                icon: Icons.email_outlined,
+                              ),
+                              SizedBox(height: 16),
+                              _buildInputField(
+                                controller: _passwordController,
+                                hintText: "Password",
+                                icon: Icons.lock_outline,
+                                obscureText: true,
+                              ),
+                              SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _rememberMe = value!;
+                                            });
+                                          },
+                                          activeColor: orangeColor,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Remember me",
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (c) =>
+                                              ForgotPasswordScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      "Forgot Password?",
+                                      style: TextStyle(
+                                        color: orangeColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: authViewModel.isLoading
+                                      ? null
+                                      : () {
+                                          if (_emailController.text.isEmpty ||
+                                              _passwordController
+                                                  .text.isEmpty) {
+                                            _showErrorDialog(
+                                                'Please fill in all fields');
+                                            return;
+                                          }
+
+                                          authViewModel.login(
+                                            context,
+                                            _emailController.text,
+                                            _passwordController.text,
+                                            () {
+                                              Navigator.pushAndRemoveUntil(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (c) => MainScreen(
+                                                        latitude:
+                                                            widget.latitude,
+                                                        longitude:
+                                                            widget.longitude)),
+                                                (route) => false,
+                                              );
+                                            },
+                                            rememberMe: _rememberMe,
+                                          );
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: orangeColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: authViewModel.isLoading
+                                      ? SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          "Log In",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Expanded(
+                                      child: Divider(color: Colors.grey[300])),
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(
+                                      "Don't have an account?",
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                      child: Divider(color: Colors.grey[300])),
+                                ],
+                              ),
+                              SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _tabController
+                                        .animateTo(1); // Switch to signup tab
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[100],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side:
+                                          BorderSide(color: Colors.grey[300]!),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    "Create an account",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Sign Up Tab
+                      SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputField(
+                                controller: _nameController,
+                                hintText: "Full Name",
+                                icon: Icons.person_outline,
+                              ),
+                              SizedBox(height: 16),
+                              _buildInputField(
+                                controller: _emailController,
+                                hintText: "Email",
+                                icon: Icons.email_outlined,
+                              ),
+                              SizedBox(height: 16),
+                              _buildInputField(
+                                controller: _passwordController,
+                                hintText: "Password",
+                                icon: Icons.lock_outline,
+                                obscureText: true,
+                              ),
+                              SizedBox(height: 16),
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "I am a:",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    RadioListTile<bool>(
+                                      title:
+                                          Text("Student looking for housing"),
+                                      value: false,
+                                      groupValue: _isProfessionalUser,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _isProfessionalUser = value!;
+                                        });
+                                      },
+                                      activeColor: orangeColor,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    RadioListTile<bool>(
+                                      title: Text("Property manager/company"),
+                                      value: true,
+                                      groupValue: _isProfessionalUser,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _isProfessionalUser = value!;
+                                        });
+                                      },
+                                      activeColor: orangeColor,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!_isProfessionalUser) ...[
+                                SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _ageController,
+                                  hintText: "Age",
+                                  icon: Icons.cake_outlined,
+                                ),
+                                SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _collegeController,
+                                  hintText: "University/College",
+                                  icon: Icons.school_outlined,
+                                ),
+                                SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _locationController,
+                                  hintText: "Preferred Location",
+                                  icon: Icons.location_on_outlined,
+                                ),
+                              ],
+                              SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: authViewModel.isLoading
+                                      ? null
+                                      : () {
+                                          if (!_isProfessionalUser &&
+                                              (_ageController.text.isEmpty ||
+                                                  _collegeController
+                                                      .text.isEmpty ||
+                                                  _locationController
+                                                      .text.isEmpty)) {
+                                            _showErrorDialog(
+                                                'Please fill in all required fields');
+                                            return;
+                                          }
+
+                                          authViewModel.register(
+                                            context: context,
+                                            email: _emailController.text,
+                                            password: _passwordController.text,
+                                            displayName: _nameController.text,
+                                            university: _isProfessionalUser
+                                                ? null
+                                                : _collegeController.text,
+                                            location: _isProfessionalUser
+                                                ? null
+                                                : _locationController.text,
+                                            age: _isProfessionalUser
+                                                ? null
+                                                : int.tryParse(
+                                                    _ageController.text),
+                                            isProfessional: _isProfessionalUser,
+                                            onSuccess: () {
+                                              Navigator.pushAndRemoveUntil(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (c) => MainScreen(
+                                                        latitude:
+                                                            widget.latitude,
+                                                        longitude:
+                                                            widget.longitude)),
+                                                (route) => false,
+                                              );
+                                            },
+                                          );
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: orangeColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: authViewModel.isLoading
+                                      ? SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          "Create Account",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },
       ),
     );
   }
-}
 
-class InputField extends StatelessWidget {
-  final String label;
-  final bool obscureText;
-  final TextEditingController controller;
-  final TextInputType keyboardType;
-
-  InputField(
-      {required this.label,
-      required this.controller,
-      this.obscureText = false,
-      this.keyboardType = TextInputType.emailAddress});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    bool obscureText = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
       child: TextField(
-        keyboardType: keyboardType,
         controller: controller,
         obscureText: obscureText,
+        style: TextStyle(fontSize: 16),
         decoration: InputDecoration(
-          hintText: label,
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required VoidCallback onPressed,
+    required String icon,
+    required String text,
+    Color backgroundColor = Colors.white,
+    Color textColor = Colors.black87,
+  }) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: backgroundColor == Colors.white
+                ? BorderSide(color: Colors.grey[300]!)
+                : BorderSide.none,
           ),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              icon,
+              height: 24,
+              width: 24,
+            ),
+            SizedBox(width: 12),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

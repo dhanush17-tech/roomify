@@ -109,9 +109,9 @@ app.get('/', async (c) => {
                     ...listing,
                     property: listing.property ? {
                         ...listing.property,
-                        categories: listing.property.categories.map(c => c.category),
-                        amenities: listing.property.amenities.map(a => a.amenity),
-                        imageUrls: listing.property.images.map(i => i.imageUrl)
+                        categories: listing.property.categories,
+                        amenities: listing.property.amenities,
+                        imageUrls: listing.property.images
                     } : null
                 }))
             };
@@ -363,9 +363,9 @@ app.get('/matches', async (c) => {
                         ...listing,
                         property: listing.property ? {
                             ...listing.property,
-                            categories: listing.property.categories.map(c => c.category),
-                            amenities: listing.property.amenities.map(a => a.amenity),
-                            imageUrls: listing.property.images.map(i => i.imageUrl)
+                            categories: listing.property.categories,
+                            amenities: listing.property.amenities,
+                            imageUrls: listing.property.images
                         } : null
                     }))
                 }

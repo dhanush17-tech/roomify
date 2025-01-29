@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import 'package:roomify_app/models/chatModel.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
@@ -16,67 +17,12 @@ import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 
-class TransitDetails {
-  final int walkScore;
-  final int transitScore;
-  final List<TransitRoute> railLines;
-  final List<TransitRoute> busLines;
-
-  TransitDetails({
-    required this.walkScore,
-    required this.transitScore,
-    required this.railLines,
-    required this.busLines,
-  });
-
-  factory TransitDetails.fromJson(Map<String, dynamic> json) {
-    return TransitDetails(
-      walkScore: json['walkScore'] ?? 0,
-      transitScore: json['transitScore'] ?? 0,
-      railLines: (json['transitDetails']?['railLines'] as List<dynamic>?)
-              ?.map((route) => TransitRoute.fromJson(route))
-              .toList() ??
-          [],
-      busLines: (json['transitDetails']?['busLines'] as List<dynamic>?)
-              ?.map((route) => TransitRoute.fromJson(route))
-              .toList() ??
-          [],
-    );
-  }
-}
-
-class TransitRoute {
-  final String name;
-  final double distance;
-  final String description;
-  final String agency;
-  final String type;
-
-  TransitRoute({
-    required this.name,
-    required this.distance,
-    required this.description,
-    required this.agency,
-    required this.type,
-  });
-
-  factory TransitRoute.fromJson(Map<String, dynamic> json) {
-    return TransitRoute(
-      name: json['name'] ?? 'Unknown Route',
-      distance: (json['distance'] ?? 0.0).toDouble(),
-      description: json['description'] ?? '',
-      agency: json['agency'] ?? 'Unknown Agency',
-      type: json['type'] ?? 'Unknown',
-    );
-  }
-}
-
 class PropertyDetailsScreen extends StatefulWidget {
-  Listing property;
+  Listing listing;
   final double latitude;
   final double longitude;
 
-  PropertyDetailsScreen(this.property, this.latitude, this.longitude);
+  PropertyDetailsScreen(this.listing, this.latitude, this.longitude);
 
   @override
   _PropertyDetailsScreenState createState() => _PropertyDetailsScreenState();
@@ -88,7 +34,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   bool isOwnListing() {
     final currentUserId = context.read<AuthProvider>().user?.id;
-    return currentUserId == widget.property.user?.id;
+    return currentUserId == widget.listing.user?.id;
   }
 
   void navigateToChat(BuildContext context, User propertyOwner) async {
@@ -157,7 +103,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     try {
       final details = await context
           .read<PropertyProvider>()
-          .getLocationDetails(widget.property.id);
+          .getLocationDetails(widget.listing.id);
       if (mounted) {
         setState(() {
           _locationDetails = details;
@@ -175,6 +121,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isProfessionalListing = widget.listing ?? false;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -216,7 +164,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => AddPropertyScreen(
-                              existingListing: widget.property,
+                              existingListing: widget.listing,
                             ),
                           ),
                         );
@@ -224,7 +172,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         // If we got an updated listing back, update the UI
                         if (updatedListing != null && mounted) {
                           setState(() {
-                            widget.property = updatedListing;
+                            widget.listing = updatedListing;
                           });
                         }
                       },
@@ -238,8 +186,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (C) => ReportScreen(
-                                        listingId: widget.property.id,
-                                        listingType: widget.property.title,
+                                        listingId: widget.listing.id,
+                                        listingType: widget.listing.title,
                                         latitude: widget.latitude,
                                         longitude: widget.longitude,
                                       )));
@@ -264,8 +212,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                     Consumer<PropertyProvider>(
                       builder: (ctx, provider, _) => FavoriteButton(
-                        isFavorite: provider.isFavorite(widget.property.id),
-                        onTap: () => provider.toggleFavorite(widget.property),
+                        isFavorite: provider.isFavorite(widget.listing.id),
+                        onTap: () => provider.toggleFavorite(widget.listing),
                       ),
                     ),
                     SizedBox(width: 13),
@@ -282,14 +230,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             _currentPage = index;
                           });
                         },
-                        itemCount: widget.property.property!.imageUrls != null
-                            ? widget.property.property!.imageUrls!.length
-                            : widget.property.imageUrls!.length,
+                        itemCount: widget.listing.property!.imageUrls != null
+                            ? widget.listing.property!.imageUrls!.length
+                            : widget.listing.imageUrls!.length,
                         itemBuilder: (context, index) {
                           final imageUrl =
-                              widget.property.property!.imageUrls != null
-                                  ? widget.property.property!.imageUrls![index]
-                                  : widget.property.imageUrls![index];
+                              widget.listing.property!.imageUrls != null
+                                  ? widget.listing.property!.imageUrls![index]
+                                  : widget.listing.imageUrls![index];
                           return ClipRRect(
                             borderRadius: BorderRadius.only(
                                 bottomLeft: Radius.circular(40),
@@ -317,9 +265,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
-                            widget.property.property!.imageUrls != null
-                                ? widget.property.property!.imageUrls!.length
-                                : widget.property.imageUrls!.length,
+                            widget.listing.property!.imageUrls != null
+                                ? widget.listing.property!.imageUrls!.length
+                                : widget.listing.imageUrls!.length,
                             (index) => Container(
                               margin: EdgeInsets.symmetric(horizontal: 4),
                               width: 8,
@@ -359,7 +307,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                                 // Title
                                 Text(
-                                  widget.property.title,
+                                  widget.listing.title,
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -373,7 +321,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         color: Colors.grey, size: 20),
                                     SizedBox(width: 4),
                                     Text(
-                                      widget.property.location,
+                                      widget.listing.location,
                                       style: TextStyle(color: Colors.grey),
                                     ),
                                   ],
@@ -387,7 +335,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                "\$ ${widget.property.price}",
+                                "\$ ${widget.listing.price}",
                                 style: TextStyle(
                                   fontSize: 27,
                                   fontWeight: FontWeight.bold,
@@ -425,9 +373,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         onPressed: () {},
                                       ),
                                       Text(
-                                        widget
-                                            .property.property!.numberOfBedrooms
-                                            .toString(),
+                                        _getBedroomText(),
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -454,9 +400,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         onPressed: () {},
                                       ),
                                       Text(
-                                        widget.property.property!
-                                            .numberOfBathrooms
-                                            .toString(),
+                                        _getBathroomText(),
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -481,14 +425,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         vertical: 12.0, horizontal: 12.0),
                                     child: RichText(
                                       text: TextSpan(
-                                        text: "Max occupancy of ",
+                                        text: "Max occupancy ",
                                         style: TextStyle(
                                             fontSize: 16,
                                             color: blackTextColor),
                                         children: <TextSpan>[
                                           TextSpan(
-                                            text:
-                                                "${widget.property.property!.maxOccupancy}",
+                                            text: _getMaxOccupancyText(),
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: blackTextColor,
@@ -511,7 +454,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         height: 20,
                       ),
                       Text(
-                        widget.property.description ?? '',
+                        widget.listing.description ?? '',
                         style: AppTextStyles.small(
                           fontWeight: FontWeight.normal,
                           fontSize: 14,
@@ -524,65 +467,153 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           style: AppTextStyles.title(
                               fontSize: 15, color: orangeColor)),
                       // Add preferences section
-                      if (widget.property.property!.amenities!.isNotEmpty)
+                      if (widget.listing.property!.amenities!.isNotEmpty)
                         buildPreferencesSection(
-                            widget.property.property!.amenities!),
+                            widget.listing.property!.amenities!),
 
-                      // Row(children: [
-                      //   Chip(
-                      //     label: Text('Move-in on 2nd Feb 2025'),
-                      //     backgroundColor: orangeColor.withOpacity(0.1),
-                      //     labelStyle: AppTextStyles.small(
-                      //         color: orangeColor, fontWeight: FontWeight.bold),
-                      //     side: BorderSide.none,
-                      //     shape: RoundedRectangleBorder(
-                      //         borderRadius: BorderRadius.circular(20)),
-                      //   ),
-                      //   SizedBox(width: 10),
-                      //   Chip(
-                      //     label: Text('Move-in on 2nd Feb 2025'),
-                      //     backgroundColor: orangeColor.withOpacity(0.1),
-                      //     labelStyle: AppTextStyles.small(
-                      //         color: orangeColor, fontWeight: FontWeight.bold),
-                      //     side: BorderSide.none,
-                      //     shape: RoundedRectangleBorder(
-                      //         borderRadius: BorderRadius.circular(20)),
-                      //   ),
-                      // ]),
-                      SizedBox(height: 20),
-                      if (widget.property.property?.categories.isNotEmpty ==
-                          true) ...[
+                      // Floor Plans Section
+                      if (widget.listing.property?.floorPlans != null &&
+                          widget.listing.property!.floorPlans!.isNotEmpty) ...[
+                        SizedBox(height: 20),
                         Text(
-                          'Categories',
+                          'Floor Plans',
                           style: AppTextStyles.title(
                               fontSize: 15, color: orangeColor),
                         ),
-                        SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: widget.property.property!.categories
-                              .map((category) => Chip(
-                                    label: Text(
-                                        category.displayName.split("").first +
-                                            category.displayName
-                                                .substring(1)
-                                                .toLowerCase()),
-                                    backgroundColor: Color(4293718257),
-                                    labelStyle: AppTextStyles.small(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                    side: BorderSide.none,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ))
-                              .toList(),
+                        SizedBox(height: 12),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount:
+                              widget.listing.property!.floorPlans!.length,
+                          itemBuilder: (context, index) {
+                            final plan =
+                                widget.listing.property!.floorPlans![index];
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 16),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey[200]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // if (plan.imageUrl != null &&
+                                      //     plan.imageUrl!.isNotEmpty)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: CachedNetworkImage(
+                                          imageUrl:
+                                              'https://images.pexels.com/photos/186077/pexels-photo-186077.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+                                          height: 70,
+                                          width: 100,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                            color: Colors.grey[300],
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                            color: Colors.grey[300],
+                                            child: Icon(Icons.error),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              plan.name,
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              '${plan.name}',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ]),
+                                      Spacer(),
+                                      Column(
+                                        children: [
+                                          Text(
+                                            '\$${plan.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              color: Colors.blue,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            '${plan.squareFeet} sq ft',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _buildFeatureIndicator(
+                                        Icons.bed_outlined,
+                                        '${plan.bedrooms} Beds',
+                                      ),
+                                      SizedBox(width: 16),
+                                      _buildFeatureIndicator(
+                                        Icons.bathtub_outlined,
+                                        '${plan.bathrooms} Baths',
+                                      ),
+                                      SizedBox(width: 16),
+                                      // _buildFeatureIndicator(
+                                      //   Icons.apartment,
+                                      //   '${plan.availableUnits} Available',
+                                      // ),
+
+                                      Text(
+                                        '${plan.availableUnits} units avail.',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ],
-                      if (widget.property.property?.moveInDate != null ||
-                          widget.property.property?.moveOutDate != null) ...[
+
+                      if (widget.listing.property?.moveInDate != null ||
+                          widget.listing.property?.moveOutDate != null) ...[
                         SizedBox(height: 20),
                         Text(
                           'Availability',
@@ -603,7 +634,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if (widget.property.property?.moveInDate != null)
+                              if (widget.listing.property?.moveInDate != null)
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -627,10 +658,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                       ),
                                       SizedBox(height: 4),
                                       Text(
-                                        widget.property.property?.moveInDate ==
+                                        widget.listing.property?.moveInDate ==
                                                 'Anytime'
                                             ? 'Available Anytime'
-                                            : widget.property.property
+                                            : widget.listing.property
                                                     ?.moveInDate ??
                                                 'Not specified',
                                         style: TextStyle(
@@ -641,7 +672,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     ],
                                   ),
                                 ),
-                              if (widget.property.property?.moveOutDate !=
+                              if (widget.listing.property?.moveOutDate !=
                                   null) ...[
                                 Container(
                                   height: 40,
@@ -676,7 +707,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         padding:
                                             const EdgeInsets.only(left: 16.0),
                                         child: Text(
-                                          widget.property.property?.moveOutDate
+                                          widget.listing.property?.moveOutDate
                                                   .toString() ??
                                               'Not specified',
                                           style: TextStyle(
@@ -693,7 +724,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ),
                         ),
                       ],
-                      if (widget.property.property?.isLookingForRoomate ==
+                      if (widget.listing.property?.isLookingForRoomate ==
                           true) ...[
                         SizedBox(height: 16),
                         Container(
@@ -722,6 +753,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ),
                         ),
                       ],
+
                       _buildLocationDetailsSection(),
                       SizedBox(height: 130),
                     ],
@@ -736,7 +768,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   : MediaQuery.of(context).viewInsets.bottom),
           Align(
             alignment: Alignment.bottomCenter,
-            child: ExpandableUserCard(user: widget.property.user!),
+            child: ExpandableUserCard(user: widget.listing.user!),
           ),
         ],
       ),
@@ -778,10 +810,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   Widget _buildLocationDetailsSection() {
     if (_loadingLocationDetails) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 16.0),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return Center(child: CircularProgressIndicator());
     }
 
     if (_locationDetails == null) {
@@ -948,6 +977,83 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 ),
               ),
             ]));
+  }
+
+  Widget _buildFeatureIndicator(IconData icon, String text) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey[600]),
+          SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getBedroomText() {
+    if (widget.listing.property?.floorPlans == null ||
+        widget.listing.property!.floorPlans!.isEmpty) {
+      return widget.listing.property!.numberOfBedrooms.toString();
+    }
+
+    final bedrooms = widget.listing.property!.floorPlans!
+        .map((plan) => plan.bedrooms)
+        .toList();
+    final minBedrooms = bedrooms.reduce(min);
+    final maxBedrooms = bedrooms.reduce(max);
+
+    return minBedrooms == maxBedrooms
+        ? minBedrooms.toString()
+        : '$minBedrooms-$maxBedrooms';
+  }
+
+  String _getBathroomText() {
+    if (widget.listing.property?.floorPlans == null ||
+        widget.listing.property!.floorPlans!.isEmpty) {
+      return widget.listing.property!.numberOfBathrooms.toString();
+    }
+
+    final bathrooms = widget.listing.property!.floorPlans!
+        .map((plan) => plan.bathrooms)
+        .toList();
+    final minBathrooms = bathrooms.reduce(min);
+    final maxBathrooms = bathrooms.reduce(max);
+
+    return minBathrooms == maxBathrooms
+        ? minBathrooms.toString()
+        : '$minBathrooms-$maxBathrooms';
+  }
+
+  String _getMaxOccupancyText() {
+    if (widget.listing.property?.floorPlans == null ||
+        widget.listing.property!.floorPlans!.isEmpty) {
+      return widget.listing.property!.maxOccupancy.toString();
+    }
+
+    // Calculate max occupancy based on bedrooms (2 per bedroom)
+    final occupancies = widget.listing.property!.floorPlans!
+        .map((plan) => plan.bedrooms * 2)
+        .toList();
+    final minOccupancy = occupancies.reduce(min);
+    final maxOccupancy = occupancies.reduce(max);
+
+    return minOccupancy == maxOccupancy
+        ? minOccupancy.toString()
+        : '$minOccupancy-$maxOccupancy';
   }
 }
 

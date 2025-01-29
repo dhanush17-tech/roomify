@@ -19,6 +19,10 @@ import 'package:roomify_app/widgets/mapbox_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
+import 'package:roomify_app/widgets/availability_section.dart';
+import 'package:roomify_app/widgets/property_image_list.dart';
+import 'package:roomify_app/widgets/category_chip.dart';
+import 'package:roomify_app/widgets/amenity_chip.dart';
 
 class AddPropertyScreen extends StatefulWidget {
   final Listing? existingListing;
@@ -39,8 +43,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final _bedroomsController = TextEditingController(text: '0');
   final _maxOccController = TextEditingController(text: '0');
   final List<String> _selectedAmenities = [];
-  final List<File> _selectedImages = [];
-  final List<String> _existingImageUrls = [];
+  List<File> _selectedImages = [];
+  List<String> _existingImageUrls = [];
   bool _isLoading = false;
   PropertyCategory? _selectedCategory;
   bool isLookingForRoomate = false;
@@ -84,7 +88,12 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       latitude = widget.existingListing!.latitude;
       if (widget.existingListing!.property?.categories != null &&
           widget.existingListing!.property!.categories.isNotEmpty) {
-        _selectedCategory = widget.existingListing!.property!.categories.first;
+        _selectedCategory = PropertyCategory.values.firstWhere(
+          (category) =>
+              category.name ==
+              widget.existingListing!.property!.categories.first,
+          orElse: () => PropertyCategory.apartment,
+        );
       }
       longitude = widget.existingListing!.longitude;
       moveInDate = widget.existingListing!.property!.moveInDate;
@@ -176,10 +185,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _showErrorSnackBar('Please add at least one image');
       return;
     }
-    if (_selectedCategory == null) {
-      _showErrorSnackBar('Please select a category');
-      return;
-    }
+    // if (_selectedCategory == null) {
+    //   _showErrorSnackBar('Please select a category');
+    //   return;
+    // }
     if (latitude == null || longitude == null) {
       _showErrorSnackBar('Please select a valid address');
       return;
@@ -195,76 +204,84 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     setState(() => _isLoading = true);
 
-    // try {
-    List<File> allImages = [];
-    allImages.addAll(_selectedImages);
+    try {
+      List<File> allImages = [];
+      allImages.addAll(_selectedImages);
 
-    // Convert existing image URLs to files
-    for (String imageUrl in _existingImageUrls) {
-      try {
-        final response = await http.get(Uri.parse(imageUrl));
-        if (response.statusCode == 200) {
-          final tempDir = await getTemporaryDirectory();
-          final fileName = imageUrl.split('/').last;
-          final tempFile = File('${tempDir.path}/$fileName');
-          await tempFile.writeAsBytes(response.bodyBytes);
-          allImages.add(tempFile);
+      // Convert existing image URLs to files
+      for (String imageUrl in _existingImageUrls) {
+        try {
+          final response = await http.get(Uri.parse(imageUrl));
+          if (response.statusCode == 200) {
+            final tempDir = await getTemporaryDirectory();
+            final fileName = imageUrl.split('/').last;
+            final tempFile = File('${tempDir.path}/$fileName');
+            await tempFile.writeAsBytes(response.bodyBytes);
+            allImages.add(tempFile);
+          }
+        } catch (e) {
+          print('Error downloading existing image: $e');
         }
-      } catch (e) {
-        print('Error downloading existing image: $e');
       }
-    }
 
-    final listing = Listing(
-      id: widget.existingListing?.id ?? DateTime.now().millisecondsSinceEpoch,
-      createdAt: widget.existingListing?.createdAt ?? DateTime.now(),
-      title: capitalizeWords(_titleController.text.trim()),
-      description: _descriptionController.text.trim(),
-      location: _locationController.text.trim(),
-      price: int.parse(_priceController.text),
-      property: Property(
-        numberOfBathrooms: int.parse(_bathroomsController.text),
-        numberOfBedrooms: int.parse(_bedroomsController.text),
-        amenities: _selectedAmenities,
-        isLookingForRoomate: isLookingForRoomate,
-        maxOccupancy: int.parse(_maxOccController.text),
-        moveInDate: moveInDate,
-        moveOutDate: moveOutDate,
-        categories: _selectedCategory != null ? [_selectedCategory!] : [],
+      final listing = Listing(
+        id: widget.existingListing?.id ?? DateTime.now().millisecondsSinceEpoch,
+        createdAt: widget.existingListing?.createdAt ?? DateTime.now(),
+        title: capitalizeWords(_titleController.text.trim()),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        price: int.parse(_priceController.text),
+        property: Property(
+          walkScore: 0,
+          transitScore: 0,
+          transitDetails: {},
+
+          numberOfBathrooms: int.parse(_bathroomsController.text),
+          numberOfBedrooms: int.parse(_bedroomsController.text),
+          amenities: _selectedAmenities,
+          isLookingForRoomate: isLookingForRoomate,
+          maxOccupancy: int.parse(_maxOccController.text),
+          moveInDate: moveInDate!,
+          moveOutDate: moveOutDate,
+          categories:
+              _selectedCategory != null ? [_selectedCategory!.name] : [],
+          imageUrls: [], // Clear existing URLs as we're sending all images
+          isRoomifyChoice:
+              widget.existingListing?.property?.isRoomifyChoice ?? false,
+          floorPlans: widget.existingListing?.property?.floorPlans ?? [],
+        ),
+        latitude: latitude,
+        longitude: longitude,
+        type: ListingType.Property,
+        user: user,
+        isFavourite: widget.existingListing?.isFavourite ?? false,
         imageUrls: [], // Clear existing URLs as we're sending all images
-      ),
-      latitude: latitude,
-      longitude: longitude,
-      type: ListingType.Property,
-      user: user,
-      isFavourite: widget.existingListing?.isFavourite ?? false,
-      imageUrls: [], // Clear existing URLs as we're sending all images
-    );
+      );
 
-    if (widget.existingListing != null) {
-      final updatedListing = await context
-          .read<PropertyProvider>()
-          .updateProperty(listing, allImages);
-      _showSuccessSnackBar('Property updated successfully');
-      if (mounted) {
-        Navigator.of(context).pop(updatedListing);
+      if (widget.existingListing != null) {
+        final updatedListing = await context
+            .read<PropertyProvider>()
+            .updateProperty(listing, images: allImages);
+        _showSuccessSnackBar('Property updated successfully');
+        if (mounted) {
+          Navigator.of(context).pop(updatedListing);
+        }
+      } else {
+        final createdListing = await context
+            .read<PropertyProvider>()
+            .createProperty(listing, images: allImages);
+        _showSuccessSnackBar('Property added successfully');
+        if (mounted) {
+          Navigator.of(context).pop(createdListing);
+        }
       }
-    } else {
-      final createdListing = await context
-          .read<PropertyProvider>()
-          .createProperty(listing, allImages);
-      _showSuccessSnackBar('Property added successfully');
+    } catch (e) {
+      _showErrorSnackBar(e.toString());
+    } finally {
       if (mounted) {
-        Navigator.of(context).pop(createdListing);
+        setState(() => _isLoading = false);
       }
     }
-    // } catch (e) {
-    //   _showErrorSnackBar(e.toString());
-    // } finally {
-    //   if (mounted) {
-    //     setState(() => _isLoading = false);
-    //   }
-    // }
   }
 
   void _showErrorSnackBar(String message) {
@@ -289,7 +306,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     );
   }
 
-  void _selectDate(BuildContext context, bool isMoveIn) async {
+  void _selectDate(BuildContext context, bool isMoveIn, bool isAnytime) async {
     if (isMoveIn) {
       showDialog(
         context: context,
@@ -487,26 +504,26 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     value!.isEmpty ? 'Please enter a title' : null,
               ),
               SizedBox(height: 24),
-              Text(
-                'Property Category',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: blackTextColor,
-                ),
-              ),
-              SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _buildCategoryChip('Apartment', Icons.apartment),
-                  _buildCategoryChip('Villa', Icons.villa),
-                  _buildCategoryChip('Shared House', Icons.house),
-                  _buildCategoryChip('Hostel', Icons.hotel),
-                ],
-              ),
-              SizedBox(height: 12),
+              // // Text(
+              // //   'Property Category',
+              // //   style: TextStyle(
+              // //     fontSize: 20,
+              // //     fontWeight: FontWeight.bold,
+              // //     color: blackTextColor,
+              // //   ),
+              // // ),
+              // // SizedBox(height: 12),
+              // // Wrap(
+              // //   spacing: 12,
+              // //   runSpacing: 12,
+              // //   children: [
+              // //     _buildCategoryChip('Apartment', Icons.apartment),
+              // //     _buildCategoryChip('Villa', Icons.villa),
+              // //     _buildCategoryChip('Shared House', Icons.house),
+              // //     _buildCategoryChip('Hostel', Icons.hotel),
+              // //   ],
+              // // ),
+              // SizedBox(height: 12),
               Text(
                 'Property Details',
                 style: TextStyle(
@@ -532,7 +549,20 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     value!.isEmpty ? 'Please enter property details' : null,
               ),
               SizedBox(height: 24),
-              _buildImageList(),
+              PropertyImageList(
+                selectedImages: _selectedImages,
+                existingImageUrls: _existingImageUrls,
+                onImagesChanged: (images) {
+                  setState(() {
+                    _selectedImages = images;
+                  });
+                },
+                onExistingImagesChanged: (urls) {
+                  setState(() {
+                    _existingImageUrls = urls;
+                  });
+                },
+              ),
               SizedBox(height: 24),
               Text(
                 'Location',
@@ -657,7 +687,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 ],
               ),
               SizedBox(height: 24),
-              _buildAvailabilitySection(),
+              AvailabilitySection(
+                moveInDate: moveInDate,
+                moveOutDate: moveOutDate,
+                onSelectDate: _selectDate,
+              ),
               SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -693,95 +727,38 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }
 
   Widget _buildCategoryChip(String label, IconData icon) {
-    PropertyCategory? getCategory() {
-      switch (label) {
-        case 'Apartment':
-          return PropertyCategory.apartment;
-        case 'Studio':
-          return PropertyCategory.studio;
-        case 'Furnished':
-          return PropertyCategory.furnished;
-        case 'House':
-          return PropertyCategory.house;
-        case 'Villa':
-          return PropertyCategory.villa;
-        case 'Room':
-          return PropertyCategory.room;
-        case 'Shared House':
-          return PropertyCategory.sharedHouse;
-        case 'Hostel':
-          return PropertyCategory.hostel;
-
-        default:
-          return null;
-      }
-    }
-
-    final category = getCategory();
-    final isSelected = category != null && _selectedCategory == category;
-
-    return FilterChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isSelected ? Colors.white : Colors.grey[600],
-          ),
-          SizedBox(width: 8),
-          Text(label.split('').first.toUpperCase() + label.substring(1)),
-        ],
-      ),
-      selected: isSelected,
-      onSelected: (bool selected) {
-        if (category != null) {
-          setState(() {
-            _selectedCategory = selected ? category : null;
-          });
-        }
+    final isSelected = _selectedCategory?.name == label;
+    return CategoryChip(
+      label: label,
+      icon: icon,
+      isSelected: isSelected,
+      onTap: () {
+        setState(() {
+          _selectedCategory = isSelected
+              ? null
+              : PropertyCategory.values.firstWhere(
+                  (cat) => cat.name == label,
+                  orElse: () => PropertyCategory.apartment,
+                );
+        });
       },
-      selectedColor: Theme.of(context).primaryColor,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : blackTextColor,
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? Colors.transparent : Colors.grey[300]!,
-        ),
-      ),
     );
   }
 
   Widget _buildAmenityChip(String label) {
     final isSelected = _selectedAmenities.contains(label);
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (bool selected) {
+    return AmenityChip(
+      label: label,
+      isSelected: isSelected,
+      onTap: () {
         setState(() {
-          if (selected) {
-            _selectedAmenities.add(label);
-          } else {
+          if (isSelected) {
             _selectedAmenities.remove(label);
+          } else {
+            _selectedAmenities.add(label);
           }
         });
       },
-      selectedColor: orangeColor.withOpacity(0.2),
-      checkmarkColor: orangeColor,
-      labelStyle: TextStyle(
-        color: isSelected ? orangeColor : blackTextColor,
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? orangeColor : Colors.grey[300]!,
-        ),
-      ),
     );
   }
 
@@ -906,234 +883,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     );
   }
 
-  void _showAddressSearch(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MapBoxAutoCompleteWidget(
-          hint: "Search address",
-          onSelect: (place) {
-            setState(() {
-              _addressController.text = place.placeName;
-              latitude = place.geometry.coordinates[1];
-              longitude = place.geometry.coordinates[0];
-              _locationController.text = place.context
-                  .firstWhere((item) => item.id.startsWith('place'))
-                  .text;
-            });
-            Navigator.pop(context);
-          },
-          limit: 10,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Listing Photos',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: blackTextColor,
-          ),
-        ),
-        SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ..._existingImageUrls.asMap().entries.map(
-                    (entry) =>
-                        _buildExistingImagePreview(entry.value, entry.key),
-                  ),
-              ..._selectedImages.asMap().entries.map(
-                    (entry) => _buildNewImagePreview(entry.value, entry.key),
-                  ),
-              TweenAnimationBuilder(
-                duration: Duration(milliseconds: 300),
-                tween: Tween<double>(begin: 0.0, end: 1.0),
-                builder: (context, double value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Opacity(
-                      opacity: value,
-                      child: InkWell(
-                        onTap: _pickImages,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate_outlined,
-                                size: 32,
-                                color: Colors.grey[600],
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Add Photo',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExistingImagePreview(String imageUrl, int index) {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _removingImages[index] == true ? 0.0 : 1.0,
-      child: AnimatedScale(
-        duration: Duration(milliseconds: 300),
-        scale: _removingImages[index] == true ? 0.0 : 1.0,
-        child: Stack(
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  width: 120,
-                  height: 120,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[200],
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
-                    child: Icon(Icons.error),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _removingImages[index] = true;
-                  });
-                  Future.delayed(Duration(milliseconds: 300), () {
-                    setState(() {
-                      _existingImageUrls.removeAt(index);
-                      _removingImages.remove(index);
-                    });
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNewImagePreview(File image, int index) {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _addingImages[index] == true ? 0.0 : 1.0,
-      child: AnimatedScale(
-        duration: Duration(milliseconds: 300),
-        scale: _addingImages[index] == true ? 0.0 : 1.0,
-        child: Stack(
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  image,
-                  fit: BoxFit.cover,
-                  width: 120,
-                  height: 120,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _removingImages[index] = true;
-                  });
-                  Future.delayed(Duration(milliseconds: 300), () {
-                    setState(() {
-                      _selectedImages.removeAt(index);
-                      _removingImages.remove(index);
-                    });
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showAddFeatureDialog() {
     showDialog(
       context: context,
@@ -1175,67 +924,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAvailabilitySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Availability',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: blackTextColor,
-          ),
-        ),
-        SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectDate(context, true),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Move-in Date *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    errorText: moveInDate == null ? 'Required' : null,
-                  ),
-                  child: Text(
-                    moveInDate ?? 'Select Date',
-                    style: TextStyle(
-                      color: moveInDate != null ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectDate(context, false),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Move-out Date (Optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    moveOutDate ?? 'Select Date',
-                    style: TextStyle(
-                      color: moveOutDate != null ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

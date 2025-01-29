@@ -274,9 +274,9 @@ app.get('/suggestions', async (c) => {
                 isFavorite: fullListing.favorites.length > 0,
                 latitude: fullListing.latitude,
                 longitude: fullListing.longitude,
-                imageUrls: fullListing.marketplace?.images.map(img => img.imageUrl) ?? [],
+                imageUrls: fullListing.marketplace?.images ?? [],
                 marketplaceItem: {
-                    categories: fullListing.marketplace?.categories.map(c => c.category) ?? []
+                    categories: fullListing.marketplace?.categories?? []
                 },
                 property: null
             };
@@ -366,9 +366,9 @@ app.post('/', async (c) => {
             isFavorite: false,
             latitude: listing.latitude,
             longitude: listing.longitude,
-            imageUrls: listing.marketplace?.images.map(img => img.imageUrl) ?? [],
+            imageUrls: listing.marketplace?.images ?? [],
             marketplaceItem: {
-                categories: listing.marketplace?.categories.map(c => c.category) ?? []
+                categories: listing.marketplace?.categories ?? []
             },
             property: null
         };
@@ -449,8 +449,8 @@ app.put('/:id', async (c) => {
             success: true,
             item: {
                 ...marketplaceItem.listing,
-                categories: marketplaceItem.categories.map(c => c.category),
-                imageUrls: marketplaceItem.images.map(i => i.imageUrl)
+                categories: marketplaceItem.categories,
+                imageUrls: marketplaceItem.images,
             }
         });
 

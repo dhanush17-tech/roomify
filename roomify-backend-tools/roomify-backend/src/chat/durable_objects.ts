@@ -309,8 +309,7 @@ async function sendNotification(recipientFCMToken: string, data: any) {
     try {
         if (recipientFCMToken) {
             const response = await fetch(
-                // 'https://notification-service-delicate-field-6176.fly.dev/send-notification'
-                'http://localhost:3000/send-notification'
+                'https://notification-service-delicate-field-6176.fly.dev/send-notification'
                 , {
                     method: 'POST',
                     headers: {
@@ -319,7 +318,7 @@ async function sendNotification(recipientFCMToken: string, data: any) {
                     body: JSON.stringify(data),
                 });
 
-            if (!response.ok) {
+        if (!response.ok) {
                 throw new Error('Failed to send notification');
             }
 
