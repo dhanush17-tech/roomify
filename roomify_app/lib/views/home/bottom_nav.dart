@@ -143,24 +143,34 @@ class _MainScreenState extends State<MainScreen> {
 
     // Check if user is null
     if (userProvider.user == null) {
-      // Redirect to login or show a message
-      return SignUpLoginScreen(widget.latitude, widget.longitude); // Replace with your login screen widget
+      return SignUpLoginScreen(widget.latitude, widget.longitude);
     }
 
-    final List<Widget> _screens = [
-      HomeScreen(
-        user: userProvider.user!,
-        latitude: widget.latitude,
-        longitude: widget.longitude,
-      ),
-      RoommateMatchScreen(widget.latitude, widget.longitude),
-      Container(), // Empty container for center button
-      MarketplaceHomeScreen(
-        widget.latitude,
-        widget.longitude,
-      ),
-      ProfileScreen(widget.latitude, widget.longitude),
-    ];
+    final isProfessional = userProvider.user!.isProfessional;
+
+    final List<Widget> _screens = isProfessional
+        ? [
+            HomeScreen(
+              user: userProvider.user!,
+              latitude: widget.latitude,
+              longitude: widget.longitude,
+            ),
+            ProfileScreen(widget.latitude, widget.longitude),
+          ]
+        : [
+            HomeScreen(
+              user: userProvider.user!,
+              latitude: widget.latitude,
+              longitude: widget.longitude,
+            ),
+            RoommateMatchScreen(widget.latitude, widget.longitude),
+            Container(), // Empty container for center button
+            MarketplaceHomeScreen(
+              widget.latitude,
+              widget.longitude,
+            ),
+            ProfileScreen(widget.latitude, widget.longitude),
+          ];
 
     return Scaffold(
       body: _screens[_currentIndex],
@@ -168,35 +178,46 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) {
-          if (index == 2) {
-            _showAddItemDialog();
-          } else {
+          if (isProfessional) {
             setState(() {
               _currentIndex = index;
             });
+          } else {
+            if (index == 2) {
+              _showAddItemDialog();
+            } else {
+              setState(() {
+                _currentIndex = index;
+              });
+            }
           }
         },
-        items: [
-          _buildBottomNavItem("assets/icons/home.png", 0),
-          _buildBottomNavItem("assets/icons/roommate.png", 1),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            label: '',
-          ),
-          _buildBottomNavItem("assets/icons/marketplace.png", 3),
-          _buildBottomNavItem("assets/icons/profile.png", 4),
-        ],
+        items: isProfessional
+            ? [
+                _buildBottomNavItem("assets/icons/home.png", 0),
+                _buildBottomNavItem("assets/icons/profile.png", 1),
+              ]
+            : [
+                _buildBottomNavItem("assets/icons/home.png", 0),
+                _buildBottomNavItem("assets/icons/roommate.png", 1),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  label: '',
+                ),
+                _buildBottomNavItem("assets/icons/marketplace.png", 3),
+                _buildBottomNavItem("assets/icons/profile.png", 4),
+              ],
         selectedItemColor: Colors.orange,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,

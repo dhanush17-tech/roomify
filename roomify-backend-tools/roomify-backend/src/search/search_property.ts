@@ -51,11 +51,12 @@ app.get('/', async (c) => {
                 reported: false,
                 property: {
                     OR: [
-                        { moveInDate: 'Anytime' },
+                        { moveInDate: { equals: 'Anytime' } },
                         {
-                            moveInDate: {
-                                gte: currentDate
-                            }
+                            AND: [
+                                { moveInDate: { not: 'Anytime' } },
+                                { moveInDate: { gte: currentDate } }
+                            ]
                         }
                     ]
                 }
@@ -124,11 +125,12 @@ app.get('/', async (c) => {
                     longitude: { not: null },
                     property: {
                         OR: [
-                            { moveInDate: 'Anytime' },
+                            { moveInDate: { equals: 'Anytime' } },
                             {
-                                moveInDate: {
-                                    gte: currentDate
-                                }
+                                AND: [
+                                    { moveInDate: { not: 'Anytime' } },
+                                    { moveInDate: { gte: currentDate } }
+                                ]
                             }
                         ]
                     }
@@ -165,11 +167,12 @@ app.get('/', async (c) => {
                     },
                     property: {
                         OR: [
-                            { moveInDate: 'Anytime' },
+                            { moveInDate: { equals: 'Anytime' } },
                             {
-                                moveInDate: {
-                                    gte: currentDate
-                                }
+                                AND: [
+                                    { moveInDate: { not: 'Anytime' } },
+                                    { moveInDate: { gte: currentDate } }
+                                ]
                             }
                         ]
                     },
@@ -242,6 +245,7 @@ app.get('/', async (c) => {
                 imageUrls: listing.property.images
             } : null
         }));
+        console.log("This is the enhanced listings", enhancedListings);
 
         return c.json({
             results: enhancedListings,

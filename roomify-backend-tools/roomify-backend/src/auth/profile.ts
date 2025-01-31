@@ -258,7 +258,7 @@ app.get('/listings', async (c) => {
                 categories: listing.property.categories,
                 amenities: listing.property.amenities,
                 tags: listing.property.tags,
-                images: listing.property.images 
+                images: listing.property.images
             } : null,
             marketplace: listing.marketplace ? {
                 ...listing.marketplace,
@@ -281,6 +281,32 @@ app.get('/listings', async (c) => {
         return c.json({ error: 'Failed to fetch user listings' }, 500);
     }
 });
+
+//admin to delete listings with listingId
+app.delete('/admin/listings/:id', async (c) => {
+    try {
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        const listingId = parseInt(c.req.param('id'));
+
+        const listing = await prisma.listing.findUnique({
+            where: { id: listingId }
+        });
+
+        if (!listing) {
+            return c.json({ error: 'Listing not found' }, 404);
+        }
+
+        await prisma.listing.delete({ where: { id: listingId } });
+        return c.json({ success: true });
+    } catch (error) {
+        console.error('Delete listing error:', error);
+        return c.json({ error: 'Failed to delete listing' }, 500);
+    }
+});
+
 
 app.delete('/listings/:id', async (c) => {
     try {

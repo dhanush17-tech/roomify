@@ -38,8 +38,11 @@ class ProfileScreen extends StatelessWidget {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (c) => EditProfileScreen()));
               }),
-              _buildListItem("Notifications", Icons.notifications_none),
-              _buildListItem("Payment Methods", Icons.payment),
+              if (userProvider.user!.isProfessional)
+                _buildListItem("Leads", Icons.leaderboard_outlined, onTap: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (c) => LeadsScreen()));
+                }),
               _buildSectionTitle("App Management"),
               _buildListItem("Help & Support", Icons.help_outline),
               _buildListItem(
@@ -115,7 +118,10 @@ class ProfileScreen extends StatelessWidget {
                   SizedBox(
                     height: 5,
                   ),
-                  Text("${user.user!.university}",
+                  Text(
+                      user.user!.isProfessional
+                          ? "${user.user!.email}"
+                          : "${user.user!.university}",
                       style: AppTextStyles.caption(color: Colors.white)),
                   SizedBox(height: 8),
                   GestureDetector(
@@ -176,13 +182,6 @@ class ProfileScreen extends StatelessWidget {
             Navigator.push(context,
                 MaterialPageRoute(builder: (c) => UserMatchesScreen()));
           }),
-          if (Provider.of<AuthProvider>(context, listen: false)
-              .user!
-              .isProfessional)
-            _quickAccessIcon(Icons.leaderboard_outlined, "Leads", onTap: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (c) => LeadsScreen()));
-            }),
         ],
       ),
     );
