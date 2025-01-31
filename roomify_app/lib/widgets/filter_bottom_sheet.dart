@@ -41,8 +41,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         .map((c) =>
             PropertyCategory.values.firstWhere((e) => e.displayName == c))
         .toList();
-    numberOfBedrooms = _filters.numberOfBedrooms ?? 0;
-    numberOfBathrooms = _filters.numberOfBathrooms ?? 0;
+    numberOfBedrooms = _filters.bedrooms ?? 0;
+    numberOfBathrooms = _filters.bathrooms ?? 0;
     maxOccupancy = _filters.maxOccupancy ?? 0;
     ratingRange = RangeValues(_filters.rating?.toDouble() ?? 0, 5);
   }
@@ -246,9 +246,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           minPrice: priceRange.start,
                           maxPrice: priceRange.end,
                           location: selectedLocation,
-                          numberOfBedrooms:
+                          bedrooms:
                               numberOfBedrooms > 0 ? numberOfBedrooms : null,
-                          numberOfBathrooms:
+                          bathrooms:
                               numberOfBathrooms > 0 ? numberOfBathrooms : null,
                           maxOccupancy: maxOccupancy > 0 ? maxOccupancy : null,
                           propertyTypes: selectedPropertyTypes,

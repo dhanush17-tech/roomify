@@ -243,7 +243,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        otherUser.isProfessional == true
+                        otherUser.isProfessional == false
                             ? Text(
                                 otherUser.age.toString() + ' years old',
                                 style: TextStyle(
@@ -286,7 +286,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                 SizeTransition(
                   sizeFactor: _expandAnimation,
                   child: Container(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.only(left: 16, right: 16, top: 10),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,35 +336,35 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                             ],
                           ],
                           SizedBox(height: 16),
-                          // the profile listings for the other user
-                          if (_isLoadingListings == false &&
-                              otherUserListings
-                                  .where((listing) =>
-                                      listing.type == ListingType.Property)
-                                  .isNotEmpty) ...[
-                            Text(
-                              'Listings',
-                              style: AppTextStyles.title(
-                                  fontSize: 15, color: orangeColor),
-                            ),
-                            SizedBox(height: 8),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  ...otherUserListings
-                                      .where((listing) =>
-                                          listing.type == ListingType.Property)
-                                      .map((listing) => Padding(
-                                            padding: EdgeInsets.only(right: 16),
-                                            child: _buildPropertyCard(listing),
-                                          )),
-                                ],
-                              ),
-                            ),
-                          ]
+                          Text(
+                            'Listings',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor),
+                          ),
+                          SizedBox(height: 8),
                         ],
+                        // the profile listings for the other user
+                        if (_isLoadingListings == false &&
+                            otherUserListings
+                                .where((listing) =>
+                                    listing.type == ListingType.Property)
+                                .isNotEmpty) ...[
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                ...otherUserListings
+                                    .where((listing) =>
+                                        listing.type == ListingType.Property)
+                                    .map((listing) => Padding(
+                                          padding: EdgeInsets.only(right: 16),
+                                          child: _buildPropertyCard(listing),
+                                        )),
+                              ],
+                            ),
+                          ),
+                        ]
                       ],
                     ),
                   ),
@@ -421,6 +421,13 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
   }
 
   Widget _buildPropertyCard(Listing listing) {
+    var minPriceFloorPlan = (listing.property?.floorPlans == null ||
+            listing.property!.floorPlans!.isEmpty)
+        ? null
+        : listing.user!.isProfessional
+            ? listing.property!.floorPlans!
+                .reduce((curr, next) => curr.price < next.price ? curr : next)
+            : null;
     return GestureDetector(
       onTap: () {
         final latitude = context.read<AuthProvider>().user?.latitude;
@@ -493,14 +500,13 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                         Icon(Icons.bathtub, color: Colors.grey, size: 20),
                         SizedBox(width: 5),
                         Text(
-                            listing.property?.numberOfBathrooms.toString() ??
-                                '',
+                            '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms}',
                             style: TextStyle(fontSize: 14)),
                         SizedBox(width: 20),
                         Icon(Icons.bed, color: Colors.grey, size: 20),
                         SizedBox(width: 5),
                         Text(
-                            listing.property?.numberOfBedrooms.toString() ?? '',
+                            '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms}',
                             style: TextStyle(fontSize: 14)),
                         Spacer(),
                         Align(
@@ -513,7 +519,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                               color: Colors.blue.withOpacity(0.1),
                             ),
                             child: Text(
-                              "\$${listing.price}/month ",
+                              "\$${minPriceFloorPlan?.price ?? listing.price}/month ",
                               style: AppTextStyles.small(
                                 fontWeight: FontWeight.w500,
                                 color: Colors.blue,

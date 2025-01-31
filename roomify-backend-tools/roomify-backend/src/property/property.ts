@@ -1576,6 +1576,7 @@ app.put('/floor-plan/:id/units', async (c) => {
     }
 });
 
+
 // Floor Plan Management Routes
 app.post('/:listingId/floor-plans', async (c) => {
     try {

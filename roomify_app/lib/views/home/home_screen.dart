@@ -437,6 +437,15 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
+FloorPlan? getMinPriceFloorPlan(Listing listing) {
+  if (listing.property?.floorPlans == null ||
+      listing.property!.floorPlans!.isEmpty) {
+    return null;
+  }
+  return listing.property!.floorPlans!
+      .reduce((curr, next) => curr.price < next.price ? curr : next);
+}
+
 // New Property Card Widget
 class PropertyCard extends StatelessWidget {
   final Listing listing;
@@ -445,8 +454,15 @@ class PropertyCard extends StatelessWidget {
 
   const PropertyCard(this.listing, this.latitude, this.longitude);
 
+  // Helper method to get minimum floor plan details
+
   @override
   Widget build(BuildContext context) {
+    // Get minimum price floor plan if it's a professional listing
+    final minPriceFloorPlan = listing.user?.isProfessional == true
+        ? getMinPriceFloorPlan(listing)
+        : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18.0),
       child: GestureDetector(
@@ -549,7 +565,7 @@ class PropertyCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '\$${listing.price}/month',
+                      '\$${minPriceFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month',
                       style: TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
@@ -588,11 +604,13 @@ class PropertyCard extends StatelessWidget {
                     Spacer(),
                     Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
                     SizedBox(width: 4),
-                    Text('${listing.property?.numberOfBedrooms}'),
+                    Text(
+                        '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms}'),
                     SizedBox(width: 16),
                     Icon(Icons.bathtub_outlined, color: Colors.grey, size: 20),
                     SizedBox(width: 4),
-                    Text('${listing.property?.numberOfBathrooms}'),
+                    Text(
+                        '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms}'),
                   ],
                 ),
               ),

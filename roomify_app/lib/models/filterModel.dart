@@ -7,13 +7,14 @@ class FilterOptions {
   final String? location;
   final double? minPrice;
   final double? maxPrice;
-  final int? numberOfBedrooms;
-  final int? numberOfBathrooms;
+  final int? bedrooms;
+  final int? bathrooms;
   final int? rating;
   final int? maxOccupancy;
   final List<String> propertyTypes;
   final List<String> amenities;
   final List<String> itemCategories;
+  final double? radius;
 
   FilterOptions({
     this.gender,
@@ -23,14 +24,15 @@ class FilterOptions {
     this.proximity,
     this.location,
     this.minPrice,
-    this.maxOccupancy,
-    this.numberOfBedrooms,
-    this.numberOfBathrooms,
-    this.rating,
     this.maxPrice,
+    this.bedrooms,
+    this.bathrooms,
+    this.rating,
+    this.maxOccupancy,
     this.propertyTypes = const [],
     this.amenities = const [],
     this.itemCategories = const [],
+    this.radius,
   });
 
   factory FilterOptions.defaultValues() {
@@ -43,12 +45,23 @@ class FilterOptions {
         location: null,
         minPrice: 0,
         maxPrice: 3000,
-        numberOfBedrooms: null,
-        numberOfBathrooms: null,
+        bedrooms: null,
+        bathrooms: null,
         rating: 0,
         maxOccupancy: null,
         propertyTypes: [],
         amenities: [],
-        itemCategories: []);
+        itemCategories: [],
+        radius: null);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'minPrice': minPrice,
+      'maxPrice': maxPrice,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'radius': radius,
+    };
   }
 }

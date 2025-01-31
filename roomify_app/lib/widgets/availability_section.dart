@@ -5,12 +5,13 @@ class AvailabilitySection extends StatelessWidget {
   final String? moveInDate;
   final String? moveOutDate;
   final Function(BuildContext, bool, bool) onSelectDate;
-
+  final Function(String?) onClearMoveOutDate;
   const AvailabilitySection({
     Key? key,
     required this.moveInDate,
     required this.moveOutDate,
     required this.onSelectDate,
+    required this.onClearMoveOutDate,
   }) : super(key: key);
 
   @override
@@ -59,6 +60,14 @@ class AvailabilitySection extends StatelessWidget {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    suffixIcon: moveOutDate != null
+                        ? IconButton(
+                            icon: Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              onClearMoveOutDate(null);
+                            },
+                          )
+                        : null,
                   ),
                   child: Text(
                     moveOutDate ?? 'Select Date',

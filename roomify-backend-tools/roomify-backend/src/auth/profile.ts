@@ -217,6 +217,7 @@ app.get('/listings', async (c) => {
                     include: {
                         amenities: true,
                         tags: true,
+                        floorPlans: true,
 
                         categories: true,
                         images: true,
@@ -239,6 +240,7 @@ app.get('/listings', async (c) => {
                     },
                     select: {
                         id: true,
+
                         reason: true,
                         status: true,
                         createdAt: true,

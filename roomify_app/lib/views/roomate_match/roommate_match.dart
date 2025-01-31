@@ -581,6 +581,72 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                               .toList(),
                         ),
                       ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: GestureDetector(
+                        onTap: () async {
+                          final chatRoom = await context
+                              .read<ChatProvider>()
+                              .createOrGetChatRoom(
+                                profile.id,
+                              );
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ChatMessageScreen(room: chatRoom),
+                              settings: RouteSettings(
+                                name: 'ChatMessageScreen',
+                                arguments: ChatMessageScreen(room: chatRoom),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10.0, horizontal: 12.0),
+                                  child: Center(
+                                    child: Text(
+                                      'Contact',
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    width: 3, color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.arrow_forward_ios_rounded,
+                                    size: 20),
+                                onPressed: null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -20,6 +20,7 @@ class Property {
   final DateTime? lastLocationDetailsUpdate;
   final bool isRoomifyChoice;
   final List<FloorPlan>? floorPlans;
+  final bool isProfessionalListing;
 
   Property({
     this.transitScore = 0,
@@ -38,45 +39,38 @@ class Property {
     this.lastLocationDetailsUpdate,
     this.isRoomifyChoice = false,
     this.floorPlans = const [],
+    this.isProfessionalListing = false,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      numberOfBedrooms: json['numberOfBedrooms'] as int,
-      numberOfBathrooms: json['numberOfBathrooms'] as int,
-      maxOccupancy: json['maxOccupancy'] as int,
-      moveInDate: json['moveInDate'] as String,
-      moveOutDate: json['moveOutDate'] as String?,
-      isLookingForRoomate: json['isLookingForRoomate'] as bool,
-      rating:
-          json['rating'] != null ? (json['rating'] as num).toDouble() : null,
-      amenities: (json['amenities'] as List<dynamic>?)
-              ?.map((e) => e['amenity'] as String)
-              .toList() ??
-          [],
-      categories: 
-      // (json['categories'] as List<dynamic>?)
-      //         ?.map((cat) => PropertyCategory.fromString(cat.toString()))
-      //         .toList() ??
-      [],
-      imageUrls: (json['images'] as List<dynamic>?)
-              ?.map((e) => e['imageUrl'] as String)
-              .toList() ??
-          [],
-      walkScore: json['walkScore'] as int? ?? 0,
-      transitScore: json['transitScore'] as int? ?? 0,
+      numberOfBedrooms: json['numberOfBedrooms'] ?? 0,
+      numberOfBathrooms: json['numberOfBathrooms'] ?? 0,
+      maxOccupancy: json['maxOccupancy'] ?? 0,
+      moveInDate: json['moveInDate'] ?? '',
+      moveOutDate: json['moveOutDate'],
+      isLookingForRoomate: json['isLookingForRoomate'] ?? false,
+      rating: json['rating']?.toDouble(),
+      amenities:
+          List<String>.from(json['amenities']?.map((x) => x['amenity']) ?? []),
+      categories: List<String>.from(
+          json['categories']?.map((x) => x['category']) ?? []),
+      imageUrls:
+          List<String>.from(json['images']?.map((x) => x['imageUrl']) ?? []),
+      walkScore: json['walkScore'],
+      transitScore: json['transitScore'],
       transitDetails: json['transitDetails'] != null
-          ? jsonDecode(json['transitDetails']) as Map<String, dynamic>
+          ? jsonDecode(json['transitDetails'])
           : {'railLines': [], 'busLines': []},
       lastLocationDetailsUpdate: json['lastLocationDetailsUpdate'] != null
-          ? DateTime.parse(json['lastLocationDetailsUpdate'] as String)
+          ? DateTime.parse(json['lastLocationDetailsUpdate'])
           : null,
-      isRoomifyChoice: json['isRoomifyChoice'] as bool? ?? false,
+      isRoomifyChoice: json['isRoomifyChoice'] ?? false,
       floorPlans: json['floorPlans'] != null
-          ? (json['floorPlans'] as List<dynamic>)
-              .map((e) => FloorPlan.fromJson(e as Map<String, dynamic>))
-              .toList()
+          ? List<FloorPlan>.from(
+              json['floorPlans'].map((x) => FloorPlan.fromJson(x)))
           : [],
+      isProfessionalListing: json['isProfessionalListing'] ?? false,
     );
   }
 
@@ -98,6 +92,7 @@ class Property {
       'lastLocationDetailsUpdate': lastLocationDetailsUpdate?.toIso8601String(),
       'isRoomifyChoice': isRoomifyChoice,
       'floorPlans': floorPlans?.map((plan) => plan.toJson()).toList() ?? [],
+      'isProfessionalListing': isProfessionalListing,
     };
   }
 
@@ -123,6 +118,7 @@ class Property {
     List<String>? tags,
     List<FloorPlan>? floorPlans,
     bool? isLookingForRoomate,
+    bool? isProfessionalListing,
   }) {
     return Property(
       numberOfBedrooms: numberOfBedrooms ?? this.numberOfBedrooms,
@@ -141,6 +137,8 @@ class Property {
       amenities: amenities ?? List<String>.from(this.amenities),
       floorPlans: floorPlans ?? List<FloorPlan>.from(this.floorPlans ?? []),
       isLookingForRoomate: isLookingForRoomate ?? this.isLookingForRoomate,
+      isProfessionalListing:
+          isProfessionalListing ?? this.isProfessionalListing,
     );
   }
 }

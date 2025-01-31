@@ -691,6 +691,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 moveInDate: moveInDate,
                 moveOutDate: moveOutDate,
                 onSelectDate: _selectDate,
+                onClearMoveOutDate: (value) {
+                  setState(() {
+                    moveOutDate = value;
+                  });
+                },
               ),
               SizedBox(height: 32),
               SizedBox(

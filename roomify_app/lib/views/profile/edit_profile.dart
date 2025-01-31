@@ -420,7 +420,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           context.read<AuthProvider>().deleteProfilePhoto(),
                       child: Text('Remove Photo'),
                     ),
-                  _buildProfileCompletion(user),
+                  if (!isProfessional) ...[
+                    _buildProfileCompletion(user),
+                  ] else ...[
+                    SizedBox(
+                      height: 10,
+                    ),
+                  ],
                   _buildInputFieldWithIndicator(
                     controller: _displayNameController,
                     keyboardType: TextInputType.name,
@@ -677,6 +683,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       moveInDate: _listing!.property!.moveInDate,
                       moveOutDate: _listing!.property!.moveOutDate,
                       onSelectDate: _selectDate,
+                      onClearMoveOutDate: (value) {
+                        setState(() {
+                          _listing!.property!.moveOutDate = value;
+                        });
+                      },
                     ),
                   ],
 

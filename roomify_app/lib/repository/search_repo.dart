@@ -46,10 +46,10 @@ class SearchRepository {
           if (filterOptions.rating != null) 'rating': filterOptions.rating,
           if (filterOptions.maxOccupancy != null)
             'maxOccupancy': filterOptions.maxOccupancy,
-          if (filterOptions.numberOfBedrooms != null)
-            'numberOfBedrooms': filterOptions.numberOfBedrooms,
-          if (filterOptions.numberOfBathrooms != null)
-            'numberOfBathrooms': filterOptions.numberOfBathrooms,
+          if (filterOptions.bedrooms != null)
+            'bedrooms': filterOptions.bedrooms,
+          if (filterOptions.bathrooms != null)
+            'bathrooms': filterOptions.bathrooms,
           if (filterOptions.gender != null) 'gender': filterOptions.gender,
           if (filterOptions.minPrice != null)
             'minPrice': filterOptions.minPrice,

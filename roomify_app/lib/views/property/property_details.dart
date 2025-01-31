@@ -16,6 +16,7 @@ import 'package:roomify_app/views/property/report_listing.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:photo_view/photo_view.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   Listing listing;
@@ -490,124 +491,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           itemBuilder: (context, index) {
                             final plan =
                                 widget.listing.property!.floorPlans![index];
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 16),
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.grey[200]!,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      // if (plan.imageUrl != null &&
-                                      //     plan.imageUrl!.isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: CachedNetworkImage(
-                                          imageUrl:
-                                              'https://images.pexels.com/photos/186077/pexels-photo-186077.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-                                          height: 70,
-                                          width: 100,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              Container(
-                                            color: Colors.grey[300],
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
-                                          ),
-                                          errorWidget: (context, url, error) =>
-                                              Container(
-                                            color: Colors.grey[300],
-                                            child: Icon(Icons.error),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              plan.name,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              '${plan.name}',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ]),
-                                      Spacer(),
-                                      Column(
-                                        children: [
-                                          Text(
-                                            '\$${plan.price.toStringAsFixed(2)}',
-                                            style: TextStyle(
-                                              color: Colors.blue,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            '${plan.squareFeet} sq ft',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildFeatureIndicator(
-                                        Icons.bed_outlined,
-                                        '${plan.bedrooms} Beds',
-                                      ),
-                                      SizedBox(width: 16),
-                                      _buildFeatureIndicator(
-                                        Icons.bathtub_outlined,
-                                        '${plan.bathrooms} Baths',
-                                      ),
-                                      SizedBox(width: 16),
-                                      // _buildFeatureIndicator(
-                                      //   Icons.apartment,
-                                      //   '${plan.availableUnits} Available',
-                                      // ),
-
-                                      Text(
-                                        '${plan.availableUnits} units avail.',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
+                            return _buildFloorPlan(plan);
                           },
                         ),
                       ],
@@ -797,6 +681,207 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             }),
           ),
       ],
+    );
+  }
+
+  Widget _buildFloorPlan(FloorPlan plan) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FloorPlanViewer(
+                        imageUrl: plan.imageUrl,
+                        planName: plan.name,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: plan.imageUrl,
+                      height: 70,
+                      width: 100,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: Icon(Icons.error),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.name,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          '\$${plan.price.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '/month',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                        Spacer(),
+                        Text(
+                          '${plan.squareFeet} sq ft',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            height: 36,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bed_outlined,
+                            size: 18, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          '${plan.bedrooms}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bathtub_outlined,
+                            size: 18, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          '${plan.bathrooms}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.apartment,
+                            size: 18, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            '${plan.availableUnits} available',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[800],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1133,159 +1218,229 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2,
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: CircleAvatar(
-                          radius: 30,
-                          backgroundColor: blackTextColor,
-                          backgroundImage: widget.user.profilePhotoUrl != null
-                              ? CachedNetworkImageProvider(
-                                  widget.user.profilePhotoUrl!,
-                                )
-                              : null,
-                        ),
-                      ),
-                      SizedBox(width: 5),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.user.displayName,
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.user.isProfessional) ...[
+                      GestureDetector(
+                        onTap: () async {
+                          final chatRoom = await context
+                              .read<ChatProvider>()
+                              .createOrGetChatRoom(
+                                widget.user.id,
+                              );
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ChatMessageScreen(room: chatRoom),
+                              settings: RouteSettings(
+                                name: 'ChatMessageScreen',
+                                arguments: ChatMessageScreen(room: chatRoom),
+                              ),
                             ),
-                            Text(
-                              widget.user.university != null
-                                  ? "${widget.user.university} | ${widget.user.age}yo"
-                                  : "${widget.user.age}yo",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w200,
-                                color: Colors.grey.shade600,
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12.0, horizontal: 12.0),
+                                  child: Center(
+                                    child: Text(
+                                      'Contact',
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    width: 3, color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.arrow_forward_ios_rounded),
+                                onPressed: null,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      AnimatedRotation(
-                        duration: Duration(milliseconds: 300),
-                        turns: isExpanded ? 0.25 : 0,
-                        child: Icon(Icons.arrow_forward_ios_outlined),
-                      ),
                     ],
-                  ),
-                  SizeTransition(
-                    sizeFactor: _controller,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (!widget.user.isProfessional) ...[
+                      Row(
                         children: [
-                          SizedBox(height: 5),
-                          Divider(),
-                          if (widget.user.bio != null) ...[
-                            Text(
-                              'Bio',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  color: orangeColor,
-                                  fontWeight: FontWeight.bold),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                              shape: BoxShape.circle,
                             ),
-                            SizedBox(height: 8),
-                            Text(widget.user.bio!,
-                                style: AppTextStyles.small(
-                                    fontWeight: FontWeight.bold, fontSize: 14)),
-                          ],
-                          if (widget.user.preferences!.isNotEmpty) ...[
-                            SizedBox(height: 16),
-                            Text(
-                              'Preferences',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  color: orangeColor,
-                                  fontWeight: FontWeight.bold),
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: blackTextColor,
+                              backgroundImage:
+                                  widget.user.profilePhotoUrl != null
+                                      ? CachedNetworkImageProvider(
+                                          widget.user.profilePhotoUrl!,
+                                        )
+                                      : null,
                             ),
-                            buildPreferencesSection(widget.user.preferences!),
-                          ],
-                          SizedBox(height: 16),
-                          GestureDetector(
-                            onTap: () async {
-                              final chatRoom = await context
-                                  .read<ChatProvider>()
-                                  .createOrGetChatRoom(
-                                    widget.user.id,
-                                  );
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      ChatMessageScreen(room: chatRoom),
-                                  settings: RouteSettings(
-                                    name: 'ChatMessageScreen',
-                                    arguments:
-                                        ChatMessageScreen(room: chatRoom),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Row(
+                          ),
+                          SizedBox(width: 5),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Container(
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange,
-                                      border: Border.all(
-                                          color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12.0, horizontal: 12.0),
-                                      child: Center(
-                                        child: Text(
-                                          'Contact',
-                                          style: TextStyle(
-                                              fontSize: 20,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                Text(
+                                  widget.user.displayName,
+                                  style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
-                                SizedBox(width: 10),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        width: 3, color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: IconButton(
-                                    icon: Icon(Icons.arrow_forward_ios_rounded),
-                                    onPressed: null,
+                                Text(
+                                  widget.user.university != null
+                                      ? "${widget.user.university} | ${widget.user.age}yo"
+                                      : "${widget.user.age}yo",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w200,
+                                    color: Colors.grey.shade600,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          AnimatedRotation(
+                            duration: Duration(milliseconds: 300),
+                            turns: isExpanded ? 0.25 : 0,
+                            child: Icon(Icons.arrow_forward_ios_outlined),
+                          ),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
+                      SizeTransition(
+                        sizeFactor: _controller,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 5),
+                              Divider(),
+                              if (widget.user.bio != null) ...[
+                                Text(
+                                  'Bio',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: orangeColor,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 8),
+                                Text(widget.user.bio!,
+                                    style: AppTextStyles.small(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14)),
+                              ],
+                              if (widget.user.preferences!.isNotEmpty) ...[
+                                SizedBox(height: 16),
+                                Text(
+                                  'Preferences',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: orangeColor,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                buildPreferencesSection(
+                                    widget.user.preferences!),
+                              ],
+                              SizedBox(height: 16),
+                              GestureDetector(
+                                onTap: () async {
+                                  final chatRoom = await context
+                                      .read<ChatProvider>()
+                                      .createOrGetChatRoom(
+                                        widget.user.id,
+                                      );
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ChatMessageScreen(room: chatRoom),
+                                      settings: RouteSettings(
+                                        name: 'ChatMessageScreen',
+                                        arguments:
+                                            ChatMessageScreen(room: chatRoom),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange,
+                                          border: Border.all(
+                                              color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12.0, horizontal: 12.0),
+                                          child: Center(
+                                            child: Text(
+                                              'Contact',
+                                              style: TextStyle(
+                                                  fontSize: 20,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            width: 3,
+                                            color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(
+                                            Icons.arrow_forward_ios_rounded),
+                                        onPressed: null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ]),
             );
           },
         ),
@@ -1298,6 +1453,52 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
       children: [
         Icon(icon, color: Colors.grey),
       ],
+    );
+  }
+}
+
+class FloorPlanViewer extends StatelessWidget {
+  final String imageUrl;
+  final String planName;
+
+  const FloorPlanViewer({
+    Key? key,
+    required this.imageUrl,
+    required this.planName,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          planName,
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: PhotoView(
+        imageProvider: CachedNetworkImageProvider(imageUrl),
+        minScale: PhotoViewComputedScale.contained,
+        maxScale: PhotoViewComputedScale.covered * 2,
+        initialScale: PhotoViewComputedScale.contained,
+        backgroundDecoration: BoxDecoration(
+          color: Colors.black,
+        ),
+        loadingBuilder: (context, event) => Center(
+          child: CircularProgressIndicator(
+            value: event == null
+                ? 0
+                : event.cumulativeBytesLoaded / event.expectedTotalBytes!,
+          ),
+        ),
+      ),
     );
   }
 }

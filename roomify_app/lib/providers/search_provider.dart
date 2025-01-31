@@ -32,8 +32,10 @@ class SearchProvider extends ChangeNotifier {
   bool get noResults => _noResults;
 
   Future<void> search(String query,
-      {double? searchLat, double? searchLng}) async {
-    if (query.isEmpty) {
+      {double? searchLat,
+      double? searchLng,
+      FilterOptions? filterOptions}) async {
+    if (query.isEmpty && filterOptions == null) {
       _searchResults = [];
       notifyListeners();
       return;
@@ -52,6 +54,7 @@ class SearchProvider extends ChangeNotifier {
         type: 'Property',
         userLat: latitude,
         userLng: longitude,
+        filterOptions: filterOptions,
       );
       print('Search results: ${_searchResults.length}');
     } catch (e) {

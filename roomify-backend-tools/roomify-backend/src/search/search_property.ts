@@ -6,6 +6,7 @@ import { PrismaClient, Listing } from '@prisma/client';
 interface ListingWithRelations extends Listing {
     favorites: Array<{ userId: string }>;
     property: {
+        floorPlans: Array<{ price: number, bedrooms: number, bathrooms: number, imageUrl: string, name: string, availableUnits: number, squareFootage: number }>;
         amenities: Array<{ amenity: string }>;
         categories: Array<{ category: string }>;
         images: Array<{ imageUrl: string }>;
@@ -33,8 +34,10 @@ app.get('/', async (c) => {
         const userLongitude = parseFloat(c.req.query('userLongitude') || '');
         const originalQuery = normalizeText(c.req.query('query') || '');
         const type = c.req.query('type') || 'Property';
-        const minPrice = parseFloat(c.req.query('minPrice') || '');
-        const maxPrice = parseFloat(c.req.query('maxPrice') || '');
+        const minPrice = parseFloat(c.req.query('minPrice') || '') - 10;
+        const maxPrice = parseFloat(c.req.query('maxPrice') || '') + 10;
+        const bedrooms = parseInt(c.req.query('bedrooms') || '0');
+        const bathrooms = parseInt(c.req.query('bathrooms') || '0');
         const radius = parseFloat(c.req.query('radius') || '10');
         const userId = payload.sub;
         const currentDate = new Date().toISOString().slice(0, 7); // Get current date in YYYY-MM format
@@ -113,6 +116,8 @@ app.get('/', async (c) => {
             }
         });
 
+        console.log("This is the min bedrooms and max bedrooms", bedrooms, bathrooms);
+
         // Get listings using Prisma query
         let listings;
         if (originalQuery === '') {
@@ -123,21 +128,50 @@ app.get('/', async (c) => {
                     userId: { not: userId },
                     latitude: { not: null },
                     longitude: { not: null },
-                    property: {
-                        OR: [
-                            { moveInDate: { equals: 'Anytime' } },
-                            {
-                                AND: [
-                                    { moveInDate: { not: 'Anytime' } },
-                                    { moveInDate: { gte: currentDate } }
+                    OR: [
+                        {
+                            price: {
+                                gte: !isNaN(minPrice) ? minPrice : undefined,
+                                lte: !isNaN(maxPrice) ? maxPrice : undefined,
+                            },
+                            property: bedrooms || bathrooms ? {
+                                numberOfBedrooms: bedrooms ? { equals: bedrooms } : undefined,
+                                numberOfBathrooms: bathrooms ? { equals: bathrooms } : undefined,
+                            } : undefined
+                        },
+                        {
+                            property: {
+                                floorPlans: {
+                                    some: {
+                                        AND: [
+                                            {
+                                                price: {
+                                                    gte: !isNaN(minPrice) ? minPrice : undefined,
+                                                    lte: !isNaN(maxPrice) ? maxPrice : undefined,
+                                                }
+                                            },
+                                            bedrooms ? { bedrooms: { equals: bedrooms } } : {},
+                                            bathrooms ? { bathrooms: { equals: bathrooms } } : {}
+                                        ]
+                                    }
+                                },
+                                OR: [
+                                    { moveInDate: { equals: 'Anytime' } },
+                                    {
+                                        AND: [
+                                            { moveInDate: { not: 'Anytime' } },
+                                            { moveInDate: { gte: currentDate } }
+                                        ]
+                                    }
                                 ]
                             }
-                        ]
-                    }
+                        }
+                    ]
                 },
                 include: {
                     property: {
                         include: {
+                            floorPlans: true,
                             amenities: true,
                             categories: true,
                             images: true,
@@ -161,24 +195,58 @@ app.get('/', async (c) => {
                     userId: { not: userId },
                     latitude: { not: null },
                     longitude: { not: null },
-                    price: {
-                        gte: !isNaN(minPrice) ? minPrice : undefined,
-                        lte: !isNaN(maxPrice) ? maxPrice : undefined,
-                    },
-                    property: {
-                        OR: [
-                            { moveInDate: { equals: 'Anytime' } },
-                            {
-                                AND: [
-                                    { moveInDate: { not: 'Anytime' } },
-                                    { moveInDate: { gte: currentDate } }
+                    AND: [
+                        {
+                            OR: [
+                                {
+                                    price: {
+                                        gte: !isNaN(minPrice) ? minPrice : undefined,
+                                        lte: !isNaN(maxPrice) ? maxPrice : undefined,
+                                    },
+                                    property: bedrooms || bathrooms ? {
+                                        numberOfBedrooms: bedrooms ? { equals: bedrooms } : undefined,
+                                        numberOfBathrooms: bathrooms ? { equals: bathrooms } : undefined,
+                                    } : undefined
+                                },
+                                {
+                                    property: {
+                                        floorPlans: {
+                                            some: {
+                                                AND: [
+                                                    {
+                                                        price: {
+                                                            gte: !isNaN(minPrice) ? minPrice : undefined,
+                                                            lte: !isNaN(maxPrice) ? maxPrice : undefined,
+                                                        }
+                                                    },
+                                                    bedrooms ? { bedrooms: { equals: bedrooms } } : {},
+                                                    bathrooms ? { bathrooms: { equals: bathrooms } } : {}
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            property: {
+                                OR: [
+                                    { moveInDate: { equals: 'Anytime' } },
+                                    {
+                                        AND: [
+                                            { moveInDate: { not: 'Anytime' } },
+                                            { moveInDate: { gte: currentDate } }
+                                        ]
+                                    }
                                 ]
                             }
-                        ]
-                    },
-                    OR: [
-                        { title: { contains: normalizedQuery } },
-                        { title: { contains: bestMatch } }
+                        },
+                        {
+                            OR: [
+                                { title: { contains: normalizedQuery } },
+                                { title: { contains: bestMatch } }
+                            ]
+                        }
                     ]
                 },
                 include: {
@@ -187,6 +255,7 @@ app.get('/', async (c) => {
                             amenities: true,
                             categories: true,
                             images: true,
+                            floorPlans: true,
                         },
                     },
                     user: {
@@ -242,10 +311,11 @@ app.get('/', async (c) => {
                 ...listing.property,
                 amenities: listing.property.amenities,
                 categories: listing.property.categories,
-                imageUrls: listing.property.images
+                imageUrls: listing.property.images,
+                floorPlans: listing.property.floorPlans,
             } : null
         }));
-        console.log("This is the enhanced listings", enhancedListings);
+        console.log("This is the enhanced listings", enhancedListings.map(listing => listing.property?.floorPlans));
 
         return c.json({
             results: enhancedListings,
