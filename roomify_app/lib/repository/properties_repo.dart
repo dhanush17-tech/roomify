@@ -82,24 +82,23 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> createProperty(
-    Listing listing, {
-    List<File> images = const [],
-    List<File> floorPlanImages = const [],
-  }) async {
+  Future<Listing> createProperty(Listing listing,
+      {List<File> images = const []}) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       };
-      var request =
-          http.MultipartRequest('POST', Uri.parse('$baseUrl/api/properties'));
 
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/properties'),
+      );
       request.headers.addAll(_headers);
       request.fields['listing'] = jsonEncode(listing.toJson());
 
-      // Add property images
+      // Add images to the request
       for (var image in images) {
         final fileName = image.path.split('/').last;
         final stream = http.ByteStream(image.openRead());
@@ -114,49 +113,24 @@ class PropertyRepository {
         request.files.add(multipartFile);
       }
 
-      // Add floor plan images
-      for (var image in floorPlanImages) {
-        final fileName = image.path.split('/').last;
-        final stream = http.ByteStream(image.openRead());
-        final length = await image.length();
-
-        final multipartFile = http.MultipartFile(
-          'floorPlanImages',
-          stream,
-          length,
-          filename: fileName,
-        );
-        request.files.add(multipartFile);
-      }
-
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body)['listing'];
-        return Listing.fromJson(data);
+        return Listing.fromJson(json.decode(response.body)['listing']);
       } else {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['error'] ?? 'Failed to create property';
-        throw Exception(errorMessage);
+        throw Exception('Failed to create property');
       }
-    } on SocketException {
-      throw Exception('No internet connection. Please check your network.');
-    } on FormatException {
-      throw Exception('Invalid response format from server.');
-    } catch (e) {
-      if (e is Exception) {
-        throw e;
-      }
-      throw Exception('Failed to create property: $e');
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
     }
   }
 
-  Future<void> addFavorite(int propertyId) async {
+  Future<void> addFavorite(int listingId) async {
     try {
       final response = await _dio.post(
         '$baseUrl/api/properties/favorites',
-        data: json.encode({'propertyId': propertyId}),
+        data: json.encode({'listingId': listingId}),
       );
 
       if (response.statusCode != 200) {
@@ -167,10 +141,10 @@ class PropertyRepository {
     }
   }
 
-  Future<void> removeFavorite(int propertyId) async {
+  Future<void> removeFavorite(int listingId) async {
     try {
       final response = await _dio.delete(
-        '$baseUrl/api/properties/favorites/$propertyId',
+        '$baseUrl/api/properties/favorites/$listingId',
       );
 
       if (response.statusCode != 200) {
@@ -362,9 +336,11 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> addFloorPlan(Listing listing,
-      {List<File> images = const [],
-      List<File> floorPlanImages = const []}) async {
+  Future<Listing> addFloorPlan(
+    Listing listing, {
+    required FloorPlan floorPlan,
+    File? imageFile,
+  }) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
@@ -372,19 +348,24 @@ class PropertyRepository {
         'Authorization': 'Bearer $token',
       };
 
-      var request = http.MultipartRequest('POST',
-          Uri.parse('$baseUrl/api/properties/${listing.id}/floor-plans'));
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/properties/${listing.id}/floor-plans'),
+      );
       request.headers.addAll(_headers);
+
+      // Add floor plan data
+      request.fields['floorPlan'] = jsonEncode(floorPlan.toJson());
       request.fields['listing'] = jsonEncode(listing.toJson());
 
-      // Add property images
-      for (var image in images) {
-        final fileName = image.path.split('/').last;
-        final stream = http.ByteStream(image.openRead());
-        final length = await image.length();
+      // Add image if provided
+      if (imageFile != null) {
+        final fileName = imageFile.path.split('/').last;
+        final stream = http.ByteStream(imageFile.openRead());
+        final length = await imageFile.length();
 
         final multipartFile = http.MultipartFile(
-          'images',
+          'image',
           stream,
           length,
           filename: fileName,
@@ -405,43 +386,56 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> updateFloorPlan(int listingId, String floorPlanId,
-      Map<String, dynamic> floorPlanData) async {
+  Future<Listing> updateFloorPlan(
+    int listingId,
+    String floorPlanId,
+    Map<String, dynamic> floorPlanData, {
+    File? imageFile,
+  }) async {
     try {
-      final response = await _dio.put(
-        '/api/properties/$listingId/floor-plans/$floorPlanId',
-        data: floorPlanData,
+      final token = await AuthRepository().getToken();
+      final _headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      // Convert squareFeet to squareFootage if it exists
+      if (floorPlanData.containsKey('squareFeet')) {
+        floorPlanData['squareFootage'] = floorPlanData.remove('squareFeet');
+      }
+
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse(
+            '$baseUrl/api/properties/$listingId/floor-plans/$floorPlanId'),
       );
+      request.headers.addAll(_headers);
+
+      // Add floor plan data
+      request.fields['floorPlanData'] = jsonEncode(floorPlanData);
+
+      // Add image if provided
+      if (imageFile != null) {
+        final fileName = imageFile.path.split('/').last;
+        final stream = http.ByteStream(imageFile.openRead());
+        final length = await imageFile.length();
+
+        final multipartFile = http.MultipartFile(
+          'image',
+          stream,
+          length,
+          filename: fileName,
+        );
+        request.files.add(multipartFile);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        return Listing.fromJson(response.data['listing']);
+        return Listing.fromJson(json.decode(response.body)['listing']);
       } else {
         throw Exception('Failed to update floor plan');
-      }
-    } on DioException catch (e) {
-      throw Exception('Network error: ${e.message}');
-    }
-  }
-
-  Future<Listing> updateFloorPlanImage(
-      int listingId, String floorPlanId, File imageFile) async {
-    try {
-      FormData formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: 'floor_plan_$floorPlanId.jpg',
-        ),
-      });
-
-      final response = await _dio.put(
-        '/api/properties/$listingId/floor-plans/$floorPlanId/image',
-        data: formData,
-      );
-
-      if (response.statusCode == 200) {
-        return Listing.fromJson(response.data['listing']);
-      } else {
-        throw Exception('Failed to update floor plan image');
       }
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');

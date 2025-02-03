@@ -38,7 +38,25 @@ app.post('/', async (c) => {
         const payload = c.get('jwtPayload');
         if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
-        const userId = payload.sub;
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Check if user is professional and already has a listing
+        const user = await prisma.user.findUnique({
+            where: { id: payload.sub },
+            include: {
+                listings: true,
+            },
+        });
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 404);
+        }
+
+        if (user.isProfessional && user.listings.length > 0) {
+            return c.json({ error: 'Professional users can only have one listing' }, 400);
+        }
+
         const formData = await c.req.formData();
         const listingData = JSON.parse(formData.get('listing') as string);
 
@@ -52,13 +70,7 @@ app.post('/', async (c) => {
             imageUrls.push(fileUrl);
         }
 
-        const adapter = new PrismaD1(c.env.DB);
-        const prisma = new PrismaClient({ adapter });
-
-
-
-
-        // Create listing with uploaded image URLs
+        // Create the listing
         const listing = await prisma.listing.create({
             data: {
                 type: 'Property',
@@ -67,9 +79,8 @@ app.post('/', async (c) => {
                 price: listingData.price,
                 latitude: listingData.latitude,
                 longitude: listingData.longitude,
-
                 description: listingData.description,
-                userId: userId,
+                userId: payload.sub,
                 property: {
                     create: {
                         moveInDate: listingData.property.moveInDate,
@@ -441,43 +452,16 @@ app.get('/recommended-listings', async (c) => {
             .sort((a, b) => b!.similarityScore - a!.similarityScore);
 
         const formattedListings = scoredListings.map(item => ({
-            id: item!.listing.id,
-            type: 'Property',
-            title: item!.listing.title,
-            description: item!.listing.description,
-            createdAt: item!.listing.createdAt.toISOString(),
-            user: {
-                id: item!.listing.user.id,
-                displayName: item!.listing.user.displayName,
-                profileImageUrl: item!.listing.user.profileImageUrl,
-                email: item!.listing.user.email,
-                university: item!.listing.user.university,
-                age: item!.listing.user.age,
-                preferences: item!.listing.user.preferences,
-                isProfessional: item!.listing.user.isProfessional
-            },
-            location: item!.listing.location,
-            price: item!.listing.price,
+            ...item!.listing,
             isFavorite: item!.listing.favorites.length > 0,
-            latitude: item!.listing.latitude,
-            longitude: item!.listing.longitude,
             distance: item!.distance.toFixed(1),
-            similarityScore: item!.similarityScore,
-            imageUrls: item!.listing.property?.images.map(img => img.imageUrl) ?? [],
             property: item!.listing.property ? {
-                isRoomifyChoice: item!.listing.property.isRoomifyChoice,
-                categories: item!.listing.property.categories,
-                moveInDate: item!.listing.property.moveInDate,
-                moveOutDate: item!.listing.property.moveOutDate,
-                numberOfBedrooms: item!.listing.property.numberOfBedrooms,
-                numberOfBathrooms: item!.listing.property.numberOfBathrooms,
-                maxOccupancy: item!.listing.property.maxOccupancy,
-                isLookingForRoomate: item!.listing.property.isLookingForRoomate,
-                rating: item!.listing.property.rating,
+                ...item!.listing.property,
                 amenities: item!.listing.property.amenities,
+                categories: item!.listing.property.categories,
+                imageUrls: item!.listing.property.images.map(img => img.imageUrl),
                 floorPlans: item!.listing.property.floorPlans,
-            } : null,
-            marketplaceItem: null
+            } : null
         }));
         console.log("this is formatted listings", formattedListings);
         return c.json({
@@ -1022,11 +1006,19 @@ app.put('/:id', async (c) => {
         const listingId = parseInt(c.req.param('id'));
         const formData = await c.req.formData();
         const listingData = JSON.parse(formData.get('listing') as string);
-        console.log(listingData);
+        const deletedImageUrls = JSON.parse(formData.get('deletedImageUrls') as string || '[]');
         const images = formData.getAll('images') as File[];
-
+        console.log("this is the images", images);
+        console.log("this is the deletedImageUrls", deletedImageUrls);
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
+
+        // Upload new images to R2
+        const imageUrls: string[] = [];
+        for (const image of images) {
+            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
+            imageUrls.push(fileUrl);
+        }
 
         // Check if listing exists
         const existingListing = await prisma.listing.findUnique({
@@ -1044,14 +1036,6 @@ app.put('/:id', async (c) => {
                 }
             }
         });
-
-        // Upload images to R2
-        const imageUrls: string[] = [];
-        for (const image of images) {
-            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
-            imageUrls.push(fileUrl);
-        }
-
 
         // If listing doesn't exist, create new one
         if (!existingListing) {
@@ -1095,7 +1079,7 @@ app.put('/:id', async (c) => {
                                 }))
                             },
                             floorPlans: {
-                                create: listingData.floorPlans?.map((floorPlan: any, index: number) => ({
+                                create: listingData.floorPlans?.map((floorPlan: any) => ({
                                     name: floorPlan.name,
                                     bedrooms: floorPlan.bedrooms,
                                     bathrooms: floorPlan.bathrooms,
@@ -1129,162 +1113,125 @@ app.put('/:id', async (c) => {
             return c.json({ listing: newListing });
         }
 
-        else {   // Delete existing images from R2 and database
-            const existingImages = existingListing.property?.images || [];
-            for (const image of existingImages) {
-                const fileName = image.imageUrl.split('/').pop(); // Get filename from URL
-                if (fileName) {
-                    await deleteFromR2(fileName, "propertyImages", c);
-                }
+        // Handle existing listing update
+        // Delete specified images from R2
+        for (const imageUrl of deletedImageUrls) {
+            const fileName = imageUrl.split('/').pop();
+            if (fileName) {
+                await deleteFromR2(fileName, "propertyImages", c);
             }
-
-            // Handle new image uploads
-            for (const image of images) {
-                const { fileUrl } = await uploadToR2(image, "propertyImages", c);
-                imageUrls.push(fileUrl);
-            }
-
-            // Prepare all database operations
-            const transactions = [
-                // Delete existing relations
-                prisma.propertyImage.deleteMany({
-                    where: { propertyId: listingId }
-                }),
-                prisma.propertyAmenity.deleteMany({
-                    where: { propertyId: listingId }
-                }),
-
-                prisma.propertyCategory.deleteMany({
-                    where: { propertyId: listingId }
-                }),
-
-                // Update basic listing info
-                prisma.listing.update({
-                    where: { id: listingId },
-                    data: {
-                        title: listingData.title,
-                        description: listingData.description,
-                        price: listingData.price,
-                        location: listingData.location,
-                        latitude: listingData.latitude,
-                        longitude: listingData.longitude
-                    }
-                }),
-
-                // Update property
-                prisma.property.update({
-                    where: { listingId },
-                    data: {
-                        moveInDate: listingData.property.moveInDate,
-                        moveOutDate: listingData.property.moveOutDate,
-                        numberOfBedrooms: listingData.property.numberOfBedrooms,
-                        numberOfBathrooms: listingData.property.numberOfBathrooms,
-                        maxOccupancy: listingData.property.maxOccupancy,
-                        isLookingForRoomate: listingData.property.isLookingForRoomate
-                    }
-                })
-            ];
-
-            // Execute all delete operations first
-            await prisma.$transaction(transactions);
-
-            // Create new relations in separate transactions
-            const amenityCreations = listingData.property.amenities.map((amenity: string) =>
-                prisma.propertyAmenity.create({
-                    data: {
-                        propertyId: listingId,
-                        amenity
-                    }
-                })
-            );
-
-            const categoryCreations = listingData.property.categories.map((category: string) =>
-                prisma.propertyCategory.create({
-                    data: {
-                        propertyId: listingId,
-                        category
-                    }
-                })
-            );
-
-            // const tagCreations = listingData.property.tags !== null ? listingData.property.tags.map((tag: string) =>
-            //     prisma.propertyTag.create({
-            //         data: {
-            //             propertyId: listingId,
-            //             tag
-            //         }
-            //     })
-            // ) : [];
-
-            const imageCreations = imageUrls.map(url =>
-                prisma.propertyImage.create({
-                    data: {
-                        propertyId: listingId,
-                        imageUrl: url
-                    }
-                })
-            );
-
-            // Execute all creation operations
-            await prisma.$transaction([
-                ...amenityCreations,
-                ...categoryCreations,
-                ...imageCreations
-            ]);
-
-            // Fetch updated listing
-            const updatedListing = await prisma.listing.findUnique({
-                where: { id: listingId },
-                include: {
-                    user: true,
-                    property: {
-                        include: {
-                            amenities: true,
-                            categories: true,
-                            images: true,
-                            floorPlans: true
-                        }
-                    }
-                }
-            });
-
-            if (!updatedListing || !updatedListing.property) {
-                throw new Error('Failed to fetch updated listing');
-            }
-
-
-            // Format response
-            const formattedListing = {
-                id: updatedListing.id,
-                type: 'Property',
-                title: updatedListing.title,
-                description: updatedListing.description,
-                createdAt: updatedListing.createdAt.toISOString(),
-                location: updatedListing.location,
-                price: updatedListing.price,
-                latitude: updatedListing.latitude,
-                user: updatedListing.user,
-                longitude: updatedListing.longitude,
-                property: {
-                    categories: updatedListing.property.categories,
-                    moveInDate: updatedListing.property.moveInDate,
-                    moveOutDate: updatedListing.property.moveOutDate,
-                    numberOfBedrooms: updatedListing.property.numberOfBedrooms,
-                    numberOfBathrooms: updatedListing.property.numberOfBathrooms,
-                    maxOccupancy: updatedListing.property.maxOccupancy,
-                    isLookingForRoomate: updatedListing.property.isLookingForRoomate,
-                    rating: updatedListing.property.rating,
-                    amenities: updatedListing.property.amenities,
-                    imageUrls: updatedListing.property.images,
-                    floorPlans: updatedListing.property.floorPlans
-                }
-            };
-
-            return c.json({
-                success: true,
-                listing: formattedListing
-            });
         }
+
+        // Prepare all database operations
+        const transactions = [
+            // Delete specified images from database
+            prisma.propertyImage.deleteMany({
+                where: {
+                    propertyId: listingId,
+                    imageUrl: {
+                        in: deletedImageUrls
+                    }
+                }
+            }),
+
+            // Delete other relations that need to be recreated
+            prisma.propertyAmenity.deleteMany({
+                where: { propertyId: listingId }
+            }),
+            prisma.propertyCategory.deleteMany({
+                where: { propertyId: listingId }
+            }),
+
+            // Update basic listing info
+            prisma.listing.update({
+                where: { id: listingId },
+                data: {
+                    title: listingData.title,
+                    description: listingData.description,
+                    price: listingData.price,
+                    location: listingData.location,
+                    latitude: listingData.latitude,
+                    longitude: listingData.longitude
+                }
+            }),
+
+            // Update property
+            prisma.property.update({
+                where: { listingId },
+                data: {
+                    moveInDate: listingData.property.moveInDate,
+                    moveOutDate: listingData.property.moveOutDate,
+                    numberOfBedrooms: listingData.property.numberOfBedrooms,
+                    numberOfBathrooms: listingData.property.numberOfBathrooms,
+                    maxOccupancy: listingData.property.maxOccupancy,
+                    isLookingForRoomate: listingData.property.isLookingForRoomate
+                }
+            })
+        ];
+
+        // Execute all delete operations first
+        await prisma.$transaction(transactions);
+
+        // Create new relations in separate transactions
+        const amenityCreations = listingData.property.amenities.map((amenity: string) =>
+            prisma.propertyAmenity.create({
+                data: {
+                    propertyId: listingId,
+                    amenity
+                }
+            })
+        );
+
+        const categoryCreations = listingData.property.categories.map((category: string) =>
+            prisma.propertyCategory.create({
+                data: {
+                    propertyId: listingId,
+                    category
+                }
+            })
+        );
+
+        // Create new image entries only for new images
+        const imageCreations = imageUrls.map(url =>
+            prisma.propertyImage.create({
+                data: {
+                    propertyId: listingId,
+                    imageUrl: url
+                }
+            })
+        );
+
+        // Execute all creation operations
+        await prisma.$transaction([
+            ...amenityCreations,
+            ...categoryCreations,
+            ...imageCreations
+        ]);
+
+        // Fetch updated listing
+        const updatedListing = await prisma.listing.findUnique({
+            where: { id: listingId },
+            include: {
+                user: true,
+                property: {
+                    include: {
+                        amenities: true,
+                        categories: true,
+                        images: true,
+                        floorPlans: true
+                    }
+                }
+            }
+        });
+
+        if (!updatedListing || !updatedListing.property) {
+            throw new Error('Failed to fetch updated listing');
+        }
+
+        return c.json({
+            success: true,
+            listing: updatedListing
+        });
     } catch (error) {
         console.error('Update property error:', error);
         return c.json({
@@ -1584,154 +1531,66 @@ app.post('/:listingId/floor-plans', async (c) => {
         if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
         const listingId = parseInt(c.req.param('listingId'));
-
         const formData = await c.req.formData();
-        const listingData = JSON.parse(formData.get('listing') as string);
-
-        const images = formData.getAll('images') as File[];
-        const imageUrls: string[] = [];
-
-        // Upload each image to R2
-        for (const image of images) {
-            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
-            imageUrls.push(fileUrl);
-        }
-
+        const floorPlanData = JSON.parse(formData.get('floorPlan') as string);
+        const image = formData.get('image') as File;
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Check if listing exists
-        let listing = await prisma.listing.findUnique({
+        // Check if listing exists and belongs to user
+        const listing = await prisma.listing.findFirst({
+            where: {
+                id: listingId,
+                userId: payload.sub,
+            },
+        });
+
+        if (!listing) {
+            return c.json({ error: 'Listing not found or unauthorized' }, 404);
+        }
+
+        // Upload image if provided
+        let imageUrl = null;
+        if (image) {
+            const { fileUrl } = await uploadToR2(image, "floorPlanImages", c);
+            imageUrl = fileUrl;
+        }
+
+        // Create floor plan
+        const floorPlan = await prisma.floorPlan.create({
+            data: {
+                name: floorPlanData.name,
+                bedrooms: floorPlanData.bedrooms,
+                bathrooms: floorPlanData.bathrooms,
+                squareFootage: floorPlanData.squareFootage,
+                price: floorPlanData.price,
+                unitsAvailable: floorPlanData.unitsAvailable ?? '',
+                imageUrl: imageUrl ?? '',
+                propertyId: listing.id,
+            },
+        });
+
+        // Get updated listing
+        const updatedListing = await prisma.listing.findUnique({
             where: { id: listingId },
             include: {
                 property: {
                     include: {
-                        floorPlans: true,
+                        images: true,
                         amenities: true,
                         categories: true,
-                        images: true
-                    }
-                }
-            }
+                        floorPlans: true,
+                    },
+                },
+                user: true,
+            },
         });
 
-        if (!listing) {
-            // Create new listing with property and floor plan
-            listing = await prisma.listing.create({
-                data: {
-                    type: 'Property',
-                    title: listingData.title || 'New Property',
-                    description: listingData.description || '',
-                    location: listingData.location || '',
-                    price: listingData.price || 0,
-                    latitude: listingData.latitude || 0,
-                    longitude: listingData.longitude || 0,
-                    userId: payload.sub,
-                    property: {
-                        create: {
-                            moveInDate: listingData.property.moveInDate || new Date().toISOString(),
-                            moveOutDate: listingData.property.moveOutDate,
-                            numberOfBedrooms: listingData.property.numberOfBedrooms || 0,
-                            numberOfBathrooms: listingData.property.numberOfBathrooms || 0,
-                            maxOccupancy: listingData.property.maxOccupancy || 0,
-                            isLookingForRoomate: listingData.property.isLookingForRoomate || false,
-                            amenities: {
-                                create: listingData.property.amenities?.map((amenity: string) => ({
-                                    amenity
-                                })) || []
-                            },
-                            categories: {
-                                create: listingData.property.categories?.map((category: string) => ({
-                                    category
-                                })) || []
-                            },
-                            tags: {
-                                create: listingData.property.tags?.map((tag: string) => ({
-                                    tag
-                                })) || []
-                            },
-                            images: {
-                                create: imageUrls.map(url => ({
-                                    imageUrl: url
-                                }))
-                            },
-                            floorPlans: {
-                                create: listingData.floorPlans.map((floorPlan: any) => ({
-                                    imageUrl: floorPlan.imageUrl,
-                                    unitsAvailable: floorPlan.unitsAvailable,
-                                    price: floorPlan.price,
-                                    bedrooms: floorPlan.bedrooms,
-                                    bathrooms: floorPlan.bathrooms,
-                                    squareFootage: floorPlan.squareFootage,
-                                    name: floorPlan.name,
-                                }))
-
-                            }
-                        }
-                    }
-                },
-                include: {
-                    property: {
-                        include: {
-                            floorPlans: true,
-                            amenities: true,
-                            categories: true,
-                            images: true
-                        }
-                    }
-                }
-            });
-        } else {
-            // Verify property ownership for existing listing
-            if (listing.userId !== payload.sub) {
-                return c.json({ error: 'Unauthorized' }, 401);
-            }
-
-
-            const floorPlanData = listingData.floorPlans[listingData.floorPlans.length - 1];
-            // Add floor plan to existing listing
-            listing = await prisma.listing.update({
-                where: { id: listingId },
-                data: {
-                    property: {
-                        update: {
-                            data: {
-                                floorPlans: {
-                                    create: {
-                                        name: floorPlanData.name,
-                                        bedrooms: floorPlanData.bedrooms,
-                                        bathrooms: floorPlanData.bathrooms,
-                                        price: floorPlanData.price,
-                                        squareFootage: floorPlanData.squareFootage,
-                                        unitsAvailable: floorPlanData.unitsAvailable,
-                                        imageUrl: floorPlanData.imageUrl,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                include: {
-                    property: {
-                        include: {
-                            floorPlans: true,
-                            amenities: true,
-                            categories: true,
-                            images: true
-                        }
-                    }
-                }
-            });
-        }
-
-        return c.json({ listing });
+        return c.json({ listing: updatedListing });
     } catch (error) {
         console.error('Add floor plan error:', error);
-        return c.json({
-            error: 'Failed to add floor plan',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, 500);
+        return c.json({ error: 'Failed to add floor plan' }, 500);
     }
 });
 
@@ -1742,64 +1601,66 @@ app.put('/:listingId/floor-plans/:floorPlanId', async (c) => {
 
         const listingId = parseInt(c.req.param('listingId'));
         const floorPlanId = c.req.param('floorPlanId');
-        const floorPlanData = await c.req.json();
+        const formData = await c.req.formData();
+        const floorPlanData = JSON.parse(formData.get('floorPlanData') as string);
+        const image = formData.get('image') as File;
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Verify property ownership
-        const property = await prisma.property.findUnique({
-            where: { listingId: listingId },
-            include: { listing: true }
+        // Check if listing exists and belongs to user
+        const listing = await prisma.listing.findFirst({
+            where: {
+                id: listingId,
+                userId: payload.sub,
+            },
         });
 
-        if (!property || property.listing.userId !== payload.sub) {
-            return c.json({ error: 'Unauthorized' }, 401);
+        if (!listing) {
+            return c.json({ error: 'Listing not found or unauthorized' }, 404);
         }
 
-        // Update floor plan
-        const updatedListing = await prisma.listing.update({
-            where: { id: listingId },
-            data: {
-                property: {
-                    update: {
-                        where: { floorPlans: { some: { id: floorPlanId } } },
-                        data: {
-                            floorPlans: {
-                                update: {
-                                    where: { id: floorPlanId },
-                                    data: {
-                                        name: floorPlanData.name,
-                                        bedrooms: floorPlanData.bedrooms,
-                                        bathrooms: floorPlanData.bathrooms,
-                                        price: floorPlanData.price,
-                                        squareFootage: floorPlanData.squareFootage,
-                                        unitsAvailable: floorPlanData.unitsAvailable,
-                                        imageUrl: floorPlanData.imageUrl,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            include: {
+        // Upload image if provided
+        let imageUrl = undefined;
+        if (image) {
+            const { fileUrl } = await uploadToR2(image, "floorPlanImages", c);
+            imageUrl = fileUrl;
+        }
 
+        // Update floor plan with consistent field names
+        await prisma.floorPlan.update({
+            where: { id: floorPlanId },
+            data: {
+                name: floorPlanData.name,
+                bedrooms: floorPlanData.bedrooms,
+                bathrooms: floorPlanData.bathrooms,
+                squareFootage: floorPlanData.squareFootage,
+                price: floorPlanData.price,
+                unitsAvailable: floorPlanData.unitsAvailable,
+                ...(imageUrl && { imageUrl }),
+            },
+        });
+
+        // Get updated listing
+        const updatedListing = await prisma.listing.findUnique({
+            where: { id: listingId },
+            include: {
                 property: {
                     include: {
-                        floorPlans: true
-                    }
-                }
-            }
+                        images: true,
+                        amenities: true,
+                        categories: true,
+                        floorPlans: true,
+                    },
+                },
+                user: true,
+            },
         });
 
         return c.json({ listing: updatedListing });
     } catch (error) {
         console.error('Update floor plan error:', error);
-        return c.json({
-            error: 'Failed to update floor plan',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, 500);
+        return c.json({ error: 'Failed to update floor plan' }, 500);
     }
 });
 

@@ -53,8 +53,9 @@ class Property {
       rating: json['rating']?.toDouble(),
       amenities:
           List<String>.from(json['amenities']?.map((x) => x['amenity']) ?? []),
-      categories: List<String>.from(
-          json['categories']?.map((x) => x['category']) ?? []),
+      categories: [],
+      //List<String>.from(
+      // json['categories']?.map((x) => x['category']) ?? []),
       imageUrls:
           List<String>.from(json['images']?.map((x) => x['imageUrl']) ?? []),
       walkScore: json['walkScore'],
@@ -235,7 +236,7 @@ class PropertyLead {
 class FloorPlan {
   final String id;
   final String name;
-  final String imageUrl;
+  String imageUrl;
   final int bedrooms;
   final int bathrooms;
   final double price;

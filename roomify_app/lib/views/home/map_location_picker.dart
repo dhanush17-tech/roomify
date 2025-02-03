@@ -327,7 +327,9 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
         await context
             .read<ProfileProvider>()
             .updateLocation(lat as double, lng as double);
+
         await context.read<AuthProvider>().refreshAllProviders(context);
+        await context.read<AuthProvider>().loadUserProfile();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location updated successfully')),
         );

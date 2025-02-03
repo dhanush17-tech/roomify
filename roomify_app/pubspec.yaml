@@ -66,11 +66,32 @@ dependencies:
   # advance_pdf_viewer2: 
   easy_image_viewer: ^1.5.1
   app_links: ^6.3.3
+  shared_preferences: ^2.5.1
+  intl_phone_field: ^3.2.0
 
 
 dev_dependencies:
+  flutter_launcher_icons: "^0.14.3"
   flutter_test:
     sdk: flutter
+
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logos/app_logo.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/logos/app_logo.png"
+   
+  windows:
+    generate: true
+    image_path: "assets/logos/app_logo.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

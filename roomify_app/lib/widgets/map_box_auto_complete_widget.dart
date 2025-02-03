@@ -11,6 +11,7 @@ class MapBoxAutoCompleteWidget extends StatefulWidget {
   final int limit;
   final double? defaultLatitude;
   final double? defaultLongitude;
+  final InputDecoration? inputDecoration;
 
   const MapBoxAutoCompleteWidget({
     required this.hint,
@@ -18,6 +19,7 @@ class MapBoxAutoCompleteWidget extends StatefulWidget {
     this.limit = 5,
     this.defaultLatitude,
     this.defaultLongitude,
+    this.inputDecoration,
   });
 
   @override
@@ -125,39 +127,40 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
       children: [
         TextField(
           controller: _searchController,
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            filled: true,
-            fillColor: Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            prefixIcon: Icon(Icons.location_on_outlined),
-            suffixIcon: _isLoading
-                ? Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).primaryColor,
+          decoration: widget.inputDecoration ??
+              InputDecoration(
+                hintText: widget.hint,
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: Icon(Icons.location_on_outlined),
+                suffixIcon: _isLoading
+                    ? Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).primaryColor,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  )
-                : null,
-          ),
+                      )
+                    : null,
+              ),
           onChanged: (value) {
             if (_debounce?.isActive ?? false) _debounce!.cancel();
             _debounce = Timer(Duration(milliseconds: 500), () {

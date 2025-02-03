@@ -254,8 +254,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         longitude: longitude,
         type: ListingType.Property,
         user: user,
-        isFavourite: widget.existingListing?.isFavourite ?? false,
-        imageUrls: [], // Clear existing URLs as we're sending all images
+        isFavorite: widget.existingListing?.isFavorite ?? false,
+         imageUrls: [], // Clear existing URLs as we're sending all images
       );
 
       if (widget.existingListing != null) {

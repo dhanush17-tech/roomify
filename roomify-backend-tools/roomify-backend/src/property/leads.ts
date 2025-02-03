@@ -145,7 +145,8 @@ app.get('/', async (c) => {
                         displayName: true,
                         email: true,
                         profileImageUrl: true, // Changed from profilePhotoUrl
-                        university: true
+                        university: true,
+                        phoneNumber: true
                     }
                 },
                 property: {

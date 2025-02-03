@@ -58,7 +58,7 @@ class Listing {
   User? user;
   String location;
   int price;
-  bool isFavourite;
+  bool isFavorite;
   double? latitude;
   double? longitude;
   List<String> imageUrls;
@@ -75,7 +75,7 @@ class Listing {
     required this.createdAt,
     required this.location,
     required this.price,
-    required this.isFavourite,
+    required this.isFavorite,
     required this.user,
     this.latitude = 0.0,
     this.longitude = 0.0,
@@ -99,19 +99,16 @@ class Listing {
 
   Map<String, dynamic> toJson() {
     return {
-      'type': getListingTypeString(), // Convert enum to string
+      'type': getListingTypeString(),
       'id': id,
       'title': title,
       'description': description,
-      'createdAt':
-          createdAt.toIso8601String(), // Convert DateTime to ISO 8601 string
-      'user': user?.toJson(), // Call toJson() on the User object if not null
+      'createdAt': createdAt.toIso8601String(),
+      'user': user?.toJson(),
       'location': location,
       'price': price,
-      'isFavorite': isFavourite,
-
-      if (property != null)
-        'property': property?.toJson(), // Only include if not null
+      'isFavorite': isFavorite,
+      if (property != null) 'property': property?.toJson(),
       'latitude': latitude,
       'longitude': longitude,
       'imageUrls': imageUrls,
@@ -124,6 +121,44 @@ class Listing {
         'reports': reports.map((report) => report.toJson()).toList(),
       },
     };
+  }
+
+  Listing copyWith({
+    ListingType? type,
+    int? id,
+    String? title,
+    String? description,
+    DateTime? createdAt,
+    User? user,
+    String? location,
+    int? price,
+    bool? isFavorite,
+    double? latitude,
+    double? longitude,
+    List<String>? imageUrls,
+    Property? property,
+    MarketplaceItem? marketplaceItem,
+    bool? hasActiveReport,
+    List<Report>? reports,
+  }) {
+    return Listing(
+      type: type ?? this.type,
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      user: user ?? this.user,
+      location: location ?? this.location,
+      price: price ?? this.price,
+      isFavorite: isFavorite ?? this.isFavorite,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      imageUrls: imageUrls ?? List<String>.from(this.imageUrls),
+      property: property ?? this.property,
+      marketplaceItem: marketplaceItem ?? this.marketplaceItem,
+      hasActiveReport: hasActiveReport ?? this.hasActiveReport,
+      reports: reports ?? List<Report>.from(this.reports),
+    );
   }
 
   static Listing fromJson(Map<String, dynamic> json) {
@@ -143,10 +178,11 @@ class Listing {
           : null, // Assuming User class exists
       location: json['location'] ?? '',
       price: json['price'] ?? 0,
-      isFavourite: json['isFavorite'] ?? false,
+      isFavorite: json['isFavorite'] ?? false,
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
-      imageUrls: List<String>.from(json['imageUrls'] ?? []),
+      imageUrls:
+          List<String>.from(json['images']?.map((x) => x['imageUrl']) ?? []),
       property: json["property"] != null
           ? Property.fromJson({
               ...json["property"],

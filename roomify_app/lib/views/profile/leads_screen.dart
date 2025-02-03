@@ -7,6 +7,7 @@ import 'package:roomify_app/providers/chat_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LeadsScreen extends StatefulWidget {
   @override
@@ -195,6 +196,61 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   ),
                 ],
               ),
+              if (lead.user.phoneNumber != null) ...[
+                SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    try {
+                      final chatProvider =
+                          Provider.of<ChatProvider>(context, listen: false);
+                      final chatRoom =
+                          await chatProvider.createOrGetChatRoom(lead.user.id);
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ChatMessageScreen(room: chatRoom),
+                          settings: RouteSettings(
+                            name: 'ChatMessageScreen',
+                            arguments: ChatMessageScreen(room: chatRoom),
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to open chat: $e')),
+                      );
+                    }
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 16,
+                          color: Colors.orange[700],
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Chat',
+                          style: AppTextStyles.caption().copyWith(
+                            color: Colors.orange[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               SizedBox(height: 16),
               Row(
                 children: [
@@ -226,54 +282,34 @@ class _LeadsScreenState extends State<LeadsScreen> {
                       ),
                     ),
                   ],
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
+                  if (lead.user.phoneNumber != null) ...[
+                    SizedBox(width: 16),
+                    GestureDetector(
                       onTap: () async {
-                        try {
-                          final chatProvider =
-                              Provider.of<ChatProvider>(context, listen: false);
-                          final chatRoom = await chatProvider
-                              .createOrGetChatRoom(lead.user.id);
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ChatMessageScreen(room: chatRoom),
-                              settings: RouteSettings(
-                                name: 'ChatMessageScreen',
-                                arguments: ChatMessageScreen(room: chatRoom),
-                              ),
-                            ),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to open chat: $e')),
-                          );
+                        final url = 'tel:${lead.user.phoneNumber}';
+                        if (await canLaunchUrl(Uri.parse(url))) {
+                          await launchUrl(Uri.parse(url));
                         }
                       },
                       child: Container(
-                        alignment: Alignment.center,
                         padding:
                             EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.05),
+                          color: Colors.green.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.chat_bubble_outline,
+                              Icons.phone_outlined,
                               size: 16,
-                              color: Colors.orange[700],
+                              color: Colors.green[700],
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Chat',
+                              lead.user.phoneNumber!,
                               style: AppTextStyles.caption().copyWith(
-                                color: Colors.orange[700],
+                                color: Colors.green[700],
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -281,7 +317,66 @@ class _LeadsScreenState extends State<LeadsScreen> {
                         ),
                       ),
                     ),
-                  ),
+                  ] else ...[
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          try {
+                            final chatProvider = Provider.of<ChatProvider>(
+                                context,
+                                listen: false);
+                            final chatRoom = await chatProvider
+                                .createOrGetChatRoom(lead.user.id);
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ChatMessageScreen(room: chatRoom),
+                                settings: RouteSettings(
+                                  name: 'ChatMessageScreen',
+                                  arguments: ChatMessageScreen(room: chatRoom),
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Failed to open chat: $e')),
+                            );
+                          }
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                size: 16,
+                                color: Colors.orange[700],
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Chat',
+                                style: AppTextStyles.caption().copyWith(
+                                  color: Colors.orange[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],

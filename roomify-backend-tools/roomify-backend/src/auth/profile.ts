@@ -20,7 +20,6 @@ app.get('/', async (c) => {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-
                 favorites: {
                     include: {
                         listing: true
@@ -109,8 +108,10 @@ app.put('/', async (c) => {
             age: parseInt(formData.get('age') as string) || undefined,
             location: formData.get('location'),
             gender: formData.get('gender'),
-
-            profileImageUrl: profileImageUrl, // Add profile image URL to update data
+            phoneNumber: formData.get('phoneNumber'),
+            profileImageUrl: profileImageUrl,
+            latitude: parseFloat(formData.get('latitude') as string) || undefined,
+            longitude: parseFloat(formData.get('longitude') as string) || undefined,
             status: formData.get('status'),
         };
 
@@ -118,7 +119,6 @@ app.put('/', async (c) => {
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: {
-
                 displayName: updateData.displayName as string,
                 email: updateData.email as string,
                 bio: updateData.bio as string,
@@ -126,6 +126,7 @@ app.put('/', async (c) => {
                 age: updateData.age,
                 location: updateData.location as string,
                 gender: updateData.gender as string,
+                phoneNumber: updateData.phoneNumber as string,
                 profileImageUrl: updateData.profileImageUrl,
                 status: updateData.status as string,
             },
@@ -138,6 +139,7 @@ app.put('/', async (c) => {
                 age: true,
                 gender: true,
                 location: true,
+                phoneNumber: true,
                 profileImageUrl: true,
                 language: true,
                 receiveNotifications: true,
@@ -504,5 +506,194 @@ app.put('/fcm-token', async (c) => {
 
     return c.json({ success: true });
 });
+
+app.delete('/delete-account', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Turn off foreign key constraints
+        await prisma.$executeRaw`PRAGMA foreign_keys = OFF`;
+
+        try {
+            // 1. Delete chat-related data
+            await prisma.chatParticipant.deleteMany({
+                where: { userId: payload.sub }
+            });
+
+            const messages = await prisma.chatMessage.findMany({
+                where: { senderId: payload.sub },
+                select: { id: true }
+            });
+            const messageIds = messages.map(m => m.id);
+
+            await prisma.unreadMessage.deleteMany({
+                where: {
+                    OR: [
+                        { messageId: { in: messageIds } },
+                        { recipientId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.documentSubmission.deleteMany({
+                where: { messageId: { in: messageIds } }
+            });
+
+            await prisma.documentRequest.deleteMany({
+                where: {
+                    OR: [
+                        { messageId: { in: messageIds } },
+                        { recipientId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.chatMessage.deleteMany({
+                where: { senderId: payload.sub }
+            });
+
+            // 2. Delete roommate-related data
+            await prisma.roommateSwipe.deleteMany({
+                where: {
+                    OR: [
+                        { swiperId: payload.sub },
+                        { swipedId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.roommateMatch.deleteMany({
+                where: {
+                    OR: [
+                        { user1Id: payload.sub },
+                        { user2Id: payload.sub }
+                    ]
+                }
+            });
+
+            // 3. Delete property and listing related data
+            const listings = await prisma.listing.findMany({
+                where: { userId: payload.sub },
+                select: { id: true }
+            });
+            const listingIds = listings.map(l => l.id);
+
+            await prisma.propertyLead.deleteMany({
+                where: {
+                    OR: [
+                        { propertyId: { in: listingIds } },
+                        { userId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.favorite.deleteMany({
+                where: {
+                    OR: [
+                        { listingId: { in: listingIds } },
+                        { userId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.comment.deleteMany({
+                where: {
+                    OR: [
+                        { propertyId: { in: listingIds } },
+                        { userId: payload.sub }
+                    ]
+                }
+            });
+
+            await prisma.report.deleteMany({
+                where: {
+                    OR: [
+                        { listingId: { in: listingIds } },
+                        { userId: payload.sub }
+                    ]
+                }
+            });
+
+            // Delete property-specific data
+            for (const listingId of listingIds) {
+                await prisma.propertyImage.deleteMany({
+                    where: { propertyId: listingId }
+                });
+                await prisma.propertyAmenity.deleteMany({
+                    where: { propertyId: listingId }
+                });
+                await prisma.propertyTag.deleteMany({
+                    where: { propertyId: listingId }
+                });
+                await prisma.propertyCategory.deleteMany({
+                    where: { propertyId: listingId }
+                });
+                await prisma.floorPlan.deleteMany({
+                    where: { propertyId: listingId }
+                });
+                await prisma.property.deleteMany({
+                    where: { listingId: listingId }
+                });
+            }
+
+            // Delete marketplace-specific data
+            await prisma.marketplaceImage.deleteMany({
+                where: { itemId: { in: listingIds } }
+            });
+            await prisma.marketplaceCategory.deleteMany({
+                where: { itemId: { in: listingIds } }
+            });
+            await prisma.marketplaceItem.deleteMany({
+                where: { listingId: { in: listingIds } }
+            });
+
+            // Delete the listings themselves
+            await prisma.listing.deleteMany({
+                where: { userId: payload.sub }
+            });
+
+            // 4. Delete user preferences and social links
+            await prisma.userPreference.deleteMany({
+                where: { userId: payload.sub }
+            });
+            await prisma.userSocialLink.deleteMany({
+                where: { userId: payload.sub }
+            });
+
+            // 5. Delete authentication related data
+            await prisma.activeToken.deleteMany({
+                where: { userId: payload.sub }
+            });
+            await prisma.passwordReset.deleteMany({
+                where: { userId: payload.sub }
+            });
+
+            // 6. Finally delete the user
+            await prisma.user.delete({
+                where: { id: payload.sub }
+            });
+
+            // Turn foreign key constraints back on
+            await prisma.$executeRaw`PRAGMA foreign_keys = ON`;
+
+            return c.json({ success: true, message: 'Account deleted successfully' });
+        } catch (innerError) {
+            // Turn foreign key constraints back on before throwing
+            await prisma.$executeRaw`PRAGMA foreign_keys = ON`;
+            throw innerError;
+        }
+    } catch (error) {
+        console.error('Delete account error:', error);
+        return c.json({
+            error: 'Failed to delete account',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
 
 export default app;

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
@@ -18,8 +19,18 @@ import 'package:roomify_app/widgets/property_image_list.dart';
 import 'package:roomify_app/widgets/category_chip.dart';
 import 'package:roomify_app/widgets/amenity_chip.dart';
 import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 
 class EditProfileScreen extends StatefulWidget {
+  final double latitude;
+  final double longitude;
+
+  const EditProfileScreen({
+    Key? key,
+    required this.latitude,
+    required this.longitude,
+  }) : super(key: key);
+
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }
@@ -42,7 +53,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   bool _isLoading = false;
-  Listing? _listing = null;
+  Listing? _listing;
+  List<String> _originalImageUrls = [];
   String? _moveInDate;
   String? _moveOutDate;
   String? _title;
@@ -52,14 +64,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _address;
   List<String> _customFeatures = [];
   TextEditingController _customFeatureController = TextEditingController();
+  String? _phoneNumber;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
 
-    // Initialize all controllers
+    // Initialize listing data if provided
 
+    // Initialize user data
     _selectedGender = user?.gender ?? '';
     _selectedStatus = user?.status ?? '';
     _bioController = TextEditingController(text: user?.bio ?? '');
@@ -68,6 +82,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _locationController = TextEditingController(text: user?.location ?? '');
     _genderController = TextEditingController(text: user?.gender ?? '');
     _statusController = TextEditingController(text: user?.status ?? '');
+    _titleController = TextEditingController(text: _listing?.title ?? '');
+    _phoneNumber = user?.phoneNumber ?? '34432432';
+    _descriptionController =
+        TextEditingController(text: _listing?.description ?? '');
+    _loadUserPreferences();
 
     if (user != null) {
       setState(() {
@@ -83,7 +102,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _statusController.text = user.status ?? '';
         if (user.isProfessional) {
           _listing = user.listings != null && user.listings.isNotEmpty
-              ? user.listings.first
+              ? user.listings.where((listing) => listing.property != null).first
               : Listing(
                   id: 0,
                   title: '',
@@ -95,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   createdAt: DateTime.now(),
                   type: ListingType.Property,
                   user: user,
-                  isFavourite: false,
+                  isFavorite: false,
                   imageUrls: [],
                   property: Property(
                     numberOfBedrooms: 0,
@@ -118,6 +137,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       });
     }
+
+    _originalImageUrls = List<String>.from(_listing?.property?.imageUrls ?? []);
+    _titleController = TextEditingController(text: _listing?.title);
+    _descriptionController = TextEditingController(text: _listing?.description);
+    _moveInDate = _listing?.property?.moveInDate;
+    _moveOutDate = _listing?.property?.moveOutDate;
+    _amenities = List<String>.from(_listing?.property?.amenities ?? []);
+    _address = _listing?.location;
+
     _displayNameController =
         TextEditingController(text: user?.displayName ?? '');
     _bioController = TextEditingController(text: user?.bio ?? '');
@@ -129,7 +157,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _titleController = TextEditingController(text: _listing?.title ?? '');
     _descriptionController =
         TextEditingController(text: _listing?.description ?? '');
-    _loadUserPreferences();
   }
 
   Future<void> _pickImage() async {
@@ -446,16 +473,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       return null;
                     },
                   ),
-                  InputField(
-                    controller: _passwordController,
-                    label: "New Password",
-                    obscureText: true,
-                  ),
                   if (!isProfessional) ...[
                     InputField(
                       controller: _universityController,
                       label: "University",
                       keyboardType: TextInputType.name,
+                    ),
+                    SizedBox(height: 16),
+                    //PHONE NUMBER
+                    IntlPhoneField(
+                      pickerDialogStyle: PickerDialogStyle(
+                        padding: EdgeInsets.all(16),
+                        searchFieldInputDecoration: InputDecoration(
+                          hintText: 'Search for a country',
+                          prefixIcon: Icon(
+                            Icons.search_outlined,
+                            color: Colors.grey[600],
+                          ),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      initialValue: user?.phoneNumber,
+                      initialCountryCode: 'US',
+                      onChanged: (phone) {
+                        setState(() {
+                          _phoneNumber = phone.completeNumber;
+                        });
+                      },
                     ),
                     InputField(
                       controller: _bioController,
@@ -604,16 +660,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           : null,
                     ),
                     SizedBox(height: 24),
-                    PropertyImageList(
-                      selectedImages: _images,
-                      existingImageUrls: _listing?.property?.imageUrls ?? [],
-                      onImagesChanged: (images) {
-                        setState(() {
-                          _images = images;
-                        });
-                      },
-                      onExistingImagesChanged: _updatePropertyImages,
-                    ),
+                    _buildPropertyImagesSection(),
                     SizedBox(height: 24),
                     Text(
                       'Location',
@@ -883,74 +930,136 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _showFloorPlanDialog(BuildContext context,
       [FloorPlan? plan]) async {
-    final result = await showDialog<FloorPlan>(
+    // Check if listing exists, if not create it first
+    if (_listing == null || _listing!.id == 0) {
+      try {
+        setState(() => _isLoading = true);
+
+        // Create a new listing with basic details
+        final newListing = await context
+            .read<PropertyProvider>()
+            .createProperty(
+              Listing(
+                id: 0,
+                title: _titleController.text.trim(),
+                description: _descriptionController.text.trim(),
+                location: _locationController.text.trim(),
+                latitude: widget.latitude,
+                longitude: widget.longitude,
+                price: 0,
+                createdAt: DateTime.now(),
+                type: ListingType.Property,
+                user: context.read<AuthProvider>().user,
+                isFavorite: false,
+                imageUrls: [],
+                property: Property(
+                  numberOfBedrooms: 0,
+                  numberOfBathrooms: 0,
+                  maxOccupancy: 0,
+                  moveInDate: DateTime.now().toIso8601String().split('T')[0],
+                  moveOutDate: null,
+                  walkScore: 0,
+                  transitScore: 0,
+                  transitDetails: {},
+                  lastLocationDetailsUpdate: null,
+                  isRoomifyChoice: false,
+                  imageUrls: [],
+                  categories: [],
+                  amenities: [],
+                  floorPlans: [],
+                  isLookingForRoomate: false,
+                ),
+              ),
+              images: _images,
+            );
+
+        setState(() {
+          _listing = newListing;
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create listing: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+    }
+
+    Map<String, dynamic> result = await showDialog(
       context: context,
       builder: (context) => FloorPlanDialog(floorPlan: plan),
     );
 
-    if (result != null) {
+    final floorPlan = result["floorPlan"] as FloorPlan;
+    final imageFile = result["imageFile"] as File?;
+
+    if (floorPlan != null) {
       setState(() => _isLoading = true);
       try {
+        Listing updatedListing;
+
         if (plan == null) {
           // Adding new floor plan
-          final Listing l = _listing!;
-          l.property!.floorPlans!.add(result);
-          final newListing = await context
-              .read<PropertyProvider>()
-              .addFloorPlan(l, images: _images);
-
-          // Only update state if API call was successful
-          setState(() {
-            _listing = newListing;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Floor plan added successfully')),
-          );
-        } else if (result.id == plan.id) {
+          updatedListing = await context.read<PropertyProvider>().addFloorPlan(
+                _listing!,
+                floorPlan: floorPlan,
+                imageFile: imageFile,
+              );
+        } else if (floorPlan.id == plan.id) {
           // Updating existing floor plan
-          final updatedListing =
+          updatedListing =
               await context.read<PropertyProvider>().updateFloorPlan(
-            _listing!.id,
-            plan.id,
-            {
-              'name': result.name,
-              'bedrooms': result.bedrooms.toDouble(),
-              'bathrooms': result.bathrooms.toDouble(),
-              'squareFootage': result.squareFeet,
-              'price': result.price,
-              'unitsAvailable': result.availableUnits.toDouble(),
-            },
-          );
-
-          // Only update state if API call was successful
-          setState(() {
-            _listing = updatedListing;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Floor plan updated successfully')),
-          );
-        } else if (result.id.isEmpty) {
+                    _listing!.id,
+                    plan.id,
+                    {
+                      'name': floorPlan.name,
+                      'bedrooms': floorPlan.bedrooms.toDouble(),
+                      'bathrooms': floorPlan.bathrooms.toDouble(),
+                      'squareFootage': floorPlan.squareFeet,
+                      'price': floorPlan.price,
+                      'unitsAvailable': floorPlan.availableUnits.toDouble(),
+                    },
+                    imageFile: imageFile,
+                  );
+        } else if (floorPlan.id.isEmpty) {
           // Delete floor plan
-          final updatedListing =
+          updatedListing =
               await context.read<PropertyProvider>().deleteFloorPlan(
                     _listing!.id,
                     plan.id,
                   );
-
-          // Only update state if API call was successful
-          setState(() {
-            _listing = updatedListing;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Floor plan deleted successfully')),
-          );
+        } else {
+          throw Exception('Invalid floor plan operation');
         }
-      } catch (e) {
-        // Show error message without updating state
+
+        setState(() {
+          _listing = updatedListing;
+        });
+        await context.read<ProfileProvider>().updatePreferences(
+              preferences: _selectedPreferences,
+            );
+        await context.read<AuthProvider>().loadUserProfile();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Failed to ${plan == null ? 'add' : result.id.isEmpty ? 'delete' : 'update'} floor plan: $e'),
+              plan == null
+                  ? 'Floor plan added successfully'
+                  : floorPlan.id.isEmpty
+                      ? 'Floor plan deleted successfully'
+                      : 'Floor plan updated successfully',
+            ),
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to ${plan == null ? 'add' : floorPlan.id.isEmpty ? 'delete' : 'update'} floor plan: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -965,37 +1074,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().user;
     try {
       if (user!.isProfessional) {
-        final updatedListing =
-            await context.read<PropertyProvider>().updateProperty(
-                  _listing!,
-                  images: _images,
-                );
-        setState(() {
-          _listing = updatedListing;
-        });
-      } else {
-        await context.read<AuthProvider>().updateProfile(
-              context: context,
-              displayName: _displayNameController.text,
-              bio: _bioController.text,
-              age: _ageController.text.isNotEmpty
-                  ? int.tryParse(_ageController.text)
-                  : null,
-              university: _universityController.text,
-              location: _locationController.text,
-              gender: _selectedGender,
-              status: _selectedStatus,
-              email: _emailController.text,
-              profileImage: _profileImage,
-            );
-        await context.read<ProfileProvider>().updatePreferences(
-              preferences: _selectedPreferences,
-            );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile updated successfully')),
-        );
-        Navigator.pop(context);
+        if (_listing != null) {
+          // Calculate deleted image URLs by comparing original URLs with current URLs
+          final currentUrls = _listing!.property?.imageUrls ?? [];
+          final deletedUrls = _originalImageUrls
+              .where((url) => !currentUrls.contains(url))
+              .toList();
+          print(deletedUrls);
+          final updatedListing =
+              await context.read<PropertyProvider>().updateProperty(
+                    _listing!,
+                    images: _images,
+                    deletedImageUrls: deletedUrls,
+                  );
+          setState(() {
+            _listing = updatedListing;
+            _images = []; // Clear new images after successful update
+          });
+        }
       }
+      await context.read<AuthProvider>().updateProfile(
+            context: context,
+            displayName: _displayNameController.text,
+            bio: _bioController.text,
+            age: _ageController.text.isNotEmpty
+                ? int.tryParse(_ageController.text)
+                : null,
+            university: _universityController.text,
+            location: _locationController.text,
+            gender: _selectedGender,
+            status: _selectedStatus,
+            email: _emailController.text,
+            profileImage: _profileImage,
+            phoneNumber: _phoneNumber,
+          );
+      await context.read<ProfileProvider>().updatePreferences(
+            preferences: _selectedPreferences,
+          );
+      await context.read<AuthProvider>().loadUserProfile();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile updated successfully')),
+      );
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update profile: $e')),
@@ -1171,44 +1292,56 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  void _updatePropertyImages(List<String> urls) {
-    if (_listing?.property != null) {
-      final updatedProperty = Property(
-        numberOfBedrooms: _listing!.property!.numberOfBedrooms,
-        numberOfBathrooms: _listing!.property!.numberOfBathrooms,
-        maxOccupancy: _listing!.property!.maxOccupancy,
-        moveInDate: _listing!.property!.moveInDate,
-        moveOutDate: _listing!.property!.moveOutDate,
-        walkScore: _listing!.property!.walkScore,
-        transitScore: _listing!.property!.transitScore,
-        transitDetails: _listing!.property!.transitDetails,
-        lastLocationDetailsUpdate:
-            _listing!.property!.lastLocationDetailsUpdate,
-        isRoomifyChoice: _listing!.property!.isRoomifyChoice,
-        imageUrls: urls,
-        categories: _listing!.property!.categories,
-        amenities: _listing!.property!.amenities,
-        floorPlans: _listing!.property!.floorPlans,
-        isLookingForRoomate: _listing!.property!.isLookingForRoomate,
-      );
-      setState(() {
-        _listing = Listing(
-          id: _listing!.id,
-          title: _listing!.title,
-          description: _listing!.description,
-          location: _listing!.location,
-          latitude: _listing!.latitude,
-          longitude: _listing!.longitude,
-          price: _listing!.price,
-          createdAt: _listing!.createdAt,
-          type: _listing!.type,
-          user: _listing!.user,
-          isFavourite: _listing!.isFavourite,
-          imageUrls: _listing!.imageUrls,
-          property: updatedProperty,
-        );
-      });
-    }
+  Widget _buildPropertyImagesSection() {
+    return PropertyImageList(
+      selectedImages: _images,
+      existingImageUrls: _listing?.property?.imageUrls ?? [],
+      onImagesChanged: (newImages) {
+        setState(() {
+          _images = newImages;
+        });
+      },
+      onExistingImagesChanged: (newUrls) {
+        setState(() {
+          if (_listing != null && _listing!.property != null) {
+            final updatedProperty = Property(
+              numberOfBedrooms: _listing!.property!.numberOfBedrooms,
+              numberOfBathrooms: _listing!.property!.numberOfBathrooms,
+              maxOccupancy: _listing!.property!.maxOccupancy,
+              moveInDate: _listing!.property!.moveInDate,
+              moveOutDate: _listing!.property!.moveOutDate,
+              walkScore: _listing!.property!.walkScore,
+              transitScore: _listing!.property!.transitScore,
+              transitDetails: _listing!.property!.transitDetails,
+              lastLocationDetailsUpdate:
+                  _listing!.property!.lastLocationDetailsUpdate,
+              isRoomifyChoice: _listing!.property!.isRoomifyChoice,
+              imageUrls: newUrls,
+              categories: _listing!.property!.categories,
+              amenities: _listing!.property!.amenities,
+              floorPlans: _listing!.property!.floorPlans,
+              isLookingForRoomate: _listing!.property!.isLookingForRoomate,
+            );
+
+            _listing = Listing(
+              id: _listing!.id,
+              title: _listing!.title,
+              description: _listing!.description,
+              location: _listing!.location,
+              price: _listing!.price,
+              latitude: _listing!.latitude,
+              longitude: _listing!.longitude,
+              createdAt: _listing!.createdAt,
+              type: _listing!.type,
+              user: _listing!.user,
+              isFavorite: _listing!.isFavorite,
+              imageUrls: newUrls,
+              property: updatedProperty,
+            );
+          }
+        });
+      },
+    );
   }
 }
 
@@ -1588,18 +1721,21 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
                       GestureDetector(
                         onTap: () {
                           if (_formKey.currentState!.validate()) {
-                            final floorPlan = FloorPlan(
-                              id: widget.floorPlan?.id ?? '',
-                              name: _nameController.text,
-                              bedrooms: int.parse(_bedroomsController.text),
-                              bathrooms: int.parse(_bathroomsController.text),
-                              squareFeet:
-                                  double.parse(_squareFeetController.text),
-                              price: double.parse(_priceController.text),
-                              availableUnits:
-                                  int.parse(_availableUnitsController.text),
-                              imageUrl: widget.floorPlan?.imageUrl ?? '',
-                            );
+                            final floorPlan = {
+                              "imageFile": _selectedImage,
+                              "floorPlan": FloorPlan(
+                                id: widget.floorPlan?.id ?? '',
+                                name: _nameController.text,
+                                bedrooms: int.parse(_bedroomsController.text),
+                                bathrooms: int.parse(_bathroomsController.text),
+                                squareFeet:
+                                    double.parse(_squareFeetController.text),
+                                price: double.parse(_priceController.text),
+                                availableUnits:
+                                    int.parse(_availableUnitsController.text),
+                                imageUrl: widget.floorPlan?.imageUrl ?? '',
+                              )
+                            };
                             Navigator.pop(context, floorPlan);
                           }
                         },

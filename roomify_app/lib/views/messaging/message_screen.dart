@@ -243,16 +243,16 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        otherUser.isProfessional == false
-                            ? Text(
-                                otherUser.age.toString() + ' years old',
-                                style: TextStyle(
-                                  color: orangeColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              )
-                            : SizedBox.shrink(),
+                        Text(
+                          otherUser.isProfessional == false
+                              ? otherUser.age.toString() + ' years old'
+                              : otherUser.email,
+                          style: TextStyle(
+                            color: orangeColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        )
                       ],
                     ),
                     Spacer(),

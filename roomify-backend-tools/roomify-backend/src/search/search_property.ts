@@ -42,7 +42,6 @@ app.get('/', async (c) => {
         const userId = payload.sub;
         const currentDate = new Date().toISOString().slice(0, 7); // Get current date in YYYY-MM format
 
-        console.log("This is the user latitude and longitude", userLatitude, userLongitude);
 
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
@@ -66,8 +65,8 @@ app.get('/', async (c) => {
             },
             select: { title: true }
         }) as { title: string }[];
-        console.log("This is the all titles", allTitles);
 
+        console.log("This is the the minPrice and maxPrice", minPrice, maxPrice);
 
         // Auto-correct function using Sift3 distance
         function sift3Distance(s1: string, s2: string): number {
@@ -129,16 +128,18 @@ app.get('/', async (c) => {
                     latitude: { not: null },
                     longitude: { not: null },
                     OR: [
+                        // Match on main listing price and bedrooms
                         {
                             price: {
                                 gte: !isNaN(minPrice) ? minPrice : undefined,
                                 lte: !isNaN(maxPrice) ? maxPrice : undefined,
                             },
-                            property: bedrooms || bathrooms ? {
+                            property: {
                                 numberOfBedrooms: bedrooms ? { equals: bedrooms } : undefined,
                                 numberOfBathrooms: bathrooms ? { equals: bathrooms } : undefined,
-                            } : undefined
+                            }
                         },
+                        // Match on floor plan price and bedrooms
                         {
                             property: {
                                 floorPlans: {
@@ -154,7 +155,13 @@ app.get('/', async (c) => {
                                             bathrooms ? { bathrooms: { equals: bathrooms } } : {}
                                         ]
                                     }
-                                },
+                                }
+                            }
+                        }
+                    ],
+                    AND: [
+                        {
+                            property: {
                                 OR: [
                                     { moveInDate: { equals: 'Anytime' } },
                                     {
@@ -315,7 +322,6 @@ app.get('/', async (c) => {
                 floorPlans: listing.property.floorPlans,
             } : null
         }));
-        console.log("This is the enhanced listings", enhancedListings.map(listing => listing.property?.floorPlans));
 
         return c.json({
             results: enhancedListings,

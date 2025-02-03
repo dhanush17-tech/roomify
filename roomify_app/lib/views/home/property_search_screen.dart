@@ -102,6 +102,7 @@ class PriceFilterChips extends StatelessWidget {
     final priceRanges = _generatePriceRanges();
 
     return Container(
+      padding: EdgeInsets.only(top: 0),
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -709,8 +710,9 @@ class _SearchMapScreenState extends State<SearchMapScreen>
               Column(
                 children: [
                   SafeArea(
+                    bottom: false,
                     child: Padding(
-                      padding: EdgeInsets.only(top: 10),
+                      padding: EdgeInsets.only(top: 10, bottom: 0),
                       child: SearchBarWidget(
                         controller: _searchController,
                         focusNode: _searchFocusNode,
@@ -720,7 +722,7 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                       ),
                     ),
                   ),
-                  SizedBox(height: 5),
+                  SizedBox(height: 10),
                   // Add price filter chips
                   if (!_showSuggestions &&
                       searchProvider.searchResults.isNotEmpty)

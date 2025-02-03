@@ -109,6 +109,9 @@ class AuthProvider extends ChangeNotifier {
     String? location,
     required bool isProfessional,
     required Function onSuccess,
+    double? latitude,
+    double? longitude,
+    String? phoneNumber,
   }) async {
     try {
       _setLoading(true);
@@ -122,6 +125,9 @@ class AuthProvider extends ChangeNotifier {
         university: isProfessional ? null : university,
         location: isProfessional ? null : location,
         isProfessional: isProfessional,
+        latitude: latitude,
+        phoneNumber: phoneNumber,
+        longitude: longitude,
       );
 
       _setUser(user);
@@ -146,6 +152,9 @@ class AuthProvider extends ChangeNotifier {
     String? gender,
     String? location,
     File? profileImage,
+    String? phoneNumber,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       _isLoading = true;
@@ -163,6 +172,9 @@ class AuthProvider extends ChangeNotifier {
           age: age,
           location: location,
           gender: gender,
+          latitude: latitude,
+          longitude: longitude,
+          phoneNumber: phoneNumber,
           profileImage: profileImage);
 
       _user = updatedUser;

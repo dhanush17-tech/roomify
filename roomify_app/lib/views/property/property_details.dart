@@ -151,74 +151,75 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 actions: [
                   if (isOwnListing())
                     // Show edit button for own listings
-                    IconButton(
-                      icon: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.edit, color: orangeColor),
-                      ),
-                      onPressed: () async {
-                        final updatedListing = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddPropertyScreen(
-                              existingListing: widget.listing,
-                            ),
-                          ),
-                        );
-
-                        // If we got an updated listing back, update the UI
-                        if (updatedListing != null && mounted) {
-                          setState(() {
-                            widget.listing = updatedListing;
-                          });
-                        }
-                      },
-                    )
-                  else
-                    // Show favorite button for other listings
-                    ...[
-                    GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (C) => ReportScreen(
-                                        listingId: widget.listing.id,
-                                        listingType: widget.listing.title,
-                                        latitude: widget.latitude,
-                                        longitude: widget.longitude,
-                                      )));
-                        },
-                        child: Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    if (!widget.listing.user!.isProfessional)
+                      IconButton(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20)),
-                          child: Row(
-                            children: [
-                              Text("Report listing",
-                                  style: TextStyle(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.bold)),
-                            ],
+                            color: Colors.white,
+                            shape: BoxShape.circle,
                           ),
-                        )),
-                    SizedBox(
-                      width: 15,
-                    ),
-                    Consumer<PropertyProvider>(
-                      builder: (ctx, provider, _) => FavoriteButton(
-                        isFavorite: provider.isFavorite(widget.listing.id),
-                        onTap: () => provider.toggleFavorite(widget.listing),
+                          child: Icon(Icons.edit, color: orangeColor),
+                        ),
+                        onPressed: () async {
+                          final updatedListing = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddPropertyScreen(
+                                existingListing: widget.listing,
+                              ),
+                            ),
+                          );
+
+                          // If we got an updated listing back, update the UI
+                          if (updatedListing != null && mounted) {
+                            setState(() {
+                              widget.listing = updatedListing;
+                            });
+                          }
+                        },
+                      )
+                    else
+                      // Show favorite button for other listings
+                      ...[
+                      GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (C) => ReportScreen(
+                                          listingId: widget.listing.id,
+                                          listingType: widget.listing.title,
+                                          latitude: widget.latitude,
+                                          longitude: widget.longitude,
+                                        )));
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Row(
+                              children: [
+                                Text("Report listing",
+                                    style: TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          )),
+                      SizedBox(
+                        width: 15,
                       ),
-                    ),
-                    SizedBox(width: 13),
-                  ]
+                      Consumer<PropertyProvider>(
+                        builder: (ctx, provider, _) => FavoriteButton(
+                          isFavorite: provider.isFavorite(widget.listing.id),
+                          onTap: () => provider.toggleFavorite(widget.listing),
+                        ),
+                      ),
+                      SizedBox(width: 13),
+                    ]
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
@@ -231,14 +232,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             _currentPage = index;
                           });
                         },
-                        itemCount: widget.listing.property!.imageUrls != null
-                            ? widget.listing.property!.imageUrls!.length
-                            : widget.listing.imageUrls!.length,
+                        itemCount: widget.listing.imageUrls!.length > 0
+                            ? widget.listing.imageUrls!.length
+                            : widget.listing.property!.imageUrls!.length,
                         itemBuilder: (context, index) {
-                          final imageUrl =
-                              widget.listing.property!.imageUrls != null
-                                  ? widget.listing.property!.imageUrls![index]
-                                  : widget.listing.imageUrls![index];
+                          final imageUrl = widget.listing.imageUrls!.length > 0
+                              ? widget.listing.imageUrls![index]
+                              : widget.listing.property!.imageUrls![index];
                           return ClipRRect(
                             borderRadius: BorderRadius.only(
                                 bottomLeft: Radius.circular(40),
@@ -266,9 +266,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
-                            widget.listing.property!.imageUrls != null
-                                ? widget.listing.property!.imageUrls!.length
-                                : widget.listing.imageUrls!.length,
+                            widget.listing.imageUrls!.length > 0
+                                ? widget.listing.imageUrls!.length
+                                : widget.listing.property!.imageUrls!.length,
                             (index) => Container(
                               margin: EdgeInsets.symmetric(horizontal: 4),
                               width: 8,
@@ -330,17 +330,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               ],
                             ),
                           ),
-
+                          SizedBox(width: 10),
                           // Right side - Price
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                "\$ ${widget.listing.price}",
+                                widget.listing.user!.isProfessional
+                                    ? widget.listing.property?.floorPlans !=
+                                                null &&
+                                            widget.listing.property!.floorPlans!
+                                                .isNotEmpty
+                                        ? "\$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
+                                        : "\$${widget.listing.price}"
+                                    : "\$${widget.listing.price}",
                                 style: TextStyle(
-                                  fontSize: 27,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.bold,
+                                    color: orangeColor),
                               ),
                               Text(
                                 "per month",

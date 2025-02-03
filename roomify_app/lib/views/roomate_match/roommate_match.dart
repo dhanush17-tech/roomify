@@ -956,8 +956,10 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) =>
-                                            EditProfileScreen(),
+                                        builder: (context) => EditProfileScreen(
+                                          latitude: widget.latitude,
+                                          longitude: widget.longitude,
+                                        ),
                                       ),
                                     );
                                   },

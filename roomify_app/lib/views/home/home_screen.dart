@@ -493,29 +493,37 @@ class PropertyCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: Hero(
                       tag: 'property_image_${listing.id}',
-                      child: listing.property?.imageUrls?.isEmpty ?? true
-                          ? Container(
-                              height: 200,
-                              width: double.infinity,
-                              color: Colors.grey,
-                              child: Center(
-                                child: Text('No Image'),
-                              ),
-                            )
+                      child: listing.property?.imageUrls == null ||
+                              listing.property?.imageUrls.length == 0
+                          ? listing.imageUrls?.isEmpty ?? true
+                              ? Container(
+                                  height: 200,
+                                  width: double.infinity,
+                                  color: Colors.grey,
+                                  child: Center(
+                                    child: Text('No Image'),
+                                  ),
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: listing.imageUrls![0],
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Icon(Icons.error),
+                                )
                           : CachedNetworkImage(
-                              imageUrl: listing.property!.imageUrls![0],
+                              imageUrl: listing.property!.imageUrls[0],
                               height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              placeholder: (context, url) => Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                              errorWidget: (context, url, error) =>
-                                  Icon(Icons.error),
                             ),
                     ),
                   ),
-                  listing.property!.isRoomifyChoice == true
+                  listing.property?.isRoomifyChoice == true
                       ? Positioned(
                           top: 8,
                           left: 8,

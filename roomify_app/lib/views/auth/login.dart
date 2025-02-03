@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
+import 'package:roomify_app/providers/marketplace_provider.dart';
+import 'package:roomify_app/repository/profile_repo.dart';
+import 'package:roomify_app/repository/properties_repo.dart';
+import 'package:roomify_app/repository/marketplace_repo.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
 
 import '../onboarding/main_onboarding.dart';
 
@@ -28,11 +37,13 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   final _loginPasswordController = TextEditingController();
   final _ageController = TextEditingController();
   final _displayNameController = TextEditingController();
-  final _universityController = TextEditingController();
   bool _isLogin = true;
   bool _isProfessionalUser = false;
   bool _rememberMe = true;
   final _formKey = GlobalKey<FormState>();
+  String _phoneNumber = '';
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -54,6 +65,13 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-initialize providers if needed
+    Provider.of<AuthProvider>(context, listen: false);
+  }
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -67,6 +85,62 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMainScreen(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        Provider<PropertyRepository>(
+          create: (_) => PropertyRepository(),
+        ),
+        Provider<ProfileUpdateRepo>(
+          create: (_) => ProfileUpdateRepo(),
+        ),
+        Provider<MarketplaceRepository>(
+          create: (_) => MarketplaceRepository(),
+        ),
+        ChangeNotifierProxyProvider<PropertyRepository, PropertyProvider>(
+          create: (context) => PropertyProvider(
+            context.read<PropertyRepository>(),
+            context,
+          ),
+          update: (context, repo, previous) =>
+              previous ?? PropertyProvider(repo, context),
+        ),
+        ChangeNotifierProxyProvider<ProfileUpdateRepo, ProfileProvider>(
+          create: (context) => ProfileProvider(
+            context.read<ProfileUpdateRepo>(),
+            context,
+          ),
+          update: (context, repo, previous) =>
+              previous ?? ProfileProvider(repo, context),
+        ),
+        ChangeNotifierProxyProvider<MarketplaceRepository, MarketplaceProvider>(
+          create: (context) => MarketplaceProvider(
+            context.read<MarketplaceRepository>(),
+            context,
+          ),
+          update: (context, repo, previous) =>
+              previous ?? MarketplaceProvider(repo, context),
+        ),
+      ],
+      child: MainScreen(
+        latitude: widget.latitude,
+        longitude: widget.longitude,
+      ),
+    );
+  }
+
+  void _handleSuccessfulAuth(BuildContext context) {
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _buildMainScreen(context),
+      ),
+      (route) => false,
     );
   }
 
@@ -254,18 +328,8 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                             context,
                                             _emailController.text,
                                             _passwordController.text,
-                                            () {
-                                              Navigator.pushAndRemoveUntil(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (c) => MainScreen(
-                                                        latitude:
-                                                            widget.latitude,
-                                                        longitude:
-                                                            widget.longitude)),
-                                                (route) => false,
-                                              );
-                                            },
+                                            () =>
+                                                _handleSuccessfulAuth(context),
                                             rememberMe: _rememberMe,
                                           );
                                         },
@@ -433,10 +497,74 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                   icon: Icons.school_outlined,
                                 ),
                                 SizedBox(height: 16),
-                                _buildInputField(
-                                  controller: _locationController,
-                                  hintText: "Preferred Location",
-                                  icon: Icons.location_on_outlined,
+                                Container(
+                  
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+                                  child: MapBoxAutoCompleteWidget(
+                                    hint: "Enter your location",
+                                    inputDecoration: InputDecoration(
+                                      hintText: "Enter your location",
+                                      hintStyle:
+                                          TextStyle(color: Colors.grey[500]),
+                                      prefixIcon: Icon(Icons.location_on_outlined,
+                                          color: Colors.grey[600], size: 22),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 16),
+                                    ),
+                                    onSelect: (Place place) {
+                                      setState(() {
+                                        _locationController.text =
+                                            place.placeName;
+                                        _latitude = place.geometry.coordinates[1];
+                                        _longitude =
+                                            place.geometry.coordinates[0];
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                IntlPhoneField(
+                                  pickerDialogStyle: PickerDialogStyle(
+                                    padding: EdgeInsets.all(16),
+                                    searchFieldInputDecoration: InputDecoration(
+                                      hintText: 'Search for a country',
+                                      prefixIcon: Icon(
+                                        Icons.search_outlined,
+                                        color: Colors.grey[600],
+                                      ),
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
+                                    ),
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Phone Number',
+                                    hintText: 'Phone Number',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide:
+                                          BorderSide(color: Colors.grey[300]!),
+                                    ),
+                                  ),
+                                  initialCountryCode: 'US',
+                                  onChanged: (phone) {
+                                    setState(() {
+                                      _phoneNumber = phone.completeNumber;
+                                    });
+                                  },
                                 ),
                               ],
                               SizedBox(height: 24),
@@ -463,29 +591,26 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                                             email: _emailController.text,
                                             password: _passwordController.text,
                                             displayName: _nameController.text,
+                                            phoneNumber: _phoneNumber,
                                             university: _isProfessionalUser
                                                 ? null
                                                 : _collegeController.text,
                                             location: _isProfessionalUser
                                                 ? null
                                                 : _locationController.text,
+                                            latitude: _isProfessionalUser
+                                                ? null
+                                                : _latitude,
+                                            longitude: _isProfessionalUser
+                                                ? null
+                                                : _longitude,
                                             age: _isProfessionalUser
                                                 ? null
                                                 : int.tryParse(
                                                     _ageController.text),
                                             isProfessional: _isProfessionalUser,
-                                            onSuccess: () {
-                                              Navigator.pushAndRemoveUntil(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (c) => MainScreen(
-                                                        latitude:
-                                                            widget.latitude,
-                                                        longitude:
-                                                            widget.longitude)),
-                                                (route) => false,
-                                              );
-                                            },
+                                            onSuccess: () =>
+                                                _handleSuccessfulAuth(context),
                                           );
                                         },
                                   style: ElevatedButton.styleFrom(

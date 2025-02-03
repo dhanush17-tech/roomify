@@ -111,6 +111,9 @@ class AuthRepository {
     String? university,
     String? location,
     required bool isProfessional,
+    String? phoneNumber,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       final response = await http.post(
@@ -126,6 +129,9 @@ class AuthRepository {
           'university': university,
           'location': location,
           'isProfessional': isProfessional,
+          'phoneNumber': phoneNumber,
+          'latitude': latitude,
+          'longitude': longitude,
         }),
       );
 
@@ -196,9 +202,12 @@ class AuthRepository {
     String? bio,
     int? age,
     String? gender,
+    double? latitude,
+    double? longitude,
     String? location,
     String? status,
     File? profileImage,
+    String? phoneNumber,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -209,8 +218,11 @@ class AuthRepository {
         if (bio != null) 'bio': bio!,
         if (age != null) 'age': age.toString(),
         if (gender != null) 'gender': gender!,
+        if (latitude != null) 'latitude': latitude.toString(),
+        if (longitude != null) 'longitude': longitude.toString(),
         if (status != null) 'status': status!,
         if (location != null) 'location': location!,
+        if (phoneNumber != null) 'phoneNumber': phoneNumber!,
         if (profileImage != null)
           'profilePhoto': await MultipartFile.fromFile(profileImage.path,
               filename: "${userId}")

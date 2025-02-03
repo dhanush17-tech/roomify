@@ -20,6 +20,7 @@ class User {
   final List<UserSocialLink> socialLinks;
   String? status;
   bool isProfessional;
+  String? phoneNumber;
 
   User({
     required this.id,
@@ -41,6 +42,7 @@ class User {
     this.socialLinks = const [],
     this.status,
     this.isProfessional = false,
+    this.phoneNumber,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -79,6 +81,7 @@ class User {
           [],
       status: json['status'] as String?,
       isProfessional: json['isProfessional'] ?? false,
+      phoneNumber: json['phoneNumber'],
     );
   }
 
@@ -102,6 +105,7 @@ class User {
       'gender': gender,
       'profilePhoto': profilePhotoUrl,
       'status': status,
+      'phoneNumber': phoneNumber,
     };
   }
 
@@ -122,6 +126,7 @@ class User {
     double? latitude,
     double? longitude,
     String? status,
+    String? phoneNumber,
   }) {
     return User(
       id: id ?? this.id,
@@ -140,6 +145,7 @@ class User {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       status: status ?? this.status,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
     );
   }
 

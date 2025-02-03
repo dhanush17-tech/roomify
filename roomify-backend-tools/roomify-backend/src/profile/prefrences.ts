@@ -70,7 +70,16 @@ app.put('/preferences', async (c) => {
             where: { id: userId },
             include: {
                 preferences: true,
-                socialLinks: true
+                socialLinks: true,
+                listings: {
+                    include: {
+                        property: {
+                            include: {
+                                floorPlans: true
+                            }
+                        }
+                    }
+                }
             }
         });
         console.log(updatedUser);

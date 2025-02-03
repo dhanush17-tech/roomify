@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:roomify_app/utils.dart';
+import 'package:roomify_app/views/auth/login.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final ProfileUpdateRepo _repository;
@@ -268,5 +269,92 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  
+  // Add method to update a specific listing in the state
+  void updateListingInState(Listing updatedListing) {
+    // Update in properties list
+    final propertyIndex =
+        _properties.indexWhere((listing) => listing.id == updatedListing.id);
+    if (propertyIndex != -1) {
+      _properties[propertyIndex] = updatedListing;
+    }
+
+    // Update in marketplace items list
+    final marketplaceIndex = _marketplaceItems
+        .indexWhere((listing) => listing.id == updatedListing.id);
+    if (marketplaceIndex != -1) {
+      _marketplaceItems[marketplaceIndex] = updatedListing;
+    }
+
+    // Update in other users' listings cache if present
+    _otherUsersListings.forEach((userId, listings) {
+      final index =
+          listings.indexWhere((listing) => listing.id == updatedListing.id);
+      if (index != -1) {
+        listings[index] = updatedListing;
+      }
+    });
+
+    notifyListeners();
+  }
+
+  // Add method to add a new listing to the state
+  void addListingToState(Listing newListing) {
+    _properties.add(newListing);
+    notifyListeners();
+  }
+
+  // Add method to remove a listing from the state
+  void removeListingFromState(int listingId) {
+    _properties.removeWhere((listing) => listing.id == listingId);
+    notifyListeners();
+  }
+
+  // Force refresh all listings
+  Future<void> refreshListings() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final listings = await _repository.getUserListings();
+
+      _properties =
+          listings.where((item) => item.type == ListingType.Property).toList();
+      _marketplaceItems = listings
+          .where((item) => item.type == ListingType.Marketplace)
+          .toList();
+
+      // Clear other users' cache to force refresh on next access
+      _otherUsersListings.clear();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteAccount(BuildContext context) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Delete account from backend
+      await _repository.deleteAccount();
+
+      // Only clear local data if backend deletion was successful
+      if (context.mounted) {
+        await Provider.of<AuthProvider>(context, listen: false).signOut(context);
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to delete account: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+      throw Exception('Error deleting account');
+    }
+  }
 }

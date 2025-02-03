@@ -52,34 +52,24 @@ class PropertyProvider extends ChangeNotifier {
   String? get error => _error;
   List<Listing> get recommendations => _recommendations;
 
-  Future<Listing> createProperty(
-    Listing listing, {
-    List<File> images = const [],
-    List<File> floorPlanImages = const [],
-  }) async {
+  Future<Listing> createProperty(Listing listing,
+      {List<File> images = const []}) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      // Make the API call and wait for response
-      final createdProperty = await _repository.createProperty(listing,
-          images: images, floorPlanImages: floorPlanImages);
-
-      // Only refresh providers if the API call was successful
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
+      final createdListing =
+          await _repository.createProperty(listing, images: images);
+      _updatePropertyInLists(createdListing);
 
       _isLoading = false;
       notifyListeners();
-
-      // Return the created property to indicate success
-      return createdProperty;
+      return createdListing;
     } catch (e) {
-      _isLoading = false;
       _error = e.toString();
+      _isLoading = false;
       notifyListeners();
-      // Re-throw the error to be handled by the UI
       throw e;
     }
   }
@@ -153,24 +143,39 @@ class PropertyProvider extends ChangeNotifier {
     try {
       final isFavorite = _favorites.any((item) => item.id == listing.id);
 
+      // Update optimistically
       if (isFavorite) {
-        // Remove from favorites
-        await _repository.removeFavorite(listing.id);
         _favorites.removeWhere((item) => item.id == listing.id);
       } else {
-        // Add to favorites
-        await _repository.addFavorite(listing.id);
-        _favorites.add(listing);
+        _favorites.add(listing.copyWith(isFavorite: true));
       }
+      notifyListeners();
 
-      notifyListeners();
+      // Make API call
+      try {
+        if (isFavorite) {
+          await _repository.removeFavorite(listing.id);
+        } else {
+          await _repository.addFavorite(listing.id);
+        }
+      } catch (e) {
+        // Revert on error
+        if (isFavorite) {
+          _favorites.add(listing);
+        } else {
+          _favorites.removeWhere((item) => item.id == listing.id);
+        }
+        notifyListeners();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating favorite: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      // Optionally show error message to user
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating favorite: ${e.toString()}')),
-      );
+      print('Error in toggleFavorite: $e');
     }
   }
 
@@ -185,6 +190,7 @@ class PropertyProvider extends ChangeNotifier {
   Future<Listing> updateProperty(
     Listing listing, {
     List<File> images = const [],
+    List<String> deletedImageUrls = const [],
   }) async {
     try {
       _isLoading = true;
@@ -195,6 +201,7 @@ class PropertyProvider extends ChangeNotifier {
       final updatedListing = await _repository.updateProperty(
         listing,
         images: images,
+        deletedImageUrls: deletedImageUrls,
       );
 
       // Update recommendations if the listing exists there
@@ -263,37 +270,30 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  Future<Listing> addFloorPlan(Listing? listing,
-      {List<File> images = const []}) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      final updatedListing =
-          await _repository.addFloorPlan(listing!, images: images);
-      _updatePropertyInLists(updatedListing);
-      _isLoading = false;
-      notifyListeners();
-      return updatedListing;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      throw e;
-    }
-  }
-
-  Future<Listing> updateFloorPlan(int propertyId, String floorPlanId,
-      Map<String, dynamic> floorPlanData) async {
+  Future<Listing> updateFloorPlan(
+    int listingId,
+    String floorPlanId,
+    Map<String, dynamic> floorPlanData, {
+    File? imageFile,
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       final updatedListing = await _repository.updateFloorPlan(
-          propertyId, floorPlanId, floorPlanData);
+        listingId,
+        floorPlanId,
+        floorPlanData,
+        imageFile: imageFile,
+      );
+
+      // Update listing in all relevant lists
       _updatePropertyInLists(updatedListing);
+
+      // Force refresh profile provider's listings
+      await Provider.of<ProfileProvider>(context, listen: false)
+          .refreshListings();
 
       _isLoading = false;
       notifyListeners();
@@ -306,16 +306,28 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  Future<Listing> updateFloorPlanImage(
-      int propertyId, String floorPlanId, File imageFile) async {
+  Future<Listing> addFloorPlan(
+    Listing listing, {
+    required FloorPlan floorPlan,
+    File? imageFile,
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      final updatedListing = await _repository.updateFloorPlanImage(
-          propertyId, floorPlanId, imageFile);
+      final updatedListing = await _repository.addFloorPlan(
+        listing,
+        floorPlan: floorPlan,
+        imageFile: imageFile,
+      );
+
+      // Update listing in all relevant lists
       _updatePropertyInLists(updatedListing);
+
+      // Force refresh profile provider's listings
+      await Provider.of<ProfileProvider>(context, listen: false)
+          .refreshListings();
 
       _isLoading = false;
       notifyListeners();
@@ -328,15 +340,21 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  Future<Listing> deleteFloorPlan(int propertyId, String floorPlanId) async {
+  Future<Listing> deleteFloorPlan(int listingId, String floorPlanId) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       final updatedListing =
-          await _repository.deleteFloorPlan(propertyId, floorPlanId);
+          await _repository.deleteFloorPlan(listingId, floorPlanId);
+
+      // Update listing in all relevant lists
       _updatePropertyInLists(updatedListing);
+
+      // Force refresh profile provider's listings
+      await Provider.of<ProfileProvider>(context, listen: false)
+          .refreshListings();
 
       _isLoading = false;
       notifyListeners();
@@ -349,27 +367,27 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  // Helper method to update property in all lists
-  void _updatePropertyInLists(Listing listing) {
-    // Update in recommendations
+  // Helper method to update a property in all relevant lists
+  void _updatePropertyInLists(Listing updatedListing) {
+    // Update in recommendations if present
     final recommendationIndex =
-        _recommendations.indexWhere((item) => item.id == listing.id);
+        _recommendations.indexWhere((item) => item.id == updatedListing.id);
     if (recommendationIndex != -1) {
-      _recommendations[recommendationIndex].property = listing.property;
+      _recommendations[recommendationIndex] = updatedListing;
     }
 
-    // Update in pair-up listings
+    // Update in pair-up listings if present
     final pairUpIndex =
-        _pairUpListings.indexWhere((item) => item.id == listing.id);
+        _pairUpListings.indexWhere((item) => item.id == updatedListing.id);
     if (pairUpIndex != -1) {
-      _pairUpListings[pairUpIndex].property = listing.property;
+      _pairUpListings[pairUpIndex] = updatedListing;
     }
 
-    // Update in favorites
+    // Update in favorites if present
     final favoriteIndex =
-        _favorites.indexWhere((item) => item.id == listing.id);
+        _favorites.indexWhere((item) => item.id == updatedListing.id);
     if (favoriteIndex != -1) {
-      _favorites[favoriteIndex].property = listing.property;
+      _favorites[favoriteIndex] = updatedListing;
     }
   }
 }

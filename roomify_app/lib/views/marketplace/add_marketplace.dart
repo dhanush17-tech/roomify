@@ -360,10 +360,12 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
       _longitude = widget.existingListing!.longitude ?? 0.0;
       // Only set categories if they exist in the listing
       if (widget.existingListing!.marketplaceItem?.categories != null) {
-        _selectedCategories = List.from(widget.existingListing!.marketplaceItem!.categories);
+        _selectedCategories =
+            List.from(widget.existingListing!.marketplaceItem!.categories);
       }
       if (widget.existingListing!.marketplaceItem?.imageUrls != null) {
-        _existingImageUrls = List.from(widget.existingListing!.marketplaceItem!.imageUrls!);
+        _existingImageUrls =
+            List.from(widget.existingListing!.marketplaceItem!.imageUrls!);
       }
     }
   }

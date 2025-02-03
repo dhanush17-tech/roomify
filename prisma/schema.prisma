@@ -1,4 +1,0 @@
-model Property {
-  moveInDate     String
-  moveOutDate    String?
-} 

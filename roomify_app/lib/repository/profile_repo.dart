@@ -116,4 +116,72 @@ class ProfileUpdateRepo {
 
     return response.data;
   }
+
+  Future<void> deleteAccount() async {
+    try {
+      final token = await AuthRepository().getToken();
+      final response = await _dio.delete(
+        '$baseUrl/api/user/profile/delete-account',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete account');
+      }
+    } catch (e) {
+      throw Exception('Failed to delete account: $e');
+    }
+  }
+
+  Future<User> updateProfile({
+    required String userId,
+    String? displayName,
+    String? email,
+    String? password,
+    String? university,
+    String? bio,
+    int? age,
+    String? gender,
+    String? location,
+    String? status,
+    String? phoneNumber,
+    File? profileImage,
+  }) async {
+    try {
+      FormData formData = FormData.fromMap({
+        if (displayName != null) 'displayName': displayName,
+        if (email != null) 'email': email,
+        if (password != null) 'password': password,
+        if (university != null) 'university': university,
+        if (bio != null) 'bio': bio,
+        if (age != null) 'age': age.toString(),
+        if (gender != null) 'gender': gender,
+        if (status != null) 'status': status,
+        if (location != null) 'location': location,
+        if (phoneNumber != null) 'phoneNumber': phoneNumber,
+        if (profileImage != null)
+          'profilePhoto': await MultipartFile.fromFile(profileImage.path,
+              filename: "${userId}")
+      });
+
+      final response = await _dio.put(
+        '/api/user/profile',
+        data: formData,
+      );
+
+      if (response.statusCode == 200) {
+        return User.fromJson(response.data);
+      } else {
+        throw Exception('Failed to update profile: ${response.statusMessage}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to update profile: $e');
+    }
+  }
 }
