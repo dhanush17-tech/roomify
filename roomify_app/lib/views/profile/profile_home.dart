@@ -76,8 +76,12 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(height: 20),
               _buildSectionTitle("Account Settings"),
               _buildListItem(
-                  "Edit Account Info",
-                  showWarning: !userProvider.user!.isProfileComplete(),
+                  userProvider.user!.isProfessional
+                      ? "Edit Listing"
+                      : "Edit Profile",
+                  showWarning: userProvider.user!.isProfessional
+                      ? false
+                      : !userProvider.user!.isProfileComplete(),
                   Icons.account_circle_outlined, onTap: () {
                 Navigator.push(
                     context,

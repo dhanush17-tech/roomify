@@ -564,7 +564,7 @@ class PropertyCard extends StatelessWidget {
                 ],
               ),
 
-              SizedBox(height: 8),
+              SizedBox(height: 16),
 
               // Property Details
               Padding(
@@ -572,28 +572,25 @@ class PropertyCard extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 0),
+                      child: Text(
+                        listing.title.trim(),
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                     Text(
                       '\$${minPriceFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month',
                       style: TextStyle(
-                        color: Colors.blue,
+                        color: Colors.orange,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 20,
                       ),
                     ),
                   ],
-                ),
-              ),
-
-              SizedBox(height: 4),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  listing.title,
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
               ),
 

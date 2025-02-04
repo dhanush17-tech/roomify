@@ -28,6 +28,7 @@ import 'package:provider/provider.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
+import 'package:roomify_app/views/property/property_details.dart';
 import 'views/onboarding/splash_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -96,6 +97,7 @@ void main() async {
 
   // Handle app links while the app is in the foreground
   appLinks.uriLinkStream.listen((uri) {
+    print('Received URI: $uri');
     handleDeepLink(uri, navigatorKey);
   });
 
@@ -224,12 +226,35 @@ Future<void> handleNotificationTap(
 // Update handleDeepLink function to handle both https and roomify schemes
 void handleDeepLink(Uri uri, GlobalKey<NavigatorState> navigatorKey) {
   // Extract the path and query parameters regardless of scheme
-  final path = uri.path;
-  final params = uri.queryParameters;
+  final pathSegments = uri.pathSegments;
+
+  // Handle property details
+  if (pathSegments.length >= 2 && pathSegments[0] == 'property') {
+    final propertyId = pathSegments[1];
+    // Load property details and navigate
+    print('Property ID: $propertyId');
+    final propertiesProvider =
+        navigatorKey.currentContext?.read<PropertyProvider>();
+    if (propertiesProvider != null) {
+      propertiesProvider.getPropertyById(propertyId).then((listing) {
+        if (listing != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => PropertyDetailsScreen(
+                listing,
+                0.0, // You might want to pass actual coordinates here
+                0.0,
+              ),
+            ),
+          );
+        }
+      });
+    }
+  }
 
   // Handle reset password
-  if (path == '/reset-password' || path == 'reset-password') {
-    final token = params['token'];
+  else if (pathSegments.contains('reset-password')) {
+    final token = uri.queryParameters['token'];
     if (token != null) {
       navigatorKey.currentState?.pushReplacement(
         MaterialPageRoute(

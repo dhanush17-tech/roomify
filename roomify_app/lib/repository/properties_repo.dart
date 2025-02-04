@@ -457,6 +457,26 @@ class PropertyRepository {
       throw Exception('Network error: ${e.message}');
     }
   }
+
+  Future<Listing?> getPropertyById(String propertyId) async {
+    try {
+      final token = await AuthRepository().getToken();
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/properties/$propertyId'), headers: {
+        'Authorization': 'Bearer $token',
+      });
+      print('Response: ${response.request?.url}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Listing.fromJson(data['listing']);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching property: $e');
+      return null;
+    }
+  }
 }
 
 class AlreadyReportedException implements Exception {

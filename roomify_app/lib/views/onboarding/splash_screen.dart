@@ -49,19 +49,15 @@ class _SplashScreenState extends State<SplashScreen>
       _controller.forward();
     });
 
-     delayedNavigation();
+    delayedNavigation();
   }
-
- 
 
   Future<void> delayedNavigation() async {
     await Future.delayed(Duration(seconds: 2));
-    if (!mounted) return;
 
     await _checkAuth();
 
-    if (!mounted) return;
-
+ 
     if (isLoggedIn) {
       Navigator.pushAndRemoveUntil(
         context,

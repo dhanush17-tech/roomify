@@ -17,6 +17,7 @@ import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   Listing listing;
@@ -74,6 +75,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         );
       }
     }
+  }
+
+  void _shareListing() {
+    final String shareUrl =
+        'http://localhost:3000/property/${widget.listing.id}';
+    Share.share(
+      'Check out this property on Roomify: $shareUrl',
+      subject: widget.listing.title,
+    );
   }
 
   @override
@@ -149,6 +159,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   padding: EdgeInsets.only(left: 13),
                 ),
                 actions: [
+                  IconButton(
+                    icon: Icon(Icons.share),
+                    onPressed: _shareListing,
+                  ),
                   if (isOwnListing())
                     // Show edit button for own listings
                     if (!widget.listing.user!.isProfessional)
@@ -653,14 +667,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               ),
             ],
           ),
-          SizedBox(
-              height: MediaQuery.of(context).viewInsets.bottom == 0
-                  ? 20
-                  : MediaQuery.of(context).viewInsets.bottom),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: ExpandableUserCard(user: widget.listing.user!),
-          ),
+          widget.listing.user?.id == context.read<AuthProvider>().user?.id
+              ? SizedBox()
+              : Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ExpandableUserCard(user: widget.listing.user!),
+                ),
         ],
       ),
     );

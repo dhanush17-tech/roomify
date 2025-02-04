@@ -936,42 +936,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() => _isLoading = true);
 
         // Create a new listing with basic details
-        final newListing = await context
-            .read<PropertyProvider>()
-            .createProperty(
-              Listing(
-                id: 0,
-                title: _titleController.text.trim(),
-                description: _descriptionController.text.trim(),
-                location: _locationController.text.trim(),
-                latitude: widget.latitude,
-                longitude: widget.longitude,
-                price: 0,
-                createdAt: DateTime.now(),
-                type: ListingType.Property,
-                user: context.read<AuthProvider>().user,
-                isFavorite: false,
-                imageUrls: [],
-                property: Property(
-                  numberOfBedrooms: 0,
-                  numberOfBathrooms: 0,
-                  maxOccupancy: 0,
-                  moveInDate: DateTime.now().toIso8601String().split('T')[0],
-                  moveOutDate: null,
-                  walkScore: 0,
-                  transitScore: 0,
-                  transitDetails: {},
-                  lastLocationDetailsUpdate: null,
-                  isRoomifyChoice: false,
-                  imageUrls: [],
-                  categories: [],
-                  amenities: [],
-                  floorPlans: [],
-                  isLookingForRoomate: false,
-                ),
-              ),
-              images: _images,
-            );
+        final newListing =
+            await context.read<PropertyProvider>().createProperty(
+                  Listing(
+                    id: 0,
+                    title: _titleController.text.trim(),
+                    description: _descriptionController.text.trim(),
+                    location: _locationController.text.trim(),
+                    latitude: widget.latitude,
+                    longitude: widget.longitude,
+                    price: 0,
+                    createdAt: DateTime.now(),
+                    type: ListingType.Property,
+                    user: context.read<AuthProvider>().user,
+                    isFavorite: false,
+                    imageUrls: [],
+                    property: Property(
+                      numberOfBedrooms: 0,
+                      numberOfBathrooms: 0,
+                      maxOccupancy: 0,
+                      moveInDate: _listing!.property!.moveInDate,
+                      moveOutDate: _listing!.property!.moveOutDate,
+                      walkScore: 0,
+                      transitScore: 0,
+                      transitDetails: {},
+                      lastLocationDetailsUpdate: null,
+                      isRoomifyChoice: false,
+                      imageUrls: [],
+                      categories: [],
+                      amenities: _listing!.property!.amenities,
+                      floorPlans: [],
+                      isLookingForRoomate: false,
+                    ),
+                  ),
+                  images: _images,
+                );
 
         setState(() {
           _listing = newListing;

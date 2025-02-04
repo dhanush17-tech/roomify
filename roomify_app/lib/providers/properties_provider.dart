@@ -390,4 +390,14 @@ class PropertyProvider extends ChangeNotifier {
       _favorites[favoriteIndex] = updatedListing;
     }
   }
+
+  Future<Listing?> getPropertyById(String propertyId) async {
+    try {
+      final listing = await _repository.getPropertyById(propertyId);
+      return listing;
+    } catch (e) {
+      print('Error fetching property: $e');
+      return null;
+    }
+  }
 }

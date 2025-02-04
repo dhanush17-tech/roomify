@@ -149,25 +149,17 @@ app.post('/create', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Check if chat room already exists
+        // First check if a chat room already exists between these users
         const existingRoom = await prisma.chatRoom.findFirst({
             where: {
-                AND: [
-                    {
-                        participants: {
-                            some: {
-                                userId: userId
-                            }
-                        }
-                    },
-                    {
-                        participants: {
-                            some: {
-                                userId: otherUserId
-                            }
+                participants: {
+                    every: {
+                        userId: {
+                            in: [userId, otherUserId]
                         }
                     }
-                ]
+                }
+                
             },
             include: {
                 participants: {
@@ -192,15 +184,30 @@ app.post('/create', async (c) => {
                             }
                         }
                     }
+                },
+                unreadMessages: {
+                    where: {
+                        recipientId: userId,
+                        isRead: false
+                    }
                 }
             }
         });
 
         if (existingRoom) {
-            return c.json({ room: existingRoom });
+            // Return the existing room with unread count
+            console.log('Existing room found');
+            console.log(existingRoom);
+            return c.json({
+                room: {
+                    ...existingRoom,
+                    unreadCount: existingRoom.unreadMessages.length
+                }
+            });
         }
 
-        // Create new chat room
+ 
+        // If no existing room, create a new one
         const newRoom = await prisma.chatRoom.create({
             data: {
                 participants: {
@@ -233,16 +240,28 @@ app.post('/create', async (c) => {
                             }
                         }
                     }
+                },
+                unreadMessages: {
+                    where: {
+                        recipientId: userId,
+                        isRead: false
+                    }
                 }
             }
         });
 
-        return c.json({ room: newRoom });
+        // Return the new room with unread count (which will be 0)
+        return c.json({
+            room: {
+                ...newRoom,
+                unreadCount: 0
+            }
+        });
     } catch (error) {
         console.error('Create chat room error:', error);
         return c.json({
             error: 'Failed to create chat room',
-            details: error.message
+            details: error instanceof Error ? error.message : 'Unknown error'
         }, 500);
     }
 });

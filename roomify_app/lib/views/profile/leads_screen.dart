@@ -87,7 +87,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 itemCount: provider.leads.length,
                 itemBuilder: (context, index) {
                   final lead = provider.leads[index];
-                  return _buildLeadCard(lead);
+                  return !lead.user.isProfessional
+                      ? _buildLeadCard(lead)
+                      : SizedBox();
                 },
               );
             },
@@ -257,6 +259,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   if (lead.user.email != null) ...[
                     SizedBox(height: 12),
                     Container(
+                      width: MediaQuery.of(context).size.width * 0.45,
                       padding:
                           EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
@@ -271,11 +274,14 @@ class _LeadsScreenState extends State<LeadsScreen> {
                             color: Colors.blue[700],
                           ),
                           SizedBox(width: 8),
-                          Text(
-                            lead.user.email!,
-                            style: AppTextStyles.caption().copyWith(
-                              color: Colors.blue[700],
-                              fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Text(
+                              lead.user.email!,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption().copyWith(
+                                color: Colors.blue[700],
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -308,6 +314,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                             SizedBox(width: 8),
                             Text(
                               lead.user.phoneNumber!,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.caption().copyWith(
                                 color: Colors.green[700],
                                 fontWeight: FontWeight.w500,
