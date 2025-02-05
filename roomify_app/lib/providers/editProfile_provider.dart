@@ -16,7 +16,7 @@ class ProfileProvider extends ChangeNotifier {
   final BuildContext context;
 
   ProfileProvider(this._repository, this.context) {
-    _initializeLocation();
+    _initializeLocation(context);
   }
 
   bool _isLoading = false;
@@ -45,7 +45,7 @@ class ProfileProvider extends ChangeNotifier {
   // Cache for other users' listings
   final Map<String, List<Listing>> _otherUsersListings = {};
 
-  Future<void> _initializeLocation() async {
+  Future<void> _initializeLocation(BuildContext context) async {
     try {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
 
@@ -66,7 +66,7 @@ class ProfileProvider extends ChangeNotifier {
         _currentLocation = await _getLocationName(_latitude, _longitude);
 
         // Update user location in backend
-        await updateLocation(_latitude, _longitude);
+        await updateLocation(_latitude, _longitude, context);
       }
     } catch (e) {
       _error = 'Failed to get location: ${e.toString()}';
@@ -137,7 +137,8 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateLocation(double latitude, double longitude) async {
+  Future<void> updateLocation(double latitude, double longitude,
+      BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();

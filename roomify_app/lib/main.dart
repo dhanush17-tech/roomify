@@ -280,6 +280,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
         providers: [
+          // Base repositories first
           Provider<AuthRepository>(
             create: (_) => AuthRepository(),
           ),
@@ -292,45 +293,59 @@ class MyApp extends StatelessWidget {
           Provider<ProfileUpdateRepo>(
             create: (_) => ProfileUpdateRepo(),
           ),
+          Provider<SearchRepository>(
+            create: (_) => SearchRepository(),
+          ),
+          Provider<RoommateMatchRepository>(
+            create: (_) => RoommateMatchRepository(),
+          ),
+          Provider<ChatRepository>(
+            create: (_) => ChatRepository(),
+          ),
+
+          // Then providers that depend on repositories
           ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
             create: (context) => AuthProvider(
               context.read<AuthRepository>(),
             ),
             update: (context, authRepo, previous) =>
-                previous ??
-                AuthProvider(
-                  authRepo,
-                ),
+                previous ?? AuthProvider(authRepo),
           ),
-          ChangeNotifierProxyProvider2<AuthRepository, ProfileUpdateRepo,
+          ChangeNotifierProxyProvider2<SearchRepository, AuthRepository,
+              SearchProvider>(
+            create: (context) => SearchProvider(
+              context.read<SearchRepository>(),
+              context,
+            ),
+            update: (context, searchRepo, authRepo, previous) =>
+                previous ?? SearchProvider(searchRepo, context),
+          ),
+          ChangeNotifierProxyProvider2<ProfileUpdateRepo, AuthRepository,
               ProfileProvider>(
             create: (context) => ProfileProvider(
               context.read<ProfileUpdateRepo>(),
               context,
             ),
-            update: (context, authRepo, profileRepo, previous) =>
+            update: (context, profileRepo, authRepo, previous) =>
                 previous ?? ProfileProvider(profileRepo, context),
           ),
-          ChangeNotifierProxyProvider2<AuthRepository, PropertyRepository,
+          ChangeNotifierProxyProvider2<PropertyRepository, AuthRepository,
               PropertyProvider>(
             create: (context) => PropertyProvider(
               context.read<PropertyRepository>(),
               context,
             ),
-            update: (context, authRepo, propRepo, previous) =>
+            update: (context, propRepo, authRepo, previous) =>
                 previous ?? PropertyProvider(propRepo, context),
           ),
-          ChangeNotifierProxyProvider2<AuthRepository, MarketplaceRepository,
+          ChangeNotifierProxyProvider2<MarketplaceRepository, AuthRepository,
               MarketplaceProvider>(
             create: (context) => MarketplaceProvider(
               context.read<MarketplaceRepository>(),
               context,
             ),
-            update: (context, authRepo, marketRepo, previous) =>
+            update: (context, marketRepo, authRepo, previous) =>
                 previous ?? MarketplaceProvider(marketRepo, context),
-          ),
-          Provider<RoommateMatchRepository>(
-            create: (_) => RoommateMatchRepository(),
           ),
           ChangeNotifierProxyProvider<RoommateMatchRepository,
               RoommateMatchProvider>(
@@ -340,49 +355,39 @@ class MyApp extends StatelessWidget {
             update: (context, repository, previous) =>
                 previous ?? RoommateMatchProvider(repository),
           ),
-          ChangeNotifierProvider<SearchProvider>(
-            create: (context) => SearchProvider(
-              SearchRepository(),
-              context,
-            ),
-          ),
-          Provider<ChatRepository>(
-            create: (_) => ChatRepository(),
-          ),
-          ChangeNotifierProxyProvider<ChatRepository, ChatProvider>(
+          ChangeNotifierProxyProvider2<ChatRepository, AuthProvider,
+              ChatProvider>(
             create: (context) => ChatProvider(
               context.read<ChatRepository>(),
-              AuthProvider(
-                context.read<AuthRepository>(),
-              ),
+              context.read<AuthProvider>(),
             ),
-            update: (context, repository, previous) =>
+            update: (context, chatRepo, authProvider, previous) =>
                 previous ??
                 ChatProvider(
-                  repository,
-                  AuthProvider(
-                    context.read<AuthRepository>(),
-                  ),
+                  chatRepo,
+                  authProvider,
                 ),
           ),
         ],
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          theme: ThemeData.from(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: orangeColor,
-            ).copyWith(
-              secondary: Colors.orange,
-              primary: Colors.orange,
+        child: Builder(
+          builder: (context) => MaterialApp(
+            navigatorKey: navigatorKey,
+            theme: ThemeData.from(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: orangeColor,
+              ).copyWith(
+                secondary: Colors.orange,
+                primary: Colors.orange,
+              ),
+              textTheme: GoogleFonts.rubikTextTheme(),
             ),
-            textTheme: GoogleFonts.rubikTextTheme(),
-          ),
-          debugShowCheckedModeBanner: false,
-          home: Material(
-            color: Color(4294375672),
-            child: SplashScreen(
-              latitude: latitude,
-              longitude: longitude,
+            debugShowCheckedModeBanner: false,
+            home: Material(
+              color: Color(4294375672),
+              child: SplashScreen(
+                latitude: latitude,
+                longitude: longitude,
+              ),
             ),
           ),
         ));

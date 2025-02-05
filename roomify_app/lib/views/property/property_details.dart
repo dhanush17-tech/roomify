@@ -79,7 +79,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   void _shareListing() {
     final String shareUrl =
-        'http://localhost:3000/property/${widget.listing.id}';
+        'http://roomify-landingpage.vercel.app/property/${widget.listing.id}';
     Share.share(
       'Check out this property on Roomify: $shareUrl',
       subject: widget.listing.title,
@@ -95,7 +95,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLocationDetails();
+    // Schedule the loading after the build is complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadLocationDetails();
+    });
   }
 
   Map<String, dynamic>? _locationDetails;
@@ -109,12 +112,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
     setState(() {
       _loadingLocationDetails = true;
+      _error = null;
     });
 
     try {
-      final details = await context
-          .read<PropertyProvider>()
-          .getLocationDetails(widget.listing.id);
+      final provider = Provider.of<PropertyProvider>(context, listen: false);
+      final details = await provider.getLocationDetails(widget.listing.id);
+
       if (mounted) {
         setState(() {
           _locationDetails = details;
@@ -124,6 +128,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _error = e.toString();
           _loadingLocationDetails = false;
         });
       }
@@ -132,8 +137,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isProfessionalListing = widget.listing ?? false;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -143,97 +146,117 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             slivers: [
               // App Bar with image
               SliverAppBar(
+                expandedHeight: MediaQuery.of(context).size.height * 0.5,
+                floating: false,
                 pinned: true,
-                expandedHeight: 400,
                 backgroundColor: Colors.white,
                 leading: IconButton(
                   icon: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.white.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.arrow_back, color: blackTextColor),
                   ),
                   onPressed: () => Navigator.pop(context),
-                  padding: EdgeInsets.only(left: 13),
                 ),
                 actions: [
                   IconButton(
-                    icon: Icon(Icons.share),
-                    onPressed: _shareListing,
+                    icon: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.share, color: blackTextColor),
+                    ),
+                    onPressed: () {
+                      Share.share(
+                        'Check out this property on Roomify!\n${widget.listing.title}\n\nroomify://app/property/${widget.listing.id}',
+                      );
+                    },
                   ),
-                  if (isOwnListing())
-                    // Show edit button for own listings
-                    if (!widget.listing.user!.isProfessional)
-                      IconButton(
+                  if (isOwnListing() && !widget.listing.user!.isProfessional)
+                    IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.edit, color: Colors.grey),
+                      ),
+                      onPressed: () async {
+                        final updatedListing = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddPropertyScreen(
+                              existingListing: widget.listing,
+                            ),
+                          ),
+                        );
+
+                        // If we got an updated listing back, update the UI
+                        if (updatedListing != null && mounted) {
+                          setState(() {
+                            widget.listing = updatedListing;
+                          });
+                        }
+                      },
+                    ),
+                  if (!isOwnListing()) ...[
+                    IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.report_outlined, color: Colors.grey),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (c) => ReportScreen(
+                              listingId: widget.listing.id,
+                              listingType: widget.listing.title,
+                              latitude: widget.latitude,
+                              longitude: widget.longitude,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  Consumer<PropertyProvider>(
+                    builder: (ctx, provider, _) => AnimatedSwitcher(
+                      duration: Duration(milliseconds: 300),
+                      child: IconButton(
+                        key: Key(
+                            provider.isFavorite(widget.listing.id).toString()),
                         icon: Container(
                           padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.9),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.edit, color: orangeColor),
+                          child: Icon(
+                            provider.isFavorite(widget.listing.id)
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: provider.isFavorite(widget.listing.id)
+                                ? Colors.redAccent
+                                : blackTextColor,
+                          ),
                         ),
-                        onPressed: () async {
-                          final updatedListing = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddPropertyScreen(
-                                existingListing: widget.listing,
-                              ),
-                            ),
-                          );
-
-                          // If we got an updated listing back, update the UI
-                          if (updatedListing != null && mounted) {
-                            setState(() {
-                              widget.listing = updatedListing;
-                            });
-                          }
-                        },
-                      )
-                    else
-                      // Show favorite button for other listings
-                      ...[
-                      GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (C) => ReportScreen(
-                                          listingId: widget.listing.id,
-                                          listingType: widget.listing.title,
-                                          latitude: widget.latitude,
-                                          longitude: widget.longitude,
-                                        )));
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              children: [
-                                Text("Report listing",
-                                    style: TextStyle(
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          )),
-                      SizedBox(
-                        width: 15,
+                        onPressed: () =>
+                            provider.toggleFavorite(widget.listing),
                       ),
-                      Consumer<PropertyProvider>(
-                        builder: (ctx, provider, _) => FavoriteButton(
-                          isFavorite: provider.isFavorite(widget.listing.id),
-                          onTap: () => provider.toggleFavorite(widget.listing),
-                        ),
-                      ),
-                      SizedBox(width: 13),
-                    ]
+                    ),
+                  ),
+                  SizedBox(width: 8),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(

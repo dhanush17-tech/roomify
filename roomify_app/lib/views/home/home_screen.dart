@@ -123,7 +123,12 @@ class _HomeScreenState extends State<HomeScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       //an option to change the location
-                      LocationSelector(),
+
+                      LocationPickerWrapper(
+                        currentLat: widget.user.latitude ?? 0.0,
+                        currentLng: widget.user.longitude ?? 0.0,
+                      ),
+
                       SizedBox(height: 10),
                       Text(
                         'Find The Best',

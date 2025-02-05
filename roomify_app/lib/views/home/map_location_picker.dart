@@ -16,7 +16,14 @@ import 'package:roomify_app/utils.dart';
 class LocationPickerSheet extends StatefulWidget {
   final double lat;
   final double lng;
-  LocationPickerSheet({required this.lat, required this.lng});
+  final Function(double lat, double lng) onLocationSelected;
+
+  LocationPickerSheet({
+    required this.lat,
+    required this.lng,
+    required this.onLocationSelected,
+  });
+
   @override
   _LocationPickerSheetState createState() => _LocationPickerSheetState();
 }
@@ -31,6 +38,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   bool _isLoadingLocation = false;
+  bool _isUpdatingLocation = false;
 
   @override
   void initState() {
@@ -182,8 +190,23 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: selectedPoint != null
-                      ? () => _saveLocation(context)
+                  onPressed: selectedPoint != null && !_isUpdatingLocation
+                      ? () async {
+                          if (selectedPoint != null) {
+                            setState(() => _isUpdatingLocation = true);
+                            try {
+                              final lat =
+                                  selectedPoint!.coordinates.lat.toDouble();
+                              final lng =
+                                  selectedPoint!.coordinates.lng.toDouble();
+                              await widget.onLocationSelected(lat, lng);
+                            } finally {
+                              if (mounted) {
+                                setState(() => _isUpdatingLocation = false);
+                              }
+                            }
+                          }
+                        }
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
@@ -193,13 +216,22 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
-                    'Confirm Location',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isUpdatingLocation
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Confirm Location',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -316,29 +348,5 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
     });
 
     _addMarker(selectedPoint!);
-  }
-
-  Future<void> _saveLocation(BuildContext context) async {
-    if (selectedPoint != null) {
-      try {
-        final lat = selectedPoint!.coordinates.lat;
-        final lng = selectedPoint!.coordinates.lng;
-
-        await context
-            .read<ProfileProvider>()
-            .updateLocation(lat as double, lng as double);
-
-        await context.read<AuthProvider>().refreshAllProviders(context);
-        await context.read<AuthProvider>().loadUserProfile();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location updated successfully')),
-        );
-        Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update location: $e')),
-        );
-      }
-    }
   }
 }
