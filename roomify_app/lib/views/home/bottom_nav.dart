@@ -11,7 +11,6 @@ import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/profile/profile_home.dart';
 import 'package:roomify_app/views/property/add_property.dart';
 import 'package:roomify_app/views/property/property_details.dart';
-import 'package:roomify_app/views/property/explore_properties.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
 import 'package:provider/provider.dart';

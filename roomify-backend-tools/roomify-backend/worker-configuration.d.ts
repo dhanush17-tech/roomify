@@ -7,4 +7,5 @@ interface Env {
 	BUCKET: R2Bucket;
 	CHATROOM: DurableObject;
 	RESEND_API_KEY: string;
+	MAPBOX_TOKEN: string;
  } 

@@ -19,6 +19,7 @@ import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:roomify_app/models/suggestion.dart';
 
 // Price range filter chip widget
 class PriceFilterChips extends StatelessWidget {
@@ -627,10 +628,8 @@ class _SearchMapScreenState extends State<SearchMapScreen>
     if (query.isNotEmpty) {
       setState(() => _showSuggestions = true);
       _suggestionsAnimationController.forward();
-      context.read<SearchProvider>().getSearchSuggestions(
+      context.read<SearchProvider>().getSuggestions(
             query,
-            searchLat: authProvider.latitude,
-            searchLng: authProvider.longitude,
           );
     } else {
       _suggestionsAnimationController.reverse().then((_) {
@@ -694,6 +693,7 @@ class _SearchMapScreenState extends State<SearchMapScreen>
   Widget build(BuildContext context) {
     final profileProvider = context.read<ProfileProvider>();
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Consumer<SearchProvider>(
         builder: (context, searchProvider, child) {
           return Stack(
@@ -733,8 +733,21 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                           _selectedMinPrice = min;
                           _selectedMaxPrice = max;
                         });
-                        // Trigger search with new price filters
-                        _onSearchSubmitted(_searchController.text);
+                        // filter the search results by price with the min and max price
+
+                        searchProvider.searchResults =
+                            searchProvider.searchResults
+                                .where((element) =>
+                                    (element.price >= _selectedMinPrice! &&
+                                        element.price <= _selectedMaxPrice!) ||
+                                    (element.property?.floorPlans?.any(
+                                            (floorPlan) =>
+                                                floorPlan.price >=
+                                                    _selectedMinPrice! &&
+                                                floorPlan.price <=
+                                                    _selectedMaxPrice!) ??
+                                        false))
+                                .toList();
                       },
                       selectedMinPrice: _selectedMinPrice,
                       selectedMaxPrice: _selectedMaxPrice,
@@ -766,28 +779,69 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                         ),
                         child: Consumer<SearchProvider>(
                           builder: (context, provider, _) {
+                            final suggestions = [
+                              ...provider.propertySuggestions,
+                              ...provider.locationSuggestions,
+                            ];
+                            suggestions.sort(
+                                (a, b) => a.placeName.compareTo(b.placeName));
+                            // form the suggestion rearrange the property suggestions to be shown first
+                            final propertySuggestions = suggestions
+                                .where(
+                                    (element) => element is PropertySuggestion)
+                                .toList();
+                            final locationSuggestions = suggestions
+                                .where(
+                                    (element) => element is LocationSuggestion)
+                                .toList();
+                            final rearrangedSuggestions = [
+                              ...propertySuggestions,
+                              ...locationSuggestions,
+                            ];
                             return ListView.builder(
                               padding: EdgeInsets.all(0),
                               shrinkWrap: true,
                               physics: NeverScrollableScrollPhysics(),
-                              itemCount: provider.searchSuggestions.length,
+                              itemCount: rearrangedSuggestions.length,
                               itemBuilder: (context, index) {
-                                final suggestion =
-                                    provider.searchSuggestions[index];
+                                final suggestion = rearrangedSuggestions[index];
                                 return ListTile(
-                                  leading:
-                                      Icon(Icons.search, color: Colors.grey),
-                                  title: Text(suggestion.title),
+                                  leading: Icon(
+                                    suggestion is LocationSuggestion
+                                        ? Icons.location_on
+                                        : Icons.home,
+                                    color: Colors.grey,
+                                  ),
+                                  title: Text(suggestion.displayName),
+                                  subtitle: suggestion is LocationSuggestion
+                                      ? Text(suggestion.context ?? '')
+                                      : (suggestion as PropertySuggestion)
+                                                  .location !=
+                                              null
+                                          ? Text(suggestion.location!)
+                                          : null,
                                   onTap: () {
                                     _suggestionsAnimationController
                                         .reverse()
                                         .then((_) {
                                       setState(() => _showSuggestions = false);
                                     });
-                                    _searchController.text = suggestion.title;
+                                    _searchController.text =
+                                        suggestion.displayName;
                                     _searchFocusNode.unfocus();
+
+                                    if (suggestion is LocationSuggestion) {
+                                      context
+                                          .read<SearchProvider>()
+                                          .selectLocation(
+                                            suggestion.latitude,
+                                            suggestion.longitude,
+                                            suggestion.fullName,
+                                          );
+                                    }
+
                                     context.read<SearchProvider>().search(
-                                          suggestion.title,
+                                          suggestion.displayName,
                                           searchLat: context
                                               .read<ProfileProvider>()
                                               .latitude,
@@ -866,7 +920,39 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                 }
 
                 if (provider.searchResults.isEmpty) {
-                  return Center(child: Text("No results found"));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No properties available',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            'Check back later for personalized property suggestions',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
                 final authProvider = context.read<AuthProvider>();
 

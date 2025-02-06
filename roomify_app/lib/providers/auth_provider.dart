@@ -281,14 +281,7 @@ class AuthProvider extends ChangeNotifier {
         print('ProfileProvider not available: $e');
       }
 
-      try {
-        final searchProvider =
-            Provider.of<SearchProvider>(context, listen: false);
-        await searchProvider.fetchRecommendations(
-            _user!.latitude!, _user!.longitude!);
-      } catch (e) {
-        print('SearchProvider not available: $e');
-      }
+      
     } catch (e) {
       _error = e.toString();
       notifyListeners();

@@ -2,22 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/filterModel.dart';
 import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/suggestion.dart' as models;
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/repository/search_repo.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:roomify_app/utils.dart';
 
-class SearchProvider extends ChangeNotifier {
+class SearchProvider with ChangeNotifier {
   final SearchRepository _repository;
   final BuildContext context;
+
   List<Listing> _searchResults = [];
-  List<Listing> _searchSuggestions = [];
+  List<models.LocationSuggestion> _locationSuggestions = [];
+  List<models.PropertySuggestion> _propertySuggestions = [];
   bool _isLoading = false;
   Timer? _debounceTimer;
   String _searchQuery = '';
   String _activeTab = 'Property';
   FilterOptions? _currentFilters;
   bool _noResults = false;
+  double? _searchLat;
+  double? _searchLng;
+  String? _selectedLocation;
 
   SearchProvider(this._repository, this.context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -25,19 +34,25 @@ class SearchProvider extends ChangeNotifier {
   }
 
   List<Listing> get searchResults => _searchResults;
-  List<Listing> get searchSuggestions => _searchSuggestions;
+  List<models.LocationSuggestion> get locationSuggestions =>
+      _locationSuggestions;
+  List<models.PropertySuggestion> get propertySuggestions =>
+      _propertySuggestions;
   bool get isLoading => _isLoading;
   String get activeTab => _activeTab;
   FilterOptions? get currentFilters => _currentFilters;
   bool get noResults => _noResults;
+  String? get selectedLocation => _selectedLocation;
+  double? get searchLat => _searchLat;
+  double? get searchLng => _searchLng;
+  bool get hasSuggestions =>
+      _locationSuggestions.isNotEmpty || _propertySuggestions.isNotEmpty;
 
   Future<void> search(String query,
       {double? searchLat,
       double? searchLng,
       FilterOptions? filterOptions}) async {
     if (query.isEmpty && filterOptions == null) {
-      _searchResults = [];
-      notifyListeners();
       return;
     }
 
@@ -45,27 +60,117 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final latitude = searchLat ?? authProvider.latitude;
-      final longitude = searchLng ?? authProvider.longitude;
-
       _searchResults = await _repository.search(
         query: query,
         type: 'Property',
-        userLat: latitude,
-        userLng: longitude,
+        searchLatitude: _searchLat,
+        searchLongitude: _searchLng,
         filterOptions: filterOptions,
       );
-      print('Search results: ${_searchResults.length}');
     } catch (e) {
-      _searchResults = [];
       print('Error searching: $e');
+      _searchResults = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
+  }
 
-    _isLoading = false;
+  set searchResults(List<Listing> value) {
+    _searchResults = value;
     notifyListeners();
   }
 
+  Future<void> getSuggestions(String query) async {
+    if (query.isEmpty) {
+      clearSuggestions();
+      return;
+    }
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(Duration(milliseconds: 300), () async {
+      try {
+        final suggestions = await _repository.getSuggestions(query);
+
+        if (suggestions['locations'] != null) {
+          _locationSuggestions = (suggestions['locations'] as List)
+              .map((location) => models.LocationSuggestion(
+                    id: location['id'] as String,
+                    name: location['name'] as String,
+                    fullName: location['full_name'] as String,
+                    type: location['type'] as String,
+                    coordinates: List<double>.from(location['coordinates']),
+                    context: location['context'] as String?,
+                  ))
+              .toList();
+        }
+
+        if (suggestions['properties'] != null) {
+          _propertySuggestions = (suggestions['properties'] as List)
+              .map((property) => models.PropertySuggestion(
+                    id: property['id'],
+                    title: property['title'] as String,
+                    location: property['location'] as String?,
+                  ))
+              .toList();
+        }
+
+        notifyListeners();
+      } catch (e) {
+        print('Error getting suggestions: $e');
+        clearSuggestions();
+      }
+    });
+  }
+
+  void selectLocation(double lat, double lng, String locationName) {
+    _searchLat = lat;
+    _searchLng = lng;
+    _selectedLocation = locationName;
+    clearSuggestions();
+    notifyListeners();
+  }
+
+  void clearSuggestions() {
+    _locationSuggestions = [];
+    _propertySuggestions = [];
+    notifyListeners();
+  }
+
+  Future<void> searchProperties({
+    String? query,
+    FilterOptions? filterOptions,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _searchResults = await _repository.search(
+        query: query,
+        searchLatitude: _searchLat,
+        searchLongitude: _searchLng,
+        filterOptions: filterOptions,
+      );
+      notifyListeners();
+    } catch (e) {
+      print('Error searching properties: $e');
+      _searchResults = [];
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearSearch() {
+    _searchResults = [];
+    _selectedLocation = null;
+    _searchLat = null;
+    _searchLng = null;
+    clearSuggestions();
+  }
+
+  // Helper methods for initial load and recommendations
   Future<void> fetchRecommendations(double latitude, double longitude) async {
     _searchQuery = '';
     await loadInitialProperties(latitude, longitude);
@@ -81,19 +186,19 @@ class SearchProvider extends ChangeNotifier {
         query: '',
         type: _activeTab,
         filterOptions: _currentFilters,
-        userLat: latitude,
-        userLng: longitude,
+        searchLatitude: latitude,
+        searchLongitude: longitude,
         radius: 10.0,
       );
 
       _noResults = _searchResults.isEmpty;
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
-      _isLoading = false;
-      _noResults = true;
-      notifyListeners();
       print('Error loading initial properties: $e');
+      _noResults = true;
+      _searchResults = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -104,41 +209,6 @@ class SearchProvider extends ChangeNotifier {
     search('',
         searchLat: profileProvider.latitude,
         searchLng: profileProvider.longitude);
-    notifyListeners();
-  }
-
-  Future<void> getSearchSuggestions(String query,
-      {double? searchLat, double? searchLng}) async {
-    _debounceTimer?.cancel();
-
-    if (query.isEmpty) {
-      _searchSuggestions = [];
-      notifyListeners();
-      return;
-    }
-
-    _debounceTimer = Timer(Duration(milliseconds: 300), () async {
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final latitude = searchLat ?? authProvider.latitude;
-        final longitude = searchLng ?? authProvider.longitude;
-
-        _searchSuggestions = await _repository.getSearchSuggestions(
-          query,
-          latitude: latitude,
-          longitude: longitude,
-        );
-        notifyListeners();
-      } catch (e) {
-        _searchSuggestions = [];
-        print('Error getting suggestions: $e');
-        notifyListeners();
-      }
-    });
-  }
-
-  void clearSuggestions() {
-    _searchSuggestions = [];
     notifyListeners();
   }
 }

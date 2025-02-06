@@ -17,7 +17,8 @@ import leads from "./property/leads";
 export { ChatRoom } from './chat/durable_objects';
 
 const app = new Hono<{
-	Bindings: Env,
+	Bindings: En
+	v,
 	Variables: {
 		userId: string;
 	}
