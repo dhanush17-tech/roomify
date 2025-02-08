@@ -51,7 +51,10 @@ app.post('/', async (c) => {
         console.log('Hashed token stored:', hashedToken);
 
         // Send email with plain token
-        await sendResetEmail(email, resetToken, c);
+        await sendResetEmail(
+            //email,
+            "dhanush.kalaiselvan@gmail.com",
+            resetToken, c);
 
         return c.json({ message: 'Reset email sent successfully' });
     } catch (error) {
@@ -112,7 +115,7 @@ app.post('/confirm', async (c) => {
 });
 
 async function sendResetEmail(email: string, resetToken: string, c: Context) {
-    const deepLinkUrl = 'https://roomify.app/reset-password?token=' + resetToken;
+    const webResetUrl = `https://roomify-landingpage.vercel.app/forgot-password/${resetToken}`;
     const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.roomify.app';
     const appStoreUrl = 'https://apps.apple.com/app/roomify/id123456789';
 
@@ -120,21 +123,22 @@ async function sendResetEmail(email: string, resetToken: string, c: Context) {
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <h2>Reset Your Roomify Password</h2>
-                <p>You requested to reset your password. Click the button below if you have the Roomify app installed:</p>
+                <p>You requested to reset your password. Click the button below to reset your password:</p>
                 <p>
-                    <a href="${deepLinkUrl}" style="background-color: #E67E22; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
-                        Reset Password in App
+                    <a href="${webResetUrl}" style="background-color: #E67E22; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
+                        Reset Password
                     </a>
                 </p>
-                <p style="margin-top: 20px;">Don't have the Roomify app installed? Download it here:</p>
+                <p style="margin-top: 20px;">Have the Roomify app installed? Use this link instead:</p>
+                <p>
+                    <a href="${webResetUrl}" style="background-color: #4A90E2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
+                        Open in App
+                    </a>
+                </p>
+                <p style="margin-top: 20px;">Don't have the Roomify app? Download it here:</p>
                 <p>
                     <a href="${playStoreUrl}" style="color: #E67E22; text-decoration: none; margin-right: 15px;">Download for Android</a>
                     <a href="${appStoreUrl}" style="color: #E67E22; text-decoration: none;">Download for iOS</a>
-                </p>
-                <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
-                    After installing the app, click the "Reset Password in App" button above or copy this link:
-                    <br>
-                    <span style="color: #888; word-break: break-all;">${deepLinkUrl}</span>
                 </p>
                 <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
                     This reset link will expire in 1 hour.

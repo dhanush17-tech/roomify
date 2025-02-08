@@ -30,9 +30,58 @@ class PropertyDetailsScreen extends StatefulWidget {
   _PropertyDetailsScreenState createState() => _PropertyDetailsScreenState();
 }
 
-class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
-  final PageController _pageController = PageController();
+class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
+    with SingleTickerProviderStateMixin {
+  late PageController _pageController;
   int _currentPage = 0;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handlePropertyEdit() async {
+    final updatedListing = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddPropertyScreen(
+          existingListing: widget.listing,
+        ),
+      ),
+    );
+
+    if (updatedListing != null && mounted) {
+      // Start fade out animation
+      await _animationController.forward();
+
+      setState(() {
+        widget.listing = updatedListing;
+      });
+
+      // Reset and play fade in animation
+      await _animationController.reverse();
+    }
+  }
 
   bool isOwnListing() {
     final currentUserId = context.read<AuthProvider>().user?.id;
@@ -87,541 +136,461 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Schedule the loading after the build is complete
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadLocationDetails();
-    });
-  }
-
-  Map<String, dynamic>? _locationDetails;
-  bool _loadingLocationDetails = false;
-  TransitDetails? _transitDetails;
-  bool _isLoadingTransit = false;
-  String? _error;
-
-  Future<void> _loadLocationDetails() async {
-    if (!mounted) return;
-
-    setState(() {
-      _loadingLocationDetails = true;
-      _error = null;
-    });
-
-    try {
-      final provider = Provider.of<PropertyProvider>(context, listen: false);
-      final details = await provider.getLocationDetails(widget.listing.id);
-
-      if (mounted) {
-        setState(() {
-          _locationDetails = details;
-          _loadingLocationDetails = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loadingLocationDetails = false;
-        });
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Main content
-          CustomScrollView(
-            slivers: [
-              // App Bar with image
-              SliverAppBar(
-                expandedHeight: MediaQuery.of(context).size.height * 0.5,
-                floating: false,
-                pinned: true,
-                backgroundColor: Colors.white,
-                leading: IconButton(
-                  icon: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.arrow_back, color: blackTextColor),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                actions: [
-                  IconButton(
-                    icon: Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Stack(
+          children: [
+            // Main content
+            CustomScrollView(
+              slivers: [
+                // App Bar with image
+                SliverAppBar(
+                    expandedHeight: MediaQuery.of(context).size.height * 0.4,
+                    flexibleSpace: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
                       ),
-                      child: Icon(Icons.share, color: blackTextColor),
-                    ),
-                    onPressed: () {
-                      Share.share(
-                        'Check out this property on Roomify!\n${widget.listing.title}\n\nroomify://app/property/${widget.listing.id}',
-                      );
-                    },
-                  ),
-                  if (isOwnListing() && !widget.listing.user!.isProfessional)
-                    IconButton(
-                      icon: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.edit, color: Colors.grey),
-                      ),
-                      onPressed: () async {
-                        final updatedListing = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddPropertyScreen(
-                              existingListing: widget.listing,
-                            ),
-                          ),
-                        );
-
-                        // If we got an updated listing back, update the UI
-                        if (updatedListing != null && mounted) {
-                          setState(() {
-                            widget.listing = updatedListing;
-                          });
-                        }
-                      },
-                    ),
-                  if (!isOwnListing()) ...[
-                    IconButton(
-                      icon: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.report_outlined, color: Colors.grey),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (c) => ReportScreen(
-                              listingId: widget.listing.id,
-                              listingType: widget.listing.title,
-                              latitude: widget.latitude,
-                              longitude: widget.longitude,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                  Consumer<PropertyProvider>(
-                    builder: (ctx, provider, _) => AnimatedSwitcher(
-                      duration: Duration(milliseconds: 300),
-                      child: IconButton(
-                        key: Key(
-                            provider.isFavorite(widget.listing.id).toString()),
-                        icon: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            provider.isFavorite(widget.listing.id)
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: provider.isFavorite(widget.listing.id)
-                                ? Colors.redAccent
-                                : blackTextColor,
-                          ),
-                        ),
-                        onPressed: () =>
-                            provider.toggleFavorite(widget.listing),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    children: [
-                      // Main image carousel
-                      PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentPage = index;
-                          });
-                        },
-                        itemCount: widget.listing.imageUrls!.length > 0
-                            ? widget.listing.imageUrls!.length
-                            : widget.listing.property!.imageUrls!.length,
-                        itemBuilder: (context, index) {
-                          final imageUrl = widget.listing.imageUrls!.length > 0
-                              ? widget.listing.imageUrls![index]
-                              : widget.listing.property!.imageUrls![index];
-                          return ClipRRect(
-                            borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(40),
-                                bottomRight: Radius.circular(40)),
-                            child: CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              placeholder: (context, url) => Center(
-                                child: CircularProgressIndicator(),
+                      child: FlexibleSpaceBar(
+                        background: Hero(
+                          tag: 'property-image-${widget.listing.id}',
+                          child: Stack(
+                            children: [
+                              // Main image carousel
+                              PageView.builder(
+                                scrollDirection: Axis.vertical,
+                                controller: _pageController,
+                                onPageChanged: (index) {
+                                  setState(() {
+                                    _currentPage = index;
+                                  });
+                                },
+                                itemCount: widget.listing.imageUrls!.length > 0
+                                    ? widget.listing.imageUrls!.length
+                                    : widget
+                                        .listing.property!.imageUrls!.length,
+                                itemBuilder: (context, index) {
+                                  final imageUrl =
+                                      widget.listing.imageUrls!.length > 0
+                                          ? widget.listing.imageUrls![index]
+                                          : widget.listing.property!
+                                              .imageUrls![index];
+                                  return CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    placeholder: (context, url) => Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Icon(Icons.error),
+                                  );
+                                },
                               ),
-                              errorWidget: (context, url, error) =>
-                                  Icon(Icons.error),
-                            ),
-                          );
-                        },
-                      ),
 
-                      // Page indicators at bottom
-                      Positioned(
-                        bottom: 20,
-                        left: 0,
-                        right: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            widget.listing.imageUrls!.length > 0
-                                ? widget.listing.imageUrls!.length
-                                : widget.listing.property!.imageUrls!.length,
-                            (index) => Container(
-                              margin: EdgeInsets.symmetric(horizontal: 4),
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _currentPage == index
-                                    ? Colors.white
-                                    : Colors.white.withOpacity(0.4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Content
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Rating and Title section
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Left side - Rating, title, location
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Rating
-
-                                // Title
-                                Text(
-                                  widget.listing.title,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                              // Image gallery grid at bottom right
+                              Positioned(
+                                bottom: 16,
+                                right: 10,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (context) => Container(
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                                0.9,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(20),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(16.0),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    'All Photos',
+                                                    style: TextStyle(
+                                                      fontSize: 20,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: Icon(Icons.close),
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: GridView.builder(
+                                                padding: EdgeInsets.all(8),
+                                                gridDelegate:
+                                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                                  crossAxisCount: 2,
+                                                  mainAxisSpacing: 8,
+                                                  crossAxisSpacing: 8,
+                                                ),
+                                                itemCount: widget.listing
+                                                            .imageUrls!.length >
+                                                        0
+                                                    ? widget.listing.imageUrls!
+                                                        .length
+                                                    : widget.listing.property!
+                                                        .imageUrls!.length,
+                                                itemBuilder: (context, index) {
+                                                  final imageUrl = widget
+                                                              .listing
+                                                              .imageUrls!
+                                                              .length >
+                                                          0
+                                                      ? widget.listing
+                                                          .imageUrls![index]
+                                                      : widget.listing.property!
+                                                          .imageUrls![index];
+                                                  return GestureDetector(
+                                                    onTap: () {
+                                                      _pageController
+                                                          .animateToPage(
+                                                        index,
+                                                        duration: Duration(
+                                                            milliseconds: 300),
+                                                        curve: Curves.easeInOut,
+                                                      );
+                                                      Navigator.pop(context);
+                                                    },
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                      child: CachedNetworkImage(
+                                                        imageUrl: imageUrl,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (var i = 0;
+                                          i < min(2, _getTotalImages());
+                                          i++) ...[
+                                        Container(
+                                          height: 80,
+                                          width: 80,
+                                          decoration: BoxDecoration(
+                                              color:
+                                                  Colors.black.withOpacity(0.7),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.white
+                                                    .withOpacity(0.3),
+                                                width: 3,
+                                              )),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            child: CachedNetworkImage(
+                                              imageUrl: _getImageUrl(i),
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                      ],
+                                      if (_getTotalImages() > 2)
+                                        Container(
+                                          height: 80,
+                                          width: 80,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.black.withOpacity(0.7),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              '+${_getTotalImages() - 2}',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
-
-                                // Location
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on_outlined,
-                                        color: Colors.grey, size: 20),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      widget.listing.location,
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          // Right side - Price
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                widget.listing.user!.isProfessional
-                                    ? widget.listing.property?.floorPlans !=
-                                                null &&
-                                            widget.listing.property!.floorPlans!
-                                                .isNotEmpty
-                                        ? "\$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
-                                        : "\$${widget.listing.price}"
-                                    : "\$${widget.listing.price}",
-                                style: TextStyle(
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.bold,
-                                    color: orangeColor),
-                              ),
-                              Text(
-                                "per month",
-                                style: TextStyle(color: Colors.grey),
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
+                    )),
 
-                      SizedBox(height: 24),
-
-                      // Action buttons
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 5),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Content
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border:
-                                        Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.bed_outlined),
-                                        onPressed: () {},
-                                      ),
-                                      Text(
-                                        _getBedroomText(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border:
-                                        Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.bathtub_outlined),
-                                        onPressed: () {},
-                                      ),
-                                      Text(
-                                        _getBathroomText(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border:
-                                        Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12.0, horizontal: 12.0),
-                                    child: RichText(
-                                      text: TextSpan(
-                                        text: "Max occupancy ",
-                                        style: TextStyle(
-                                            fontSize: 16,
-                                            color: blackTextColor),
-                                        children: <TextSpan>[
-                                          TextSpan(
-                                            text: _getMaxOccupancyText(),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: blackTextColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                            Expanded(
+                              flex: 2,
+                              child: Hero(
+                                tag: 'property-title-${widget.listing.id}',
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Text(
+                                    widget.listing.title,
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
                                     ),
+                                    overflow: TextOverflow.visible,
+                                    softWrap: true,
+                                    maxLines: null,
                                   ),
                                 ),
-                              ],
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Hero(
+                              tag: 'property-price-${widget.listing.id}',
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Text(
+                                  widget.listing.user!.isProfessional
+                                      ? widget.listing.property!.floorPlans !=
+                                                  null &&
+                                              widget.listing.property!
+                                                  .floorPlans!.isNotEmpty
+                                          ? "\$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
+                                          : "\$${widget.listing.price}"
+                                      : "\$${widget.listing.price}",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    color: orangeColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                        SizedBox(height: 24),
 
-                      // Agent info
-
-                      SizedBox(
-                        height: 20,
-                      ),
-                      Text(
-                        widget.listing.description ?? '',
-                        style: AppTextStyles.small(
-                          fontWeight: FontWeight.normal,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(
-                        height: 20,
-                      ),
-                      Text('Amenities',
-                          style: AppTextStyles.title(
-                              fontSize: 15, color: orangeColor)),
-                      // Add preferences section
-                      if (widget.listing.property!.amenities!.isNotEmpty)
-                        buildPreferencesSection(
-                            widget.listing.property!.amenities!),
-
-                      // Floor Plans Section
-                      if (widget.listing.property?.floorPlans != null &&
-                          widget.listing.property!.floorPlans!.isNotEmpty) ...[
-                        SizedBox(height: 20),
-                        Text(
-                          'Floor Plans',
-                          style: AppTextStyles.title(
-                              fontSize: 15, color: orangeColor),
-                        ),
-                        SizedBox(height: 12),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          padding: EdgeInsets.zero,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount:
-                              widget.listing.property!.floorPlans!.length,
-                          itemBuilder: (context, index) {
-                            final plan =
-                                widget.listing.property!.floorPlans![index];
-                            return _buildFloorPlan(plan);
-                          },
-                        ),
-                      ],
-
-                      if (widget.listing.property?.moveInDate != null ||
-                          widget.listing.property?.moveOutDate != null) ...[
-                        SizedBox(height: 20),
-                        Text(
-                          'Availability',
-                          style: AppTextStyles.title(
-                              fontSize: 15, color: orangeColor),
-                        ),
-                        SizedBox(height: 12),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey[200]!,
-                              width: 1,
-                            ),
-                          ),
+                        // Action buttons
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 5),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (widget.listing.property?.moveInDate != null)
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.login,
-                                              size: 16, color: Colors.green),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Move-in',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 14,
-                                            ),
+                              Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.bed_outlined),
+                                          onPressed: () {},
+                                        ),
+                                        Text(
+                                          _getBedroomText(),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        widget.listing.property?.moveInDate ==
-                                                'Anytime'
-                                            ? 'Available Anytime'
-                                            : widget.listing.property
-                                                    ?.moveInDate ??
-                                                'Not specified',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                        ),
+                                        SizedBox(width: 10),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.bathtub_outlined),
+                                          onPressed: () {},
+                                        ),
+                                        Text(
+                                          _getBathroomText(),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12.0, horizontal: 12.0),
+                                      child: RichText(
+                                        text: TextSpan(
+                                          text: "Max occupancy ",
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              color: blackTextColor),
+                                          children: <TextSpan>[
+                                            TextSpan(
+                                              text: _getMaxOccupancyText(),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: blackTextColor,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              if (widget.listing.property?.moveOutDate !=
-                                  null) ...[
-                                Container(
-                                  height: 40,
-                                  width: 1,
-                                  color: Colors.grey[300],
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 16.0),
-                                        child: Row(
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Agent info
+
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Text(
+                          widget.listing.description ?? '',
+                          style: AppTextStyles.small(
+                            fontWeight: FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Text('Amenities',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor)),
+                        // Add preferences section
+                        if (widget.listing.property!.amenities!.isNotEmpty)
+                          buildPreferencesSection(
+                              widget.listing.property!.amenities!),
+
+                        // Floor Plans Section
+                        if (widget.listing.property?.floorPlans != null &&
+                            widget
+                                .listing.property!.floorPlans!.isNotEmpty) ...[
+                          SizedBox(height: 20),
+                          Text(
+                            'Floor Plans',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor),
+                          ),
+                          SizedBox(height: 12),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount:
+                                widget.listing.property!.floorPlans!.length,
+                            itemBuilder: (context, index) {
+                              final plan =
+                                  widget.listing.property!.floorPlans![index];
+                              return _buildFloorPlan(plan);
+                            },
+                          ),
+                        ],
+
+                        if (widget.listing.property?.moveInDate != null ||
+                            widget.listing.property?.moveOutDate != null) ...[
+                          SizedBox(height: 20),
+                          Text(
+                            'Availability',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor),
+                          ),
+                          SizedBox(height: 12),
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey[200]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (widget.listing.property?.moveInDate != null)
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.logout,
-                                                size: 16, color: Colors.red),
+                                            Icon(Icons.login,
+                                                size: 16, color: Colors.green),
                                             SizedBox(width: 8),
                                             Text(
-                                              'Move-out',
+                                              'Move-in',
                                               style: TextStyle(
                                                 color: Colors.grey[600],
                                                 fontSize: 14,
@@ -629,76 +598,134 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 16.0),
-                                        child: Text(
-                                          widget.listing.property?.moveOutDate
-                                                  .toString() ??
-                                              'Not specified',
+                                        SizedBox(height: 4),
+                                        Text(
+                                          widget.listing.property?.moveInDate ==
+                                                  'Anytime'
+                                              ? 'Available Anytime'
+                                              : widget.listing.property
+                                                      ?.moveInDate ??
+                                                  'Not specified',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                  ),
+                                if (widget.listing.property?.moveOutDate !=
+                                    null) ...[
+                                  Container(
+                                    height: 40,
+                                    width: 1,
+                                    color: Colors.grey[300],
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 16.0),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.logout,
+                                                  size: 16, color: Colors.red),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Move-out',
+                                                style: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 16.0),
+                                          child: Text(
+                                            widget.listing.property?.moveOutDate
+                                                    .toString() ??
+                                                'Not specified',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (widget.listing.property?.isLookingForRoomate ==
+                            true) ...[
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: orangeColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: orangeColor.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.people_outline, color: orangeColor),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Looking for Roommate',
+                                  style: TextStyle(
+                                    color: orangeColor,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (widget.listing.property?.isLookingForRoomate ==
-                          true) ...[
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: orangeColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: orangeColor.withOpacity(0.3),
-                              width: 1,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.people_outline, color: orangeColor),
-                              SizedBox(width: 8),
-                              Text(
-                                'Looking for Roommate',
-                                style: TextStyle(
-                                  color: orangeColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
 
-                      _buildLocationDetailsSection(),
-                      SizedBox(height: 130),
-                    ],
+                        _buildLocationDetailsSection(widget.listing),
+                        SizedBox(height: 130),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          widget.listing.user?.id == context.read<AuthProvider>().user?.id
-              ? SizedBox()
-              : Align(
-                  alignment: Alignment.bottomCenter,
-                  child: ExpandableUserCard(user: widget.listing.user!),
-                ),
-        ],
+              ],
+            ),
+            widget.listing.user?.id == context.read<AuthProvider>().user?.id
+                ? SizedBox()
+                : Align(
+                    alignment: Alignment.bottomCenter,
+                    child: ExpandableUserCard(user: widget.listing.user!),
+                  ),
+          ],
+        ),
       ),
     );
+  }
+
+  int _getTotalImages() {
+    return widget.listing.imageUrls!.length > 0
+        ? widget.listing.imageUrls!.length
+        : widget.listing.property!.imageUrls!.length;
+  }
+
+  String _getImageUrl(int index) {
+    return widget.listing.imageUrls!.length > 0
+        ? widget.listing.imageUrls![index]
+        : widget.listing.property!.imageUrls![index];
   }
 
   Widget buildPreferencesSection(List preferences) {
@@ -935,9 +962,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return '$month $year';
   }
 
-  Widget _buildLocationDetailsSection() {
-    if (_loadingLocationDetails) {
-      return Center(child: CircularProgressIndicator());
+  Widget _buildLocationDetailsSection(Listing listing) {
+    var _locationDetails = listing.property?.transitDetails;
+    var _loadingLocationDetails = false;
+
+    if (_locationDetails == null) {
+      _loadingLocationDetails = true;
     }
 
     if (_locationDetails == null) {

@@ -11,6 +11,7 @@ import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/favourites.dart';
 import 'package:roomify_app/views/home/property_search_screen.dart';
 import 'package:roomify_app/views/messaging/chat_home.dart';
+import 'package:roomify_app/views/messaging/document_request_dialog.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
@@ -281,13 +282,13 @@ class _HomeScreenState extends State<HomeScreen>
               // Property Cards
               Consumer<PropertyProvider>(
                 builder: (context, provider, child) {
-                  if (provider.isLoading) {
+                  if (provider.isLoadingReccomendations) {
                     return _fadeShimmerSearchListView();
                   }
 
                   _fadeController.forward();
 
-                  if (!provider.isLoading && provider.recommendations.isEmpty) {
+                  if (provider.recommendations.isEmpty) {
                     return Container(
                       height: MediaQuery.of(context).size.height * 0.5,
                       child: Center(
@@ -468,36 +469,47 @@ class PropertyCard extends StatelessWidget {
         ? getMinPriceFloorPlan(listing)
         : null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-      child: GestureDetector(
-        onTap: () {
-          // Track the property view
-          context.read<PropertyProvider>().trackPropertyView(listing.id);
+    return GestureDetector(
+      onTap: () {
+        // Track the property view
+        context.read<PropertyProvider>().trackPropertyView(listing.id);
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PropertyDetailsScreen(
-                listing,
-                latitude,
-                longitude,
-              ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PropertyDetailsScreen(
+              listing,
+              latitude,
+              longitude,
             ),
-          );
-        },
-        child: Container(
-          margin: EdgeInsets.only(bottom: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Property Image
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Hero(
-                      tag: 'property_image_${listing.id}',
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 100,
+              offset: Offset(-2, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Hero(
+                  tag: 'property-image-${listing.id}',
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
                       child: listing.property?.imageUrls == null ||
                               listing.property?.imageUrls.length == 0
                           ? listing.imageUrls?.isEmpty ?? true
@@ -528,104 +540,105 @@ class PropertyCard extends StatelessWidget {
                             ),
                     ),
                   ),
-                  listing.property?.isRoomifyChoice == true
-                      ? Positioned(
-                          top: 8,
-                          left: 8,
-                          child: RoomifyVerified(),
-                        )
-                      : SizedBox.shrink(),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Consumer<PropertyProvider>(
-                      builder: (context, provider, child) {
-                        if (provider.isLoading) {
-                          return Container(
-                            padding: EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Consumer<PropertyProvider>(
+                    builder: (context, provider, child) {
+                      if (provider.isLoading) {
+                        return Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.grey),
                             ),
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.grey),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return FavoriteButton(
-                          isFavorite: provider.isFavorite(listing.id),
-                          onTap: () => provider.toggleFavorite(listing),
+                          ),
                         );
-                      },
-                    ),
+                      }
+
+                      return FavoriteButton(
+                        isFavorite: provider.isFavorite(listing.id),
+                        onTap: () => provider.toggleFavorite(listing),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Hero(
+                        tag: 'property-title-${listing.id}',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Text(
+                            listing.title.trim().capitalize(),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      Spacer(),
+                      Hero(
+                        tag: 'property-price-${listing.id}',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Text(
+                            '\$${minPriceFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: orangeColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, color: Colors.grey, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        listing.location,
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      Spacer(),
+                      Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
+                      SizedBox(width: 4),
+                      Text(
+                          '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms}'),
+                      SizedBox(width: 16),
+                      Icon(Icons.bathtub_outlined,
+                          color: Colors.grey, size: 20),
+                      SizedBox(width: 4),
+                      Text(
+                          '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms}'),
+                    ],
                   ),
                 ],
               ),
-
-              SizedBox(height: 16),
-
-              // Property Details
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 0),
-                      child: Text(
-                        listing.title.trim(),
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '\$${minPriceFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: 4),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on, color: Colors.grey, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      listing.location,
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    Spacer(),
-                    Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
-                    SizedBox(width: 4),
-                    Text(
-                        '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms}'),
-                    SizedBox(width: 16),
-                    Icon(Icons.bathtub_outlined, color: Colors.grey, size: 20),
-                    SizedBox(width: 4),
-                    Text(
-                        '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms}'),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

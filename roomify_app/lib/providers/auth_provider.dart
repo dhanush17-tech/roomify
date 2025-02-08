@@ -25,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   double _latitude = 0.0;
   double _longitude = 0.0;
+  bool _isEmailSent = false;
 
   double get latitude => _latitude;
   double get longitude => _longitude;
@@ -32,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
   String? get error => _error;
+  bool get isEmailSent => _isEmailSent;
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -66,8 +68,10 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _setUser(user);
-      await refreshAllProviders(context);
-      onSuccess();
+      onSuccess(); // Call onSuccess immediately after successful login
+
+      // Start refreshing providers after navigation
+      Future.microtask(() => refreshAllProviders(context));
     } catch (e) {
       _setError(e.toString().replaceAll('Exception: ', ''));
     } finally {
@@ -131,8 +135,10 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _setUser(user);
-      await refreshAllProviders(context);
+
       onSuccess();
+      Future.microtask(() => refreshAllProviders(context));
+
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -178,7 +184,8 @@ class AuthProvider extends ChangeNotifier {
           profileImage: profileImage);
 
       _user = updatedUser;
-      await refreshAllProviders(context);
+
+      Future.microtask(() => refreshAllProviders(context));
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -220,16 +227,24 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> requestPassswordReset(String email, Function onSent) async {
     try {
+      _error = null;
       _isLoading = true;
       notifyListeners();
       await _authRepository.requestPasswordReset(email: email);
-      onSent;
+
+      onSent();
+      _isEmailSent = true;
     } catch (e) {
       print(e.toString());
-      _error = "Email Failed";
+      _isEmailSent = false;
+
+      if (e.toString().contains('User not found')) {
+        _error = "Email Not Found";
+      } else {
+        _error = "Email Failed";
+      }
     } finally {
       _isLoading = false;
-      _error = "";
       notifyListeners();
     }
   }
@@ -249,42 +264,60 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> refreshAllProviders(BuildContext context) async {
+    if (!context.mounted) return; // Check if context is still valid
+
     try {
-      // Refresh user profile
+      // Load user profile first as it's critical
       await loadUserProfile();
+      if (!context.mounted) return;
 
-      // Use Provider.of with a try-catch to handle potential provider not found errors
-      try {
-        final propertyProvider =
-            Provider.of<PropertyProvider>(context, listen: false);
-        await propertyProvider.fetchRecommendations(_latitude, _longitude);
-        await propertyProvider.loadFavorites();
-
-        await propertyProvider.fetchPairUpListings();
-      } catch (e) {
-        print('PropertyProvider not available: $e');
-      }
-
-      try {
-        final marketplaceProvider =
-            Provider.of<MarketplaceProvider>(context, listen: false);
-        await marketplaceProvider.loadItems();
-      } catch (e) {
-        print('MarketplaceProvider not available: $e');
-      }
-
-      try {
-        final profileProvider =
-            Provider.of<ProfileProvider>(context, listen: false);
-        await profileProvider.loadUserListings();
-      } catch (e) {
-        print('ProfileProvider not available: $e');
-      }
-
-      
+      // Load all other data in parallel
+      await Future.wait([
+        _refreshPropertyProvider(context),
+        _refreshMarketplaceProvider(context),
+        _refreshProfileProvider(context),
+      ]);
     } catch (e) {
-      _error = e.toString();
+      print('Error refreshing providers: $e');
+      _error = 'Failed to load some data. Please try again.';
       notifyListeners();
+    }
+  }
+
+  Future<void> _refreshPropertyProvider(BuildContext context) async {
+    if (!context.mounted) return;
+    try {
+      final propertyProvider =
+          Provider.of<PropertyProvider>(context, listen: false);
+      await Future.wait([
+        propertyProvider.fetchRecommendations(_latitude, _longitude),
+        propertyProvider.loadFavorites(),
+        propertyProvider.fetchPairUpListings(),
+      ]);
+    } catch (e) {
+      print('PropertyProvider refresh failed: $e');
+    }
+  }
+
+  Future<void> _refreshMarketplaceProvider(BuildContext context) async {
+    if (!context.mounted) return;
+    try {
+      final marketplaceProvider =
+          Provider.of<MarketplaceProvider>(context, listen: false);
+      await marketplaceProvider.loadItems();
+    } catch (e) {
+      print('MarketplaceProvider refresh failed: $e');
+    }
+  }
+
+  Future<void> _refreshProfileProvider(BuildContext context) async {
+    if (!context.mounted) return;
+    try {
+      final profileProvider =
+          Provider.of<ProfileProvider>(context, listen: false);
+      await profileProvider.loadUserListings();
+    } catch (e) {
+      print('ProfileProvider refresh failed: $e');
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
@@ -11,9 +12,8 @@ import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/marketplace/add_marketplace.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/views/property/report_listing.dart';
- 
+
 class ItemDetailsScreen extends StatelessWidget {
   final Listing item;
   final double latitude;
@@ -36,9 +36,96 @@ class ItemDetailsScreen extends StatelessWidget {
             slivers: [
               // App Bar with image
               SliverAppBar(
+                expandedHeight: MediaQuery.of(context).size.height * 0.4,
                 pinned: true,
-                expandedHeight: 400,
-                backgroundColor: Colors.white,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Hero(
+                    tag: 'property-image-${item.id}',
+                    child: Stack(
+                      children: [
+                        PageView.builder(
+                          itemCount: item.marketplaceItem!.imageUrls!.length,
+                          itemBuilder: (context, index) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(40),
+                                bottomRight: Radius.circular(40),
+                              ),
+                              child: CachedNetworkImage(
+                                imageUrl:
+                                    item.marketplaceItem!.imageUrls![index],
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                placeholder: (context, url) => Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                errorWidget: (context, url, error) =>
+                                    Icon(Icons.error),
+                              ),
+                            );
+                          },
+                        ),
+                        // Small images on the right
+                        if (item.imageUrls!.length > 1)
+                          Positioned(
+                            right: 16,
+                            bottom: 16,
+                            child: Column(
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(bottom: 8),
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.9),
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(17),
+                                    child: CachedNetworkImage(
+                                      imageUrl: item.imageUrls![1],
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Icon(Icons.error),
+                                    ),
+                                  ),
+                                ),
+                                if (item.imageUrls!.length > 2)
+                                  Container(
+                                    margin: EdgeInsets.only(bottom: 8),
+                                    width: 60,
+                                    height: 60,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.9),
+                                        width: 3,
+                                      ),
+                                      color: blackTextColor.withOpacity(0.4),
+                                    ),
+                                    child: Text(
+                                      '+${item.imageUrls!.length - 2}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
                 leading: IconButton(
                   icon: Container(
                     padding: EdgeInsets.all(8),
@@ -118,90 +205,6 @@ class ItemDetailsScreen extends StatelessWidget {
                   ],
                   SizedBox(width: 13),
                 ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(40),
-                          bottomRight: Radius.circular(40),
-                        ),
-                        child: CachedNetworkImage(
-                          imageUrl:
-                              item.marketplaceItem?.imageUrls?.isNotEmpty ==
-                                      true
-                                  ? item.marketplaceItem!.imageUrls!.first
-                                  : 'https://via.placeholder.com/180',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          placeholder: (context, url) => Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                          errorWidget: (context, url, error) =>
-                              Icon(Icons.error),
-                        ),
-                      ),
-
-                      // Small images on the right
-                      if (item.imageUrls!.length > 1)
-                        Positioned(
-                          right: 16,
-                          bottom: 16,
-                          child: Column(
-                            children: [
-                              Container(
-                                margin: EdgeInsets.only(bottom: 8),
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.9),
-                                    width: 3,
-                                  ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(17),
-                                  child: CachedNetworkImage(
-                                    imageUrl: item.imageUrls![1],
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Icon(Icons.error),
-                                  ),
-                                ),
-                              ),
-                              if (item.imageUrls!.length > 2)
-                                Container(
-                                  margin: EdgeInsets.only(bottom: 8),
-                                  width: 60,
-                                  height: 60,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.9),
-                                      width: 3,
-                                    ),
-                                    color: blackTextColor.withOpacity(0.4),
-                                  ),
-                                  child: Text(
-                                    '+${item.imageUrls!.length - 2}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
               ),
 
               // Content
@@ -219,11 +222,17 @@ class ItemDetailsScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  item.title,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                                Hero(
+                                  tag: 'property-title-${item.id}',
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: Text(
+                                      item.title,
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 Row(
@@ -247,11 +256,17 @@ class ItemDetailsScreen extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(
-                                "\$${item.price}",
-                                style: TextStyle(
-                                  fontSize: 27,
-                                  fontWeight: FontWeight.bold,
+                              Hero(
+                                tag: 'property-price-${item.id}',
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Text(
+                                    "\$${item.price}",
+                                    style: TextStyle(
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

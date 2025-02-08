@@ -135,24 +135,25 @@ app.get('/', async (c) => {
         const leads = await prisma.propertyLead.findMany({
             where: {
                 property: {
-                    userId: userId // Using userId instead of ownerId
+                    userId: userId // Property owner's ID
                 }
             },
             include: {
+                property: {
+                    select: {
+                        id: true,
+                        title: true
+                    }
+                },
+                // Get the viewer's information, not the property owner's
                 user: {
                     select: {
                         id: true,
                         displayName: true,
                         email: true,
-                        profileImageUrl: true, // Changed from profilePhotoUrl
+                        profileImageUrl: true,
                         university: true,
                         phoneNumber: true
-                    }
-                },
-                property: {
-                    select: {
-                        id: true,
-                        title: true
                     }
                 }
             },
@@ -164,13 +165,17 @@ app.get('/', async (c) => {
         // Format the response
         const formattedLeads = leads.map(lead => ({
             user: {
-                ...lead.user,
-                profilePhotoUrl: lead.user.profileImageUrl // Map profileImageUrl to profilePhotoUrl for API consistency
+                id: lead.user.id,
+                displayName: lead.user.displayName,
+                email: lead.user.email,
+                profilePhotoUrl: lead.user.profileImageUrl,
+                university: lead.user.university,
+                phoneNumber: lead.user.phoneNumber
             },
             propertyId: lead.propertyId,
             propertyTitle: lead.property.title,
             viewCount: lead.viewCount,
-            lastViewed: lead.lastViewed.toISOString() // Ensure ISO format
+            lastViewed: lead.lastViewed.toISOString()
         }));
 
         return c.json({ leads: formattedLeads }, 200);

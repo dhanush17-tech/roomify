@@ -154,7 +154,7 @@ class _MainScreenState extends State<MainScreen> {
               latitude: widget.latitude,
               longitude: widget.longitude,
             ),
-            ProfileScreen(widget.latitude, widget.longitude),
+            ProfileHomeScreen(widget.latitude, widget.longitude),
           ]
         : [
             HomeScreen(
@@ -168,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
               widget.latitude,
               widget.longitude,
             ),
-            ProfileScreen(widget.latitude, widget.longitude),
+            ProfileHomeScreen(widget.latitude, widget.longitude),
           ];
 
     return Scaffold(

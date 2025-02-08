@@ -14,9 +14,24 @@ class MarketplaceProvider extends ChangeNotifier {
   Timer? _debounceTimer;
   double? _minPrice;
   double? _maxPrice;
+  bool _disposed = false;
 
   MarketplaceProvider(this._repository, this.context) {
     Future.microtask(() => loadItems());
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
   }
 
   List<Listing> get items => _items;
@@ -34,6 +49,8 @@ class MarketplaceProvider extends ChangeNotifier {
   }
 
   Future<void> loadItems() async {
+    if (_disposed) return;
+    
     try {
       _isLoading = true;
       notifyListeners();
@@ -47,8 +64,10 @@ class MarketplaceProvider extends ChangeNotifier {
       _error = e.toString();
       _items = [];
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -62,6 +81,8 @@ class MarketplaceProvider extends ChangeNotifier {
     required List<String> categories,
     required List<File> images,
   }) async {
+    if (_disposed) return;
+
     try {
       _isLoading = true;
       notifyListeners();
@@ -77,33 +98,45 @@ class MarketplaceProvider extends ChangeNotifier {
         images: images,
       );
 
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
       throw e;
     }
   }
 
   Future<void> search(String query) async {
+    if (_disposed) return;
+
     try {
       _isLoading = true;
       notifyListeners();
 
       _items = await _repository.searchMarketplaceItems(query);
 
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> getSearchSuggestions(String query) async {
+    if (_disposed) return;
+
     // Cancel previous timer if it exists
     _debounceTimer?.cancel();
 
@@ -116,22 +149,30 @@ class MarketplaceProvider extends ChangeNotifier {
 
     // Debounce the API call
     _debounceTimer = Timer(Duration(milliseconds: 300), () async {
+      if (_disposed) return;
+
       try {
         _searchSuggestions = await _repository.getSearchSuggestions(query);
-        notifyListeners();
+        if (!_disposed) {
+          notifyListeners();
+        }
       } catch (e) {
         _error = e.toString();
-        notifyListeners();
+        if (!_disposed) {
+          notifyListeners();
+        }
       }
     });
   }
 
   void clearSearchSuggestions() {
+    if (_disposed) return;
     _searchSuggestions = [];
     notifyListeners();
   }
 
   void clearItems() {
+    if (_disposed) return;
     _items = [];
     _searchSuggestions = [];
     _error = '';
@@ -139,6 +180,7 @@ class MarketplaceProvider extends ChangeNotifier {
   }
 
   Future<void> refreshItems() async {
+    if (_disposed) return;
     await loadItems();
   }
 
@@ -154,6 +196,8 @@ class MarketplaceProvider extends ChangeNotifier {
     required List<File> images,
     List<String>? existingImageUrls,
   }) async {
+    if (_disposed) return;
+
     try {
       _isLoading = true;
       notifyListeners();
@@ -172,12 +216,16 @@ class MarketplaceProvider extends ChangeNotifier {
       );
 
       await loadItems(); // Refresh items list
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
       throw e;
     }
   }

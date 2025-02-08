@@ -228,6 +228,23 @@ void handleDeepLink(Uri uri, GlobalKey<NavigatorState> navigatorKey) {
   // Extract the path and query parameters regardless of scheme
   final pathSegments = uri.pathSegments;
 
+  // Handle reset password
+  if (uri.authority == "reset-password") {
+    final token = uri.queryParameters['token'];
+    if (token != null) {
+      navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => ResetPasswordScreen(
+              token,
+              0.0, // Default latitude
+              0.0, // Default longitude
+            ),
+          ),
+          (route) => false);
+      return;
+    }
+  }
+
   // Handle property details
   if (pathSegments.length >= 2 && pathSegments[0] == 'property') {
     final propertyId = pathSegments[1];
@@ -238,29 +255,17 @@ void handleDeepLink(Uri uri, GlobalKey<NavigatorState> navigatorKey) {
     if (propertiesProvider != null) {
       propertiesProvider.getPropertyById(propertyId).then((listing) {
         if (listing != null) {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (context) => PropertyDetailsScreen(
-                listing,
-                0.0, // You might want to pass actual coordinates here
-                0.0,
+          navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => PropertyDetailsScreen(
+                  listing,
+                  0.0,
+                  0.0,
+                ),
               ),
-            ),
-          );
+              (route) => false);
         }
       });
-    }
-  }
-
-  // Handle reset password
-  else if (pathSegments.contains('reset-password')) {
-    final token = uri.queryParameters['token'];
-    if (token != null) {
-      navigatorKey.currentState?.pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => ResetPasswordScreen(token, 0.0, 0.0),
-        ),
-      );
     }
   }
 }

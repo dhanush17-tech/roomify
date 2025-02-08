@@ -25,17 +25,13 @@ class EditProfileScreen extends StatefulWidget {
   final double latitude;
   final double longitude;
 
-  const EditProfileScreen({
-    Key? key,
-    required this.latitude,
-    required this.longitude,
-  }) : super(key: key);
+  EditProfileScreen({required this.latitude, required this.longitude});
 
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends State<EditProfileScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -65,6 +61,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   List<String> _customFeatures = [];
   TextEditingController _customFeatureController = TextEditingController();
   String? _phoneNumber;
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
 
   @override
   void initState() {
@@ -157,6 +157,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _titleController = TextEditingController(text: _listing?.title ?? '');
     _descriptionController =
         TextEditingController(text: _listing?.description ?? '');
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    _slideAnimation = Tween<double>(begin: 0.0, end: 50.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -377,398 +394,447 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final isProfessional = user?.isProfessional ?? false;
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
-        child: Form(
-            key: _formKey,
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(height: MediaQuery.of(context).padding.top),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Edit Profile",
-                        style: TextStyle(
-                          color: blackTextColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25,
-                        ),
-                      ),
-                      IconButton(
-                        style: IconButton.styleFrom(
-                          padding: EdgeInsets.all(10),
-                          backgroundColor: Colors.grey[200],
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  // Profile Image
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundImage: _profileImage != null
-                              ? FileImage(File(_profileImage!.path))
-                              : (user?.profilePhotoUrl != null
-                                  ? NetworkImage(user!.profilePhotoUrl!)
-                                  : null) as ImageProvider?,
-                          child: user?.profilePhotoUrl == null &&
-                                  _profileImage == null
-                              ? Icon(Icons.person, size: 50)
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: CircleAvatar(
-                            backgroundColor: orangeColor,
-                            radius: 18,
-                            child: Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (user?.profilePhotoUrl != null)
-                    TextButton(
-                      onPressed: () =>
-                          context.read<AuthProvider>().deleteProfilePhoto(),
-                      child: Text('Remove Photo'),
-                    ),
-                  if (!isProfessional) ...[
-                    _buildProfileCompletion(user),
-                  ] else ...[
-                    SizedBox(
-                      height: 10,
-                    ),
-                  ],
-                  _buildInputFieldWithIndicator(
-                    controller: _displayNameController,
-                    keyboardType: TextInputType.name,
-                    label: isProfessional ? 'Company Name' : 'Display Name',
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Name is required';
-                      return null;
-                    },
-                  ),
-                  InputField(
-                    controller: _emailController,
-                    label: "Email",
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Email is required';
-                      if (!value!.contains('@')) return 'Invalid email';
-                      return null;
-                    },
-                  ),
-                  if (!isProfessional) ...[
-                    InputField(
-                      controller: _universityController,
-                      label: "University",
-                      keyboardType: TextInputType.name,
-                    ),
-                    SizedBox(height: 16),
-                    //PHONE NUMBER
-                    IntlPhoneField(
-                      pickerDialogStyle: PickerDialogStyle(
-                        padding: EdgeInsets.all(16),
-                        searchFieldInputDecoration: InputDecoration(
-                          hintText: 'Search for a country',
-                          prefixIcon: Icon(
-                            Icons.search_outlined,
-                            color: Colors.grey[600],
-                          ),
-                          hintStyle: TextStyle(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      initialValue: user?.phoneNumber,
-                      initialCountryCode: 'US',
-                      onChanged: (phone) {
-                        setState(() {
-                          _phoneNumber = phone.completeNumber;
-                        });
-                      },
-                    ),
-                    InputField(
-                      controller: _bioController,
-                      label: "Bio",
-                      maxLines: 3,
-                    ),
-                    InputField(
-                      controller: _ageController,
-                      label: "Age",
-                      keyboardType: TextInputType.number,
-                    ),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGender,
-                      decoration: InputDecoration(
-                        labelText: 'Gender',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      items: ['Male', 'Female', 'Other']
-                          .map((gender) => DropdownMenuItem(
-                                value: gender,
-                                child: Text(gender),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedGender = value;
-                        });
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        'Preferences',
-                        style: TextStyle(
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: availablePreferences.map((preference) {
-                        return FilterChip(
-                          label: Text(preference),
-                          selected: _selectedPreferences.contains(preference),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedPreferences.add(preference);
-                              } else {
-                                _selectedPreferences.remove(preference);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      value: _selectedStatus,
-                      decoration: InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      items: [
-                        "I'm looking for a room",
-                        "I'm looking for a roommate",
-                        "I'm looking for a roommate and a room"
-                      ]
-                          .map((status) => DropdownMenuItem(
-                                value: status,
-                                child: Text(status),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedStatus = value;
-                        });
-                      },
-                    ),
-                  ] else ...[
-                    SizedBox(height: 20),
-                    Text(
-                      'Listing Title',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: blackTextColor,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    TextFormField(
-                      onChanged: (name) {
-                        setState(() {
-                          _listing!.title = name!;
-                        });
-                      },
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter Property title',
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Please enter a title' : null,
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Property Details',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: blackTextColor,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    TextFormField(
-                      controller: _descriptionController,
-                      onChanged: (description) {
-                        setState(() {
-                          _listing!.description = description!;
-                        });
-                      },
-                      maxLines: null,
-                      decoration: InputDecoration(
-                        hintText: 'Enter property details',
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      validator: (value) => value!.isEmpty
-                          ? 'Please enter property details'
-                          : null,
-                    ),
-                    SizedBox(height: 24),
-                    _buildPropertyImagesSection(),
-                    SizedBox(height: 24),
-                    Text(
-                      'Location',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: blackTextColor,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    _buildAddressField(),
-                    SizedBox(height: 12),
-                    Text(
-                      "Amenities",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: blackTextColor,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
+      body: Stack(
+        children: [
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset.zero,
+                end: Offset(0, 0.1),
+              ).animate(_slideAnimation),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Form(
+                      key: _formKey,
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildAmenityChip('Parking Lot'),
-                            _buildAmenityChip('Pet Allowed'),
-                            _buildAmenityChip('Garden'),
-                            _buildAmenityChip('Gym'),
-                            _buildAmenityChip('Park'),
-                            _buildAmenityChip('Home theatre'),
-                            _buildAmenityChip("Kid's Friendly"),
-                            ..._customFeatures
-                                .map((feature) => _buildAmenityChip(feature)),
-                            InkWell(
-                              onTap: _showAddFeatureDialog,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey[300]!),
-                                  borderRadius: BorderRadius.circular(12),
+                            SizedBox(height: MediaQuery.of(context).padding.top),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Edit Profile",
+                                  style: TextStyle(
+                                    color: blackTextColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 25,
+                                  ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.add,
-                                        size: 18, color: Colors.grey[600]),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Add Amenities',
-                                      style: TextStyle(color: Colors.grey[600]),
+                                IconButton(
+                                  style: IconButton.styleFrom(
+                                    padding: EdgeInsets.all(10),
+                                    backgroundColor: Colors.grey[200],
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: Icon(Icons.close),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 20),
+                            // Profile Image
+                            GestureDetector(
+                              onTap: _pickImage,
+                              child: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 50,
+                                    backgroundImage: _profileImage != null
+                                        ? FileImage(File(_profileImage!.path))
+                                        : (user?.profilePhotoUrl != null
+                                            ? NetworkImage(user!.profilePhotoUrl!)
+                                            : null) as ImageProvider?,
+                                    child: user?.profilePhotoUrl == null &&
+                                            _profileImage == null
+                                        ? Icon(Icons.person, size: 50)
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: CircleAvatar(
+                                      backgroundColor: orangeColor,
+                                      radius: 18,
+                                      child: Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (user?.profilePhotoUrl != null)
+                              TextButton(
+                                onPressed: () =>
+                                    context.read<AuthProvider>().deleteProfilePhoto(),
+                                child: Text('Remove Photo'),
+                              ),
+                            if (!isProfessional) ...[
+                              _buildProfileCompletion(user),
+                            ] else ...[
+                              SizedBox(
+                                height: 10,
+                              ),
+                            ],
+                            _buildInputFieldWithIndicator(
+                              controller: _displayNameController,
+                              keyboardType: TextInputType.name,
+                              label: isProfessional ? 'Company Name' : 'Display Name',
+                              validator: (value) {
+                                if (value?.isEmpty ?? true) return 'Name is required';
+                                return null;
+                              },
+                            ),
+                            InputField(
+                              controller: _emailController,
+                              label: "Email",
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value?.isEmpty ?? true) return 'Email is required';
+                                if (!value!.contains('@')) return 'Invalid email';
+                                return null;
+                              },
+                            ),
+                            if (!isProfessional) ...[
+                              InputField(
+                                controller: _universityController,
+                                label: "University",
+                                keyboardType: TextInputType.name,
+                              ),
+                              SizedBox(height: 16),
+                              //PHONE NUMBER
+                              IntlPhoneField(
+                                pickerDialogStyle: PickerDialogStyle(
+                                  padding: EdgeInsets.all(16),
+                                  searchFieldInputDecoration: InputDecoration(
+                                    hintText: 'Search for a country',
+                                    prefixIcon: Icon(
+                                      Icons.search_outlined,
+                                      color: Colors.grey[600],
+                                    ),
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Phone Number',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                initialValue: user?.phoneNumber,
+                                initialCountryCode: 'US',
+                                onChanged: (phone) {
+                                  setState(() {
+                                    _phoneNumber = phone.completeNumber;
+                                  });
+                                },
+                              ),
+                              InputField(
+                                controller: _bioController,
+                                label: "Bio",
+                                maxLines: 3,
+                              ),
+                              InputField(
+                                controller: _ageController,
+                                label: "Age",
+                                keyboardType: TextInputType.number,
+                              ),
+                              DropdownButtonFormField<String>(
+                                value: _selectedGender,
+                                decoration: InputDecoration(
+                                  labelText: 'Gender',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                items: ['Male', 'Female', 'Other']
+                                    .map((gender) => DropdownMenuItem(
+                                          value: gender,
+                                          child: Text(gender),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedGender = value;
+                                  });
+                                },
+                              ),
+                              SizedBox(height: 20),
+                              Align(
+                                alignment: Alignment.topLeft,
+                                child: Text(
+                                  'Preferences',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24),
-                    AvailabilitySection(
-                      moveInDate: _listing!.property!.moveInDate,
-                      moveOutDate: _listing!.property!.moveOutDate,
-                      onSelectDate: _selectDate,
-                      onClearMoveOutDate: (value) {
-                        setState(() {
-                          _listing!.property!.moveOutDate = value;
-                        });
-                      },
-                    ),
-                  ],
+                              SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: availablePreferences.map((preference) {
+                                  return FilterChip(
+                                    label: Text(preference),
+                                    selected: _selectedPreferences.contains(preference),
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        if (selected) {
+                                          _selectedPreferences.add(preference);
+                                        } else {
+                                          _selectedPreferences.remove(preference);
+                                        }
+                                      });
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              SizedBox(height: 20),
+                              DropdownButtonFormField<String>(
+                                value: _selectedStatus,
+                                decoration: InputDecoration(
+                                  labelText: 'Status',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                items: [
+                                  "I'm looking for a room",
+                                  "I'm looking for a roommate",
+                                  "I'm looking for a roommate and a room"
+                                ]
+                                    .map((status) => DropdownMenuItem(
+                                          value: status,
+                                          child: Text(status),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedStatus = value;
+                                  });
+                                },
+                              ),
+                            ] else ...[
+                              SizedBox(height: 20),
+                              Text(
+                                'Listing Title',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: blackTextColor,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              TextFormField(
+                                onChanged: (name) {
+                                  setState(() {
+                                    _listing!.title = name!;
+                                  });
+                                },
+                                controller: _titleController,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter Property title',
+                                  filled: true,
+                                  fillColor: Colors.grey[100],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator: (value) =>
+                                    value!.isEmpty ? 'Please enter a title' : null,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Property Details',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: blackTextColor,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              TextFormField(
+                                controller: _descriptionController,
+                                onChanged: (description) {
+                                  setState(() {
+                                    _listing!.description = description!;
+                                  });
+                                },
+                                maxLines: null,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter property details',
+                                  filled: true,
+                                  fillColor: Colors.grey[100],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator: (value) => value!.isEmpty
+                                    ? 'Please enter property details'
+                                    : null,
+                              ),
+                              SizedBox(height: 24),
+                              _buildPropertyImagesSection(),
+                              SizedBox(height: 24),
+                              Text(
+                                'Location',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: blackTextColor,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              _buildAddressField(),
+                              SizedBox(height: 12),
+                              Text(
+                                "Amenities",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: blackTextColor,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
+                                    children: [
+                                      _buildAmenityChip('Parking Lot'),
+                                      _buildAmenityChip('Pet Allowed'),
+                                      _buildAmenityChip('Garden'),
+                                      _buildAmenityChip('Gym'),
+                                      _buildAmenityChip('Park'),
+                                      _buildAmenityChip('Home theatre'),
+                                      _buildAmenityChip("Kid's Friendly"),
+                                      ..._customFeatures
+                                          .map((feature) => _buildAmenityChip(feature)),
+                                      InkWell(
+                                        onTap: _showAddFeatureDialog,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.grey[300]!),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.add,
+                                                  size: 18, color: Colors.grey[600]),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Add Amenities',
+                                                style: TextStyle(color: Colors.grey[600]),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 24),
+                              AvailabilitySection(
+                                moveInDate: _listing!.property!.moveInDate,
+                                moveOutDate: _listing!.property!.moveOutDate,
+                                onSelectDate: _selectDate,
+                                onClearMoveOutDate: (value) {
+                                  setState(() {
+                                    _listing!.property!.moveOutDate = value;
+                                  });
+                                },
+                              ),
+                            ],
 
-                  if (isProfessional) ...[
-                    SizedBox(height: 10),
-                    _buildEditFloorPlansSection(_listing),
-                  ],
-                  SizedBox(height: 25),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text(
-                              'Save Changes',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            if (isProfessional) ...[
+                              SizedBox(height: 10),
+                              _buildEditFloorPlansSection(_listing),
+                            ],
+                            SizedBox(height: 25),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _handleProfileUpdate,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? CircularProgressIndicator()
+                                    : Text(
+                                        'Save Changes',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
-                    ),
-                  ),
-                ])),
+                          ])),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _handleProfileUpdate() async {
+    // Start animations
+    await _animationController.forward();
+    
+    // Update profile
+    await context.read<AuthProvider>().updateProfile(
+      context: context,
+      displayName: _displayNameController.text,
+      bio: _bioController.text,
+      age: _ageController.text.isNotEmpty
+          ? int.tryParse(_ageController.text)
+          : null,
+      university: _universityController.text,
+      location: _locationController.text,
+      gender: _selectedGender,
+      status: _selectedStatus,
+      email: _emailController.text,
+      profileImage: _profileImage,
+      phoneNumber: _phoneNumber,
+    );
+    
+    // Reset and play reverse animations
+    await _animationController.reverse();
+    
+    // Show success message and navigate back
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Profile updated successfully!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    Navigator.pop(context);
   }
 
   Widget _buildEditFloorPlansSection(Listing? listing) {
@@ -1066,78 +1132,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _saveProfile() async {
-    setState(() => _isLoading = true);
-    final user = context.read<AuthProvider>().user;
-    try {
-      if (user!.isProfessional) {
-        if (_listing != null) {
-          // Calculate deleted image URLs by comparing original URLs with current URLs
-          final currentUrls = _listing!.property?.imageUrls ?? [];
-          final deletedUrls = _originalImageUrls
-              .where((url) => !currentUrls.contains(url))
-              .toList();
-          print(deletedUrls);
-          final updatedListing =
-              await context.read<PropertyProvider>().updateProperty(
-                    _listing!,
-                    images: _images,
-                    deletedImageUrls: deletedUrls,
-                  );
-          setState(() {
-            _listing = updatedListing;
-            _images = []; // Clear new images after successful update
-          });
-        }
-      }
-      await context.read<AuthProvider>().updateProfile(
-            context: context,
-            displayName: _displayNameController.text,
-            bio: _bioController.text,
-            age: _ageController.text.isNotEmpty
-                ? int.tryParse(_ageController.text)
-                : null,
-            university: _universityController.text,
-            location: _locationController.text,
-            gender: _selectedGender,
-            status: _selectedStatus,
-            email: _emailController.text,
-            profileImage: _profileImage,
-            phoneNumber: _phoneNumber,
-          );
-      await context.read<ProfileProvider>().updatePreferences(
-            preferences: _selectedPreferences,
-          );
-      await context.read<AuthProvider>().loadUserProfile();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully')),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _universityController.dispose();
-    _bioController.dispose();
-    _ageController.dispose();
-    _displayNameController.dispose();
-    _locationController.dispose();
-    _genderController.dispose();
-    _statusController.dispose();
-    super.dispose();
   }
 
   Widget _buildCategoryChip(String label, IconData icon) {

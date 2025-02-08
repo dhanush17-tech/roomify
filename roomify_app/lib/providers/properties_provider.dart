@@ -24,6 +24,9 @@ class PropertyProvider extends ChangeNotifier {
   List<PropertyLead> get leads => _leads;
   List<Listing> get favorites => _favorites;
 
+  bool _isLoadingReccomendations = false;
+  bool get isLoadingReccomendations => _isLoadingReccomendations;
+
   Future<void> loadLeads() async {
     try {
       _isLoading = true;
@@ -77,18 +80,18 @@ class PropertyProvider extends ChangeNotifier {
   Future<void> fetchRecommendations(
       final double latitude, final double longitude) async {
     try {
-      _isLoading = true;
+      _isLoadingReccomendations = true;
       _error = null;
       notifyListeners();
 
       _recommendations =
           await _repository.getRecommendedProperties(latitude, longitude);
 
-      _isLoading = false;
+      _isLoadingReccomendations = false;
       notifyListeners();
     } catch (e) {
       _error = 'Failed to fetch recommendations: $e';
-      _isLoading = false;
+      _isLoadingReccomendations = false;
       notifyListeners();
     }
   }

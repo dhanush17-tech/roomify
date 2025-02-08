@@ -59,8 +59,8 @@ class _ReportScreenState extends State<ReportScreen> {
       );
 
       // Refresh providers before navigation
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
+      Future.microtask(() => Provider.of<AuthProvider>(context, listen: false)
+          .refreshAllProviders(context));
 
       // Delay pop to show snackbar
       if (mounted) {

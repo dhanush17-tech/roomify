@@ -16,10 +16,50 @@ import 'package:roomify_app/views/profile/help_support_screen.dart';
 import 'package:roomify_app/views/profile/privacy_policy_screen.dart';
 import 'package:roomify_app/views/profile/report_problem_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileHomeScreen extends StatefulWidget {
   double latitude;
   double longitude;
-  ProfileScreen(this.latitude, this.longitude);
+  ProfileHomeScreen(this.latitude, this.longitude);
+
+  @override
+  _ProfileHomeScreenState createState() => _ProfileHomeScreenState();
+}
+
+class _ProfileHomeScreenState extends State<ProfileHomeScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshProfile() async {
+    // Start fade out animation
+    await _animationController.forward();
+    
+    // Refresh profile data
+    Future.microtask(() =>  context.read<AuthProvider>().refreshAllProviders(context));
+    
+    // Reset and play fade in animation
+    await _animationController.reverse();
+  }
 
   Future<void> _handleSignOut(BuildContext context) async {
     try {
@@ -32,8 +72,8 @@ class ProfileScreen extends StatelessWidget {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => SignUpLoginScreen(
-            latitude,
-            longitude,
+            widget.latitude,
+            widget.longitude,
           ),
         ),
         (route) => false,
@@ -64,151 +104,161 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Consumer<AuthProvider>(builder: (context, userProvider, _) {
-          return ListView(
-            children: [
-              _buildHeader(context, userProvider),
-              SizedBox(height: 10),
-              _buildQuickAccessSection(
-                context,
-              ),
-              SizedBox(height: 20),
-              _buildSectionTitle("Account Settings"),
-              _buildListItem(
-                  userProvider.user!.isProfessional
-                      ? "Edit Listing"
-                      : "Edit Profile",
-                  showWarning: userProvider.user!.isProfessional
-                      ? false
-                      : !userProvider.user!.isProfileComplete(),
-                  Icons.account_circle_outlined, onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (c) => EditProfileScreen(
-                              latitude: latitude,
-                              longitude: longitude,
-                            )));
-              }),
-              if (userProvider.user!.isProfessional)
-                _buildListItem("Leads", Icons.leaderboard_outlined, onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => LeadsScreen()));
-                }),
-              _buildSectionTitle("App Management"),
-              _buildListItem("Help & Support", Icons.help_outline, onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => HelpSupportScreen()),
-                );
-              }),
-              _buildListItem(
-                  "Terms of Service & Privacy Policy", Icons.article_outlined,
-                  onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => PrivacyPolicyScreen()),
-                );
-              }),
-              _buildListItem("Report a Problem", Icons.report_problem_outlined,
-                  onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ReportProblemScreen()),
-                );
-              }),
-              Row(
-                children: [
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.5,
-                    child: ListTile(
-                      leading:
-                          Icon(Icons.logout_rounded, color: Colors.redAccent),
-                      title: Text("Logout"),
-                      onTap: () => _handleSignOut(context),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Divider(
-                    color: Colors.grey,
-                    thickness: 1,
-                    height: 10,
-                  ),
-                  SizedBox(height: 20),
-                  Expanded(
-                    child: ListTile(
-                        leading: Icon(Icons.delete_forever_rounded,
-                            color: Colors.red),
-                        title: Text("Delete Account"),
-                        onTap: () => showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text('Delete Account'),
-                                content: Text(
-                                  'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      // Get references before any async operations
-                                      final navigator = Navigator.of(context);
-                                      final profileProvider =
-                                          context.read<ProfileProvider>();
-                                      final scaffoldMessenger =
-                                          ScaffoldMessenger.of(context);
-
-                                      // Close the dialog first
-                                      navigator.pop();
-
-                                      try {
-                                        // Delete account
-                                        await profileProvider
-                                            .deleteAccount(context);
-
-                                        // After successful deletion, navigate to login screen
-                                        if (navigator.mounted) {
-                                          await navigator.pushAndRemoveUntil(
-                                            MaterialPageRoute(
-                                              builder: (_) => SignUpLoginScreen(
-                                                latitude,
-                                                longitude,
-                                              ),
-                                            ),
-                                            (route) => false,
-                                          );
-                                        }
-                                      } catch (e) {
-                                        scaffoldMessenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'There has been an error while deleting your account'),
-                                            backgroundColor: Colors.red,
-                                            duration: Duration(seconds: 3),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: RefreshIndicator(
+          onRefresh: _refreshProfile,
+          child: SafeArea(
+            child: Consumer<AuthProvider>(builder: (context, userProvider, _) {
+              return CustomScrollView(
+                slivers: [
+                  SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildHeader(context, userProvider),
+                      SizedBox(height: 10),
+                      _buildQuickAccessSection(
+                        context,
+                      ),
+                      SizedBox(height: 20),
+                      _buildSectionTitle("Account Settings"),
+                      _buildListItem(
+                          userProvider.user!.isProfessional
+                              ? "Edit Listing"
+                              : "Edit Profile",
+                          showWarning: userProvider.user!.isProfessional
+                              ? false
+                              : !userProvider.user!.isProfileComplete(),
+                          Icons.account_circle_outlined, onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (c) => EditProfileScreen(
+                                      latitude: widget.latitude,
+                                      longitude: widget.longitude,
+                                    )));
+                      }),
+                      if (userProvider.user!.isProfessional)
+                        _buildListItem("Leads", Icons.leaderboard_outlined, onTap: () {
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (c) => LeadsScreen()));
+                        }),
+                      _buildSectionTitle("App Management"),
+                      _buildListItem("Help & Support", Icons.help_outline, onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => HelpSupportScreen()),
+                        );
+                      }),
+                      _buildListItem(
+                          "Terms of Service & Privacy Policy", Icons.article_outlined,
+                          onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => PrivacyPolicyScreen()),
+                        );
+                      }),
+                      _buildListItem("Report a Problem", Icons.report_problem_outlined,
+                          onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ReportProblemScreen()),
+                        );
+                      }),
+                      Row(
+                        children: [
+                          Container(
+                            width: MediaQuery.of(context).size.width * 0.5,
+                            child: ListTile(
+                              leading:
+                                  Icon(Icons.logout_rounded, color: Colors.redAccent),
+                              title: Text("Logout"),
+                              onTap: () => _handleSignOut(context),
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Divider(
+                            color: Colors.grey,
+                            thickness: 1,
+                            height: 10,
+                          ),
+                          SizedBox(height: 20),
+                          Expanded(
+                            child: ListTile(
+                                leading: Icon(Icons.delete_forever_rounded,
+                                    color: Colors.red),
+                                title: Text("Delete Account"),
+                                onTap: () => showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('Delete Account'),
+                                        content: Text(
+                                          'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: Text('Cancel'),
                                           ),
-                                        );
-                                      }
-                                    },
-                                    child: Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )),
+                                          TextButton(
+                                            onPressed: () async {
+                                              // Get references before any async operations
+                                              final navigator = Navigator.of(context);
+                                              final profileProvider =
+                                                  context.read<ProfileProvider>();
+                                              final scaffoldMessenger =
+                                                  ScaffoldMessenger.of(context);
+
+                                              // Close the dialog first
+                                              navigator.pop();
+
+                                              try {
+                                                // Delete account
+                                                await profileProvider
+                                                    .deleteAccount(context);
+
+                                                // After successful deletion, navigate to login screen
+                                                if (navigator.mounted) {
+                                                  await navigator.pushAndRemoveUntil(
+                                                    MaterialPageRoute(
+                                                      builder: (_) => SignUpLoginScreen(
+                                                        widget.latitude,
+                                                        widget.longitude,
+                                                      ),
+                                                    ),
+                                                    (route) => false,
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                scaffoldMessenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        'There has been an error while deleting your account'),
+                                                    backgroundColor: Colors.red,
+                                                    duration: Duration(seconds: 3),
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                            child: Text(
+                                              'Delete',
+                                              style: TextStyle(color: Colors.red),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )),
+                          ),
+                        ],
+                      ),
+                    ]),
                   ),
                 ],
-              ),
-            ],
-          );
-        }),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -264,8 +314,8 @@ class ProfileScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (c) => EditProfileScreen(
-                                    latitude: latitude,
-                                    longitude: longitude,
+                                    latitude: widget.latitude,
+                                    longitude: widget.longitude,
                                   )));
                     },
                     child: Row(
@@ -307,13 +357,13 @@ class ProfileScreen extends StatelessWidget {
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (c) => UserListingScreen(latitude, longitude)));
+                    builder: (c) => UserListingScreen(widget.latitude, widget.longitude)));
           }),
           _quickAccessIcon(Icons.favorite_border, "Favorites", onTap: () {
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (c) => FavoritesScreen(latitude, longitude)));
+                    builder: (c) => FavoritesScreen(widget.latitude, widget.longitude)));
           }),
           _quickAccessIcon(Icons.people_alt_outlined, "Matches", onTap: () {
             Navigator.push(context,

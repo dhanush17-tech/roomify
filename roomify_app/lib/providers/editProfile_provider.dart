@@ -137,8 +137,8 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateLocation(double latitude, double longitude,
-      BuildContext context) async {
+  Future<void> updateLocation(
+      double latitude, double longitude, BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -159,8 +159,7 @@ class ProfileProvider extends ChangeNotifier {
       }
 
       // Refresh all providers when location changes
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
+        Future.microtask(() => authProvider.refreshAllProviders(context));
     } catch (e) {
       _error = 'Failed to update location: ${e.toString()}';
     } finally {
@@ -242,8 +241,8 @@ class ProfileProvider extends ChangeNotifier {
       _marketplaceItems.removeWhere((item) => item.id == listingId);
 
       // Refresh all providers
-      await Provider.of<AuthProvider>(context, listen: false)
-          .refreshAllProviders(context);
+      Future.microtask(() => Provider.of<AuthProvider>(context, listen: false)
+          .refreshAllProviders(context));
 
       _isLoading = false;
       notifyListeners();
@@ -262,7 +261,7 @@ class ProfileProvider extends ChangeNotifier {
     try {
       await _repository.updateUserLocation(latitude, longitude);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      authProvider.refreshAllProviders(context);
+      await Future.microtask(() => authProvider.refreshAllProviders(context));
       notifyListeners();
     } catch (e) {
       print('Error updating user location: $e');
@@ -346,7 +345,8 @@ class ProfileProvider extends ChangeNotifier {
 
       // Only clear local data if backend deletion was successful
       if (context.mounted) {
-        await Provider.of<AuthProvider>(context, listen: false).signOut(context);
+        await Provider.of<AuthProvider>(context, listen: false)
+            .signOut(context);
       }
 
       _isLoading = false;

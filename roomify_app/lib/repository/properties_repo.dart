@@ -33,7 +33,7 @@ class PropertyRepository {
         queryParameters: {
           'latitude': latitude,
           'longitude': longitude,
-          'radius': 30, // Default 30km radius
+          'radius': 20, // Default 20km radius
         },
       );
 

@@ -201,22 +201,23 @@ class FeaturedItemCard extends StatelessWidget {
               children: [
                 Stack(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: CachedNetworkImage(
-                        width: double.infinity,
-                        imageUrl: item.type == ListingType.Property
-                            ? item.property?.imageUrls?.isNotEmpty == true
-                                ? item.property!.imageUrls!.first
-                                : 'https://via.placeholder.com/180'
-                            : item.marketplaceItem!.imageUrls?.isNotEmpty ==
-                                    true
-                                ? item.marketplaceItem!.imageUrls!.first
-                                : 'https://via.placeholder.com/180',
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            buildPropertyImageShimmer(),
-                        errorWidget: (context, url, error) => Icon(Icons.error),
+                    Hero(
+                      tag: 'property-image-${item.id}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: CachedNetworkImage(
+                          width: double.infinity,
+                          imageUrl: item.type == ListingType.Property
+                              ? item.property?.imageUrls?.isNotEmpty == true
+                                  ? item.property!.imageUrls!.first
+                                  : 'https://via.placeholder.com/180'
+                              : item.marketplaceItem!.imageUrls?.isNotEmpty == true
+                                  ? item.marketplaceItem!.imageUrls!.first
+                                  : 'https://via.placeholder.com/180',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => buildPropertyImageShimmer(),
+                          errorWidget: (context, url, error) => Icon(Icons.error),
+                        ),
                       ),
                     ),
                     if (item.hasActiveReport)
@@ -229,11 +230,17 @@ class FeaturedItemCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 5),
-                Text(
-                  item.title,
-                  style: AppTextStyles.subtitle(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Hero(
+                  tag: 'property-title-${item.id}',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Text(
+                      item.title,
+                      style: AppTextStyles.subtitle(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Row(
@@ -248,20 +255,26 @@ class FeaturedItemCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 5,
-                        horizontal: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '\$${item.price}',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
+                    Hero(
+                      tag: 'property-price-${item.id}',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 5,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '\$${item.price}',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),

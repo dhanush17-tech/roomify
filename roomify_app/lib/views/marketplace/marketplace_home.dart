@@ -41,14 +41,26 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: '');
-    _loadItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadItems();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadItems() async {
+    if (!mounted) return;
     await context.read<MarketplaceProvider>().refreshItems();
   }
 
   Future<void> _handleRefresh() async {
+    if (!mounted) return;
     await context.read<MarketplaceProvider>().refreshItems();
   }
 
@@ -120,6 +132,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                   selected: isSelected,
                   label: Text(range.label),
                   onSelected: (bool selected) {
+                    if (!mounted) return;
                     setState(() {
                       _selectedPriceRange = selected ? range : null;
                     });
@@ -150,12 +163,15 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
           child: Consumer<MarketplaceProvider>(
             builder: (context, provider, _) {
               if (provider.isLoading) {
-                return Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator());
               }
 
               if (provider.error.isNotEmpty) {
                 return Center(child: Text(provider.error));
               }
+
+              final items = provider.items;
+              final filteredItems = _getFilteredItems(items, _selectedCategory);
 
               return ListView(
                 children: [
@@ -177,6 +193,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                             icon: const Icon(Icons.favorite_outline_rounded,
                                 color: blackTextColor),
                             onPressed: () {
+                              if (!mounted) return;
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -188,9 +205,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 8,
-                  ),
+                  const SizedBox(height: 8),
                   Hero(
                     tag: 'search_field',
                     child: Material(
@@ -199,6 +214,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                         controller: _searchController,
                         readOnly: true,
                         onTap: () async {
+                          if (!mounted) return;
                           final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -207,7 +223,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                                       widget.latitude,
                                       widget.longitude)));
 
-                          if (result != null && result is Map) {
+                          if (mounted && result != null && result is Map) {
                             setState(() {
                               _searchController.text = result['query'];
                             });
@@ -249,6 +265,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                           imagePath: "assets/icons/electronics.png",
                           isSelected: _selectedCategory == "Electronics",
                           onTap: () {
+                            if (!mounted) return;
                             setState(() {
                               _selectedCategory =
                                   _selectedCategory == "Electronics"
@@ -264,6 +281,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                           imagePath: "assets/icons/furniture.png",
                           isSelected: _selectedCategory == "Furniture",
                           onTap: () {
+                            if (!mounted) return;
                             setState(() {
                               _selectedCategory =
                                   _selectedCategory == "Furniture"
@@ -279,6 +297,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                           imagePath: "assets/icons/clothing.png",
                           isSelected: _selectedCategory == "Clothing",
                           onTap: () {
+                            if (!mounted) return;
                             setState(() {
                               _selectedCategory =
                                   _selectedCategory == "Clothing"
@@ -294,6 +313,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                           imagePath: "assets/icons/books.png",
                           isSelected: _selectedCategory == "Books",
                           onTap: () {
+                            if (!mounted) return;
                             setState(() {
                               _selectedCategory =
                                   _selectedCategory == "Books" ? null : "Books";
@@ -304,10 +324,10 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  provider.items.isEmpty
-                      ? SizedBox()
-                      : _buildPriceRangeFilter(provider.items),
-                  _getFilteredItems(provider.items, _selectedCategory).isEmpty
+                  items.isEmpty
+                      ? const SizedBox()
+                      : _buildPriceRangeFilter(items),
+                  filteredItems.isEmpty
                       ? SizedBox(
                           height: 200,
                           child: Center(
@@ -316,7 +336,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                               children: [
                                 Icon(Icons.search_off,
                                     size: 64, color: Colors.grey),
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 Text(
                                   'Nothing instore so far',
                                   style: TextStyle(
@@ -325,7 +345,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                                     color: Colors.grey.shade700,
                                   ),
                                 ),
-                                Text(
+                                const Text(
                                   'come back soon!',
                                   style: TextStyle(
                                     color: Colors.grey,
@@ -336,10 +356,10 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                           ),
                         )
                       : PinterestGrid(
-                          _getFilteredItems(provider.items, _selectedCategory),
+                          filteredItems,
                           widget.latitude,
                           widget.longitude,
-                          physics: NeverScrollableScrollPhysics(),
+                          physics: const NeverScrollableScrollPhysics(),
                         ),
                 ],
               );

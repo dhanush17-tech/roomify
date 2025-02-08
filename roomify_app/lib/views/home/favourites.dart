@@ -10,7 +10,7 @@ import 'package:roomify_app/widgets/pinterest_grid.dart'; // Ensure you have thi
 class FavoritesScreen extends StatefulWidget {
   double latitude;
   double longitude;
-  FavoritesScreen(this.latitude, this.longitude); 
+  FavoritesScreen(this.latitude, this.longitude);
   @override
   _FavoritesScreenState createState() => _FavoritesScreenState();
 }
