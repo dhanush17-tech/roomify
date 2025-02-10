@@ -125,16 +125,30 @@ class _ChatHomeState extends State<ChatHome> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white, width: 2),
-              image: otherUser.profilePhotoUrl != null
-                  ? DecorationImage(
-                      fit: BoxFit.cover,
-                      image: CachedNetworkImageProvider(
-                          otherUser.profilePhotoUrl!))
-                  : null,
             ),
-            child: otherUser.profilePhotoUrl == null
-                ? Center(child: Text(otherUser.displayName[0]))
-                : null,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: otherUser.profilePhotoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: otherUser.profilePhotoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.person,
+                            color: Colors.grey[400], size: 30),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.person,
+                            color: Colors.grey[400], size: 30),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey[200],
+                      child:
+                          Icon(Icons.person, color: Colors.grey[400], size: 30),
+                    ),
+            ),
           ),
         ),
         title: Column(

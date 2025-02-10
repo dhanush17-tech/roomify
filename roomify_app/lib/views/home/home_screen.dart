@@ -21,7 +21,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:fade_shimmer/fade_shimmer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:roomify_app/providers/chat_provider.dart';
-import 'package:roomify_app/widgets/roomify_verified.dart';
+import 'package:roomify_app/widgets/tags.dart';
 
 class HomeScreen extends StatefulWidget {
   User user;
@@ -452,6 +452,16 @@ FloorPlan? getMinPriceFloorPlan(Listing listing) {
       .reduce((curr, next) => curr.price < next.price ? curr : next);
 }
 
+FloorPlan? getMaxPriceFloorPlan(Listing listing) {
+  if (listing.user?.isProfessional != true ||
+      listing.property?.floorPlans == null ||
+      listing.property!.floorPlans!.isEmpty) {
+    return null;
+  }
+  return listing.property!.floorPlans!
+      .reduce((a, b) => a.price > b.price ? a : b);
+}
+
 // New Property Card Widget
 class PropertyCard extends StatelessWidget {
   final Listing listing;
@@ -506,8 +516,7 @@ class PropertyCard extends StatelessWidget {
                 Hero(
                   tag: 'property-image-${listing.id}',
                   child: ClipRRect(
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: BorderRadius.circular(16),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: listing.property?.imageUrls == null ||
@@ -516,9 +525,13 @@ class PropertyCard extends StatelessWidget {
                               ? Container(
                                   height: 200,
                                   width: double.infinity,
-                                  color: Colors.grey,
+                                  color: Colors.grey[200],
                                   child: Center(
-                                    child: Text('No Image'),
+                                    child: Icon(
+                                      Icons.home_outlined,
+                                      color: Colors.grey[400],
+                                      size: 50,
+                                    ),
                                   ),
                                 )
                               : CachedNetworkImage(
@@ -526,19 +539,76 @@ class PropertyCard extends StatelessWidget {
                                   height: 200,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) => Center(
-                                    child: CircularProgressIndicator(),
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.grey[200],
+                                    child: Icon(
+                                      Icons.home_outlined,
+                                      color: Colors.grey[400],
+                                      size: 50,
+                                    ),
                                   ),
                                   errorWidget: (context, url, error) =>
-                                      Icon(Icons.error),
+                                      Container(
+                                    color: Colors.grey[200],
+                                    child: Icon(
+                                      Icons.home_outlined,
+                                      color: Colors.grey[400],
+                                      size: 50,
+                                    ),
+                                  ),
                                 )
                           : CachedNetworkImage(
                               imageUrl: listing.property!.imageUrls[0],
                               height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey[200],
+                                child: Icon(
+                                  Icons.home_outlined,
+                                  color: Colors.grey[400],
+                                  size: 50,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[200],
+                                child: Icon(
+                                  Icons.home_outlined,
+                                  color: Colors.grey[400],
+                                  size: 50,
+                                ),
+                              ),
                             ),
                     ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (listing.property?.isRoomifyChoice == true)
+                        RoomifyVerified(),
+                      if (listing.property?.isRoomifyChoice == true)
+                        SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.0, vertical: 4.0),
+                        child: Text(
+                          "2+ offers",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Positioned(
@@ -575,64 +645,141 @@ class PropertyCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(16),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Hero(
-                        tag: 'property-title-${listing.id}',
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Text(
-                            listing.title.trim().capitalize(),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Hero(
+                              tag: 'property-title-${listing.id}',
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Text(
+                                  listing.title.trim().capitalize(),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on,
+                                    color: Colors.grey[600], size: 16),
+                                SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    listing.location ?? '',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      Spacer(),
+                      SizedBox(width: 16),
                       Hero(
                         tag: 'property-price-${listing.id}',
                         child: Material(
                           color: Colors.transparent,
-                          child: Text(
-                            '\$${minPriceFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: orangeColor,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: 60),
+                            child: listing.user?.isProfessional == true &&
+                                    listing.property?.floorPlans != null &&
+                                    listing.property!.floorPlans!.isNotEmpty
+                                ? Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '\$${minPriceFloorPlan?.price.toStringAsFixed(0)} - \$${getMaxPriceFloorPlan(listing)?.price.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: orangeColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        'per month',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    '\$${listing.price}/month',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: orangeColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 20),
                   Row(
                     children: [
-                      Icon(Icons.location_on, color: Colors.grey, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        listing.location,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.bed_outlined,
+                                color: Colors.grey[600], size: 20),
+                            SizedBox(width: 4),
+                            Text(
+                              '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms} beds',
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Icon(Icons.bathtub_outlined,
+                                color: Colors.grey[600], size: 20),
+                            SizedBox(width: 4),
+                            Text(
+                              '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms} baths',
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Spacer(),
-                      Icon(Icons.bed_outlined, color: Colors.grey, size: 20),
-                      SizedBox(width: 4),
-                      Text(
-                          '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms}'),
-                      SizedBox(width: 16),
-                      Icon(Icons.bathtub_outlined,
-                          color: Colors.grey, size: 20),
-                      SizedBox(width: 4),
-                      Text(
-                          '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms}'),
+                      if (!listing.user!.isProfessional &&
+                          !listing.property!.isRoomifyChoice)
+                        RoomateTag(
+                          noOfOccupants:
+                              listing.property!.maxOccupancy.toString(),
+                        ),
                     ],
                   ),
                 ],

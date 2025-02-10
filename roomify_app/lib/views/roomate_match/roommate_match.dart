@@ -10,12 +10,14 @@ import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/utils/circular_reveal_clipper.dart';
+import 'package:roomify_app/views/home/home_screen.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/profile/edit_profile.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fade_shimmer/fade_shimmer.dart';
+import 'package:roomify_app/widgets/tags.dart';
 
 class RoommateMatchScreen extends StatefulWidget {
   double latitude;
@@ -28,6 +30,7 @@ class RoommateMatchScreen extends StatefulWidget {
 class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     with TickerProviderStateMixin {
   final CardSwiperController controller = CardSwiperController();
+  final ScrollController _mainScrollController = ScrollController();
 
   bool isSwiping = false;
   double? cardHeight;
@@ -132,7 +135,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   void dispose() {
     _fadeController.dispose();
     _matchAnimationController.dispose();
-
+    _mainScrollController.dispose();
     _overlayController.dispose();
     controller.dispose();
     _profileOverlayController.dispose();
@@ -349,7 +352,6 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
           AnimatedBuilder(
             animation: _overlayController,
             builder: (context, child) {
-              double scale = _scaleAnimation.value;
               double opacity = _opacityAnimation.value;
               return Opacity(
                 opacity: opacity,
@@ -399,7 +401,6 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
           AnimatedBuilder(
             animation: _overlayController,
             builder: (context, child) {
-              double scale = _scaleAnimation.value;
               double opacity = _opacityAnimation.value;
               return Opacity(
                 opacity: opacity,
@@ -450,296 +451,543 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   }
 
   Widget _buildProfileCard(User profile) {
-    return Listener(
-      onPointerDown: (details) {
-        setState(() {
-          isSwiping = true;
-          currentDirection = null;
-        });
-      },
-      onPointerMove: (details) {
-        double screenWidth = MediaQuery.of(context).size.width;
-        double progress = details.localPosition.dx / screenWidth;
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.7,
+      child: Listener(
+        onPointerDown: (details) {
+          setState(() {
+            isSwiping = true;
+            currentDirection = null;
+          });
+        },
+        onPointerMove: (details) {
+          double screenWidth = MediaQuery.of(context).size.width;
+          double progress = details.localPosition.dx / screenWidth;
 
-        setState(() {
-          swipeProgress = progress.abs();
-          currentDirection = details.localPosition.dx > screenWidth / 2
-              ? CardSwiperDirection.right
-              : CardSwiperDirection.left;
+          setState(() {
+            swipeProgress = progress.abs();
+            currentDirection = details.localPosition.dx > screenWidth / 2
+                ? CardSwiperDirection.right
+                : CardSwiperDirection.left;
 
-          if (!_overlayController.isAnimating) {
-            _overlayController.forward();
-          }
-        });
-      },
-      onPointerUp: (details) {
-        setState(() {
-          isSwiping = false;
-          _overlayController.reverse();
-
-          Future.delayed(Duration(milliseconds: 300), () {
-            if (mounted) {
-              setState(() {
-                swipeProgress = 0.0;
-                currentDirection = null;
-              });
+            if (!_overlayController.isAnimating) {
+              _overlayController.forward();
             }
           });
-        });
-      },
-      child: Card(
-        elevation: 5,
-        color: Colors.white,
-        shadowColor: Colors.grey.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: CachedNetworkImage(
-                  imageUrl: profile.profilePhotoUrl ?? '',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.56,
-                ),
+        },
+        onPointerUp: (details) {
+          setState(() {
+            isSwiping = false;
+            _overlayController.reverse();
+
+            Future.delayed(Duration(milliseconds: 300), () {
+              if (mounted) {
+                setState(() {
+                  swipeProgress = 0.0;
+                  currentDirection = null;
+                });
+              }
+            });
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: Offset(0, 5),
               ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${profile.displayName.capitalize()} · ${profile.age}',
-                      style: AppTextStyles.title(fontSize: 24),
-                    ),
-                    SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Text(
-                          profile.university ?? '',
-                          style: AppTextStyles.small(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                // Background Image
+                Container(
+                  height: double.infinity,
+                  width: double.infinity,
+                  child: CachedNetworkImage(
+                    imageUrl: profile.profilePhotoUrl ?? '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: orangeColor,
                         ),
-                        SizedBox(width: 10),
-                        if (profile.status == 'Looking for a Roommate')
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "Looking for a Roommate",
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child:
+                          Icon(Icons.person, size: 50, color: Colors.grey[400]),
+                    ),
+                  ),
+                ),
+                // Gradient Overlay
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.2),
+                        Colors.black.withOpacity(0.6),
                       ],
                     ),
-                    SizedBox(height: 10),
-                    Text(
-                      profile.bio ?? '',
-                      style: AppTextStyles.small(
-                        fontWeight: FontWeight.normal,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    if (profile.preferences.isNotEmpty) ...[
-                      Text(
-                        'Preferences',
-                        style: AppTextStyles.title(
-                            fontSize: 15, color: orangeColor),
-                      ),
-                      buildPreferencesSection(profile.preferences),
-                      SizedBox(height: 20),
-                    ],
-                    if (profile.listings
-                        .where(
-                            (listing) => listing.type == ListingType.Property)
-                        .isNotEmpty)
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: profile.listings
-                              .where((listing) =>
-                                  listing.type == ListingType.Property)
-                              .map((listing) => _buildPropertyCard(listing))
-                              .toList(),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: GestureDetector(
-                        onTap: () async {
-                          final chatRoom = await context
-                              .read<ChatProvider>()
-                              .createOrGetChatRoom(
-                                profile.id,
-                              );
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ChatMessageScreen(room: chatRoom),
-                              settings: RouteSettings(
-                                name: 'ChatMessageScreen',
-                                arguments: ChatMessageScreen(room: chatRoom),
-                              ),
-                            ),
-                          );
-                        },
-                        child: Row(
+                  ),
+                ),
+                // User Info and Listings
+                SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.3),
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
+                            Row(
+                              children: [
+                                Text(
+                                  '${profile.displayName.capitalize()} · ${profile.age}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (profile.status == 'Looking for a Roommate')
+                                  Container(
+                                    margin: EdgeInsets.only(left: 8),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: orangeColor.withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '🔍 Looking',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.school,
+                                    color: Colors.white70, size: 16),
+                                SizedBox(width: 4),
+                                Text(
+                                  profile.university ?? '',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            if (profile.bio != null) ...[
+                              Text(
+                                profile.bio!,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            if (profile.preferences.isNotEmpty) ...[
+                              SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: profile.preferences.map((pref) {
+                                  return Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      pref.preference,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                            SizedBox(height: 20),
+                            // Contact Button
+                            GestureDetector(
+                              onTap: () async {
+                                final chatRoom = await context
+                                    .read<ChatProvider>()
+                                    .createOrGetChatRoom(profile.id);
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ChatMessageScreen(room: chatRoom),
+                                    settings: RouteSettings(
+                                      name: 'ChatMessageScreen',
+                                      arguments:
+                                          ChatMessageScreen(room: chatRoom),
+                                    ),
+                                  ),
+                                );
+                              },
                               child: Container(
                                 width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 20,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
+                                  color: orangeColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 10.0, horizontal: 12.0),
-                                  child: Center(
-                                    child: Text(
-                                      'Contact',
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold),
-                                    ),
+                                child: Text(
+                                  'Contact',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10),
-                            Container(
-                              height: 50,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    width: 3, color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(12),
+                            // Listings Section
+                            if (profile.listings
+                                .where((listing) =>
+                                    listing.type == ListingType.Property)
+                                .isNotEmpty) ...[
+                              SizedBox(height: 20),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Properties',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Container(
+                                    height: 300,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: profile.listings
+                                          .where((listing) =>
+                                              listing.type ==
+                                              ListingType.Property)
+                                          .length,
+                                      itemBuilder: (context, index) {
+                                        final listing = profile.listings
+                                            .where((listing) =>
+                                                listing.type ==
+                                                ListingType.Property)
+                                            .toList()[index];
+                                        return GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    PropertyDetailsScreen(
+                                                  listing,
+                                                  0,
+                                                  0,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Container(
+                                            width: 340,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.1),
+                                                  blurRadius: 8,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  child: AspectRatio(
+                                                    aspectRatio: 16 / 9,
+                                                    child: CachedNetworkImage(
+                                                      imageUrl: listing
+                                                              .property
+                                                              ?.imageUrls
+                                                              .first ??
+                                                          listing
+                                                              .imageUrls!.first,
+                                                      fit: BoxFit.cover,
+                                                      placeholder:
+                                                          (context, url) =>
+                                                              Container(
+                                                        color: Colors.grey[200],
+                                                        child: Icon(
+                                                            Icons.home_outlined,
+                                                            color: Colors
+                                                                .grey[400],
+                                                            size: 40),
+                                                      ),
+                                                      errorWidget: (context,
+                                                              url, error) =>
+                                                          Container(
+                                                        color: Colors.grey[200],
+                                                        child: Icon(
+                                                            Icons.home_outlined,
+                                                            color: Colors
+                                                                .grey[400],
+                                                            size: 40),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: EdgeInsets.all(12),
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      // Left Column
+                                                      Expanded(
+                                                        flex: 2,
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Text(
+                                                              listing.title
+                                                                  .trim()
+                                                                  .capitalize(),
+                                                              style: TextStyle(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                            SizedBox(height: 4),
+                                                            Row(
+                                                              children: [
+                                                                Icon(
+                                                                    Icons
+                                                                        .location_on,
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600],
+                                                                    size: 14),
+                                                                SizedBox(
+                                                                    width: 4),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    listing.location ??
+                                                                        '',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600],
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            SizedBox(height: 8),
+                                                            Row(
+                                                              children: [
+                                                                Icon(
+                                                                    Icons
+                                                                        .bed_outlined,
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600],
+                                                                    size: 16),
+                                                                SizedBox(
+                                                                    width: 4),
+                                                                Text(
+                                                                  '${listing.property?.numberOfBedrooms} beds',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        800],
+                                                                    fontSize:
+                                                                        12,
+                                                                  ),
+                                                                ),
+                                                                SizedBox(
+                                                                    width: 16),
+                                                                Icon(
+                                                                    Icons
+                                                                        .bathtub_outlined,
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        600],
+                                                                    size: 16),
+                                                                SizedBox(
+                                                                    width: 4),
+                                                                Text(
+                                                                  '${listing.property?.numberOfBathrooms} baths',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        800],
+                                                                    fontSize:
+                                                                        12,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      // Right Column
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .end,
+                                                        children: [
+                                                          Text(
+                                                            '\$${listing.price}/month',
+                                                            style: TextStyle(
+                                                              fontSize: 16,
+                                                              color:
+                                                                  Colors.orange,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                          ),
+                                                          SizedBox(height: 8),
+                                                          SizedBox(width: 4),
+                                                          Container(
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical:
+                                                                        4),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: Colors.blue
+                                                                  .withOpacity(
+                                                                      0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            child: Column(
+                                                              children: [
+                                                                Text(
+                                                                  '${listing.property?.maxOccupancy}',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: Colors
+                                                                        .blue,
+                                                                    fontSize:
+                                                                        16,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                                ),
+                                                                Text(
+                                                                  'looking for roomates',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: Colors
+                                                                        .blue,
+                                                                    fontSize:
+                                                                        12,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: IconButton(
-                                icon: Icon(Icons.arrow_forward_ios_rounded,
-                                    size: 20),
-                                onPressed: null,
-                              ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPropertyCard(Listing listing) {
-    return GestureDetector(
-      onTap: () {
-        // Track the property view
-        context.read<PropertyProvider>().trackPropertyView(listing.id);
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PropertyDetailsScreen(
-              listing,
-              widget.latitude,
-              widget.longitude,
+              ],
             ),
-          ),
-        );
-      },
-      child: Container(
-        width: 300,
-        child: Card(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 0,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: CachedNetworkImage(
-                  imageUrl: listing.property?.imageUrls?.first ?? '',
-                  fit: BoxFit.cover,
-                  height: 120,
-                  width: double.infinity,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      listing.title ?? '',
-                      style: AppTextStyles.subtitle(fontSize: 16),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 5),
-                    Row(
-                      children: [
-                        Icon(Icons.bathtub, color: Colors.grey, size: 20),
-                        SizedBox(width: 5),
-                        Text(listing.property!.numberOfBathrooms.toString(),
-                            style: TextStyle(fontSize: 14)),
-                        Spacer(),
-                        Icon(Icons.bed, color: Colors.grey, size: 20),
-                        SizedBox(width: 5),
-                        Text(listing.property!.numberOfBedrooms.toString(),
-                            style: TextStyle(fontSize: 14)),
-                        Spacer(),
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.blue.withOpacity(0.1),
-                          ),
-                          child: Text(
-                            "\$${listing.price}/month ",
-                            style: AppTextStyles.small(
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -755,242 +1003,118 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
 
         if (provider.isLoading && provider.matches.isEmpty) {
           return Scaffold(
-            body: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: MediaQuery.of(context).padding.top),
-                    _buildHeader(),
-                    Expanded(
-                      child: _buildShimmerLoading(),
-                    ),
-                  ],
-                ),
-              ),
+            body: Center(
+              child: CircularProgressIndicator(color: orangeColor),
             ),
           );
         }
 
         _fadeController.forward();
 
-        if (provider.error != null) {
-          return Center(child: Text(provider.error!));
-        }
-
         return Scaffold(
           body: Stack(
             children: [
               FadeTransition(
                 opacity: _fadeAnimation,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Stack(
-                    children: [
-                      Column(
-                        children: [
-                          SizedBox(height: MediaQuery.of(context).padding.top),
-                          _buildHeader(),
-                          Flexible(
-                            child: Stack(
-                              children: [
-                                provider.matches.isEmpty || isExhausted
-                                    ? Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.people_outline,
-                                                size: 64, color: Colors.grey),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              'No more matches',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.grey[800],
-                                              ),
-                                            ),
-                                            Text(
-                                              'Check back later for new potential matches',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : CardSwiper(
-                                        maxAngle: 20,
-                                        isLoop: false,
-                                        controller: controller,
-                                        cardsCount: provider.matches.length,
-                                        numberOfCardsDisplayed: provider
-                                                .matches.isEmpty
-                                            ? 1
-                                            : provider.matches.length >= 3
-                                                ? 3
-                                                : provider.matches.length < 1
-                                                    ? 1
-                                                    : provider.matches.length,
-                                        backCardOffset: const Offset(40, 16),
-                                        allowedSwipeDirection:
-                                            AllowedSwipeDirection.only(
-                                          left: true,
-                                          right: true,
-                                          up: false,
-                                          down: false,
-                                        ),
-                                        onSwipe: (previousIndex, currentIndex,
-                                            direction) async {
-                                          if (previousIndex <
-                                              provider.matches.length) {
-                                            final match =
-                                                provider.matches[previousIndex];
-                                            if (direction ==
-                                                CardSwiperDirection.left) {
-                                              provider.swipeLeft(match.id);
-                                            } else if (direction ==
-                                                CardSwiperDirection.right) {
-                                              final isMutualSwipe =
-                                                  await provider
-                                                      .swipeRight(match.id);
-                                              if (isMutualSwipe) {
-                                                _matchAnimationController
-                                                    .forward();
-                                              } //add the animation code here
-                                            }
-
-                                            if (currentIndex == null) {
-                                              setState(() {
-                                                isExhausted = true;
-                                              });
-                                            }
-                                          }
-                                          return true;
-                                        },
-                                        onSwipeDirectionChange:
-                                            (direction, swipeP) {
-                                          setState(() {
-                                            currentDirection = direction;
-                                          });
-                                        },
-                                        cardBuilder:
-                                            (context, index, idt, ins) {
-                                          if (index >=
-                                              provider.matches.length) {
-                                            return Container();
-                                          }
-                                          return _buildProfileCard(
-                                              provider.matches[index]);
-                                        },
-                                      ),
-                                _buildSwipeOverlay(),
-                              ],
-                            ),
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    controller: _mainScrollController,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Find Roommates',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: orangeColor,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      _buildMatchOverlay(provider.matchedUser)
-                    ],
+                        ),
+                        Container(
+                          height: MediaQuery.of(context).size.height -
+                              100, // Adjust height as needed
+                          child: provider.matches.isEmpty || isExhausted
+                              ? _buildNoMoreMatches()
+                              : Stack(
+                                  children: [
+                                    CardSwiper(
+                                      maxAngle: 25,
+                                      isLoop: false,
+                                      controller: controller,
+                                      cardsCount: provider.matches.length,
+                                      numberOfCardsDisplayed:
+                                          provider.matches.length >= 2 ? 2 : 1,
+                                      backCardOffset: const Offset(0, 20),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 24,
+                                      ),
+                                      allowedSwipeDirection:
+                                          AllowedSwipeDirection.only(
+                                        left: true,
+                                        right: true,
+                                      ),
+                                      onSwipe: (previousIndex, currentIndex,
+                                          direction) async {
+                                        if (previousIndex <
+                                            provider.matches.length) {
+                                          final match =
+                                              provider.matches[previousIndex];
+                                          if (direction ==
+                                              CardSwiperDirection.left) {
+                                            provider.swipeLeft(match.id);
+                                          } else if (direction ==
+                                              CardSwiperDirection.right) {
+                                            final isMutualSwipe = await provider
+                                                .swipeRight(match.id);
+                                            if (isMutualSwipe) {
+                                              _matchAnimationController
+                                                  .forward();
+                                            }
+                                          }
+
+                                          if (currentIndex == null) {
+                                            setState(() {
+                                              isExhausted = true;
+                                            });
+                                          }
+                                        }
+                                        return true;
+                                      },
+                                      onSwipeDirectionChange:
+                                          (direction, swipeP) {
+                                        setState(() {
+                                          currentDirection = direction;
+                                        });
+                                      },
+                                      cardBuilder: (context,
+                                          index,
+                                          horizontalThresholdPercentage,
+                                          verticalThresholdPercentage) {
+                                        if (index >= provider.matches.length) {
+                                          return Container();
+                                        }
+                                        return _buildProfileCard(
+                                            provider.matches[index]);
+                                      },
+                                    ),
+                                    _buildSwipeOverlay(),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              if (user != null && !user.isProfileComplete()) ...[
-                // Blurred background with animation
-                AnimatedBuilder(
-                  animation: _profileOverlayController,
-                  builder: (context, child) {
-                    _profileOverlayController.forward(); // Start the animation
-                    return FadeTransition(
-                      opacity: _profileOpacityAnimation,
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          color: blackTextColor.withOpacity(0.5),
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                // Centered content with scale and opacity animation
-                Center(
-                  child: AnimatedBuilder(
-                    animation: _profileOverlayController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _profileScaleAnimation.value,
-                        child: FadeTransition(
-                          opacity: _profileOpacityAnimation,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(horizontal: 40),
-                            padding: EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Complete Your Profile',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                                SizedBox(height: 20),
-
-                                // Profile completion indicator
-                                _buildProfileCompletion(user),
-
-                                SizedBox(height: 20),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => EditProfileScreen(
-                                          latitude: widget.latitude,
-                                          longitude: widget.longitude,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange,
-                                    elevation: 0,
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Edit Profile',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+              _buildMatchOverlay(provider.matchedUser),
             ],
           ),
         );
@@ -998,229 +1122,31 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     );
   }
 
-  Widget _buildShimmerLoading() {
-    return ListView.separated(
-      itemCount: 2,
-      separatorBuilder: (context, index) => SizedBox(height: 20),
-      itemBuilder: (context, index) {
-        return Card(
-          elevation: 5,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile image shimmer
-              FadeShimmer(
-                height: MediaQuery.of(context).size.height * 0.56,
-                width: double.infinity,
-                radius: 20,
-                highlightColor: Colors.grey[200]!,
-                baseColor: Colors.grey[300]!,
-              ),
-
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name and age shimmer
-                    Row(
-                      children: [
-                        FadeShimmer(
-                          height: 24,
-                          width: 150,
-                          radius: 4,
-                          highlightColor: Colors.grey[200]!,
-                          baseColor: Colors.grey[300]!,
-                        ),
-                        SizedBox(width: 8),
-                        FadeShimmer(
-                          height: 24,
-                          width: 40,
-                          radius: 4,
-                          highlightColor: Colors.grey[200]!,
-                          baseColor: Colors.grey[300]!,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-
-                    // University shimmer
-                    Row(
-                      children: [
-                        FadeShimmer(
-                          height: 16,
-                          width: 200,
-                          radius: 4,
-                          highlightColor: Colors.grey[200]!,
-                          baseColor: Colors.grey[300]!,
-                        ),
-                        Spacer(),
-                        FadeShimmer(
-                          height: 24,
-                          width: 120,
-                          radius: 20,
-                          highlightColor: Colors.grey[200]!,
-                          baseColor: Colors.grey[300]!,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-
-                    // Bio shimmer
-                    Column(
-                      children: List.generate(
-                        3,
-                        (index) => Padding(
-                          padding: EdgeInsets.only(bottom: 6),
-                          child: FadeShimmer(
-                            height: 14,
-                            width: double.infinity,
-                            radius: 4,
-                            highlightColor: Colors.grey[200]!,
-                            baseColor: Colors.grey[300]!,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
-                    // Preferences title shimmer
-                    FadeShimmer(
-                      height: 15,
-                      width: 100,
-                      radius: 4,
-                      highlightColor: Colors.grey[200]!,
-                      baseColor: Colors.grey[300]!,
-                    ),
-                    SizedBox(height: 10),
-
-                    // Preferences chips shimmer
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(
-                        4,
-                        (index) => FadeShimmer(
-                          height: 32,
-                          width: 80,
-                          radius: 16,
-                          highlightColor: Colors.grey[200]!,
-                          baseColor: Colors.grey[300]!,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Property card shimmer
-                    Container(
-                      width: 300,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FadeShimmer(
-                            height: 120,
-                            width: double.infinity,
-                            radius: 15,
-                            highlightColor: Colors.grey[200]!,
-                            baseColor: Colors.grey[300]!,
-                          ),
-                          SizedBox(height: 8),
-                          FadeShimmer(
-                            height: 20,
-                            width: 150,
-                            radius: 4,
-                            highlightColor: Colors.grey[200]!,
-                            baseColor: Colors.grey[300]!,
-                          ),
-                          SizedBox(height: 8),
-                          FadeShimmer(
-                            height: 16,
-                            width: double.infinity,
-                            radius: 4,
-                            highlightColor: Colors.grey[200]!,
-                            baseColor: Colors.grey[300]!,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProfileCompletion(User user) {
-    double completion = user.getProfileCompletion();
-    bool isComplete = user.isProfileComplete();
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isComplete
-            ? Colors.green.withOpacity(0.1)
-            : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+  Widget _buildNoMoreMatches() {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Text(
-                'Profile Completion',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Spacer(),
-              if (!isComplete)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: Colors.white, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Required',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+          Icon(
+            Icons.search_off_rounded,
+            size: 80,
+            color: Colors.grey[300],
           ),
-          SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: completion / 100,
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(
-              isComplete ? Colors.green : Colors.orange,
+          SizedBox(height: 24),
+          Text(
+            'No more matches',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
             ),
           ),
-          SizedBox(height: 4),
+          SizedBox(height: 8),
           Text(
-            '${completion.toStringAsFixed(0)}% Complete',
+            'Check back later for new potential matches',
             style: TextStyle(
+              fontSize: 16,
               color: Colors.grey[600],
-              fontSize: 14,
             ),
           ),
         ],

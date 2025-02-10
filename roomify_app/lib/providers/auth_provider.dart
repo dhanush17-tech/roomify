@@ -138,7 +138,6 @@ class AuthProvider extends ChangeNotifier {
 
       onSuccess();
       Future.microtask(() => refreshAllProviders(context));
-
     } catch (e) {
       _setError(e.toString());
     } finally {

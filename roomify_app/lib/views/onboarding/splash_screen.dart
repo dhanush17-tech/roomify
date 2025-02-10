@@ -57,7 +57,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     await _checkAuth();
 
- 
     if (isLoggedIn) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -90,6 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       final token = await AuthRepository().getToken();
       if (token != null) {
+        print("User Token: $token");
         await userProvider.loadUserProfile();
         if (mounted) {
           setState(() {

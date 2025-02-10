@@ -33,12 +33,12 @@ class ProfileProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  double get latitude => _latitude;
-  double get longitude => _longitude;
+  double? get latitude => _latitude;
+  double? get longitude => _longitude;
 
   String? _currentLocation;
-  double _latitude = 0.0;
-  double _longitude = 0.0;
+  double? _latitude;
+  double? _longitude;
 
   String? get currentLocation => _currentLocation;
 
@@ -53,7 +53,8 @@ class ProfileProvider extends ChangeNotifier {
       if (user != null && user.latitude != null && user.longitude != null) {
         _latitude = user.latitude!;
         _longitude = user.longitude!;
-        _currentLocation = await _getLocationName(_latitude, _longitude);
+        _currentLocation = await _getLocationName(
+          _latitude!, _longitude!);
         notifyListeners();
         return;
       }
@@ -63,10 +64,10 @@ class ProfileProvider extends ChangeNotifier {
       if (position != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        _currentLocation = await _getLocationName(_latitude, _longitude);
+        _currentLocation = await _getLocationName(_latitude!, _longitude!);
 
         // Update user location in backend
-        await updateLocation(_latitude, _longitude, context);
+        await updateLocation(_latitude!, _longitude!, context);
       }
     } catch (e) {
       _error = 'Failed to get location: ${e.toString()}';
@@ -143,28 +144,53 @@ class ProfileProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      await _repository.updateUserLocation(latitude, longitude);
+      // Update coordinates
       _latitude = latitude;
       _longitude = longitude;
-      _currentLocation = await _getLocationName(latitude, longitude);
 
-      // Update AuthProvider user data
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.user != null) {
-        final updatedUser = authProvider.user!.copyWith(
-          latitude: latitude,
-          longitude: longitude,
-        );
-        authProvider.updateUser(updatedUser);
-      }
+      // Get address from coordinates
+      final address = await getAddressFromCoordinates(latitude, longitude);
+      _currentLocation = address;
 
-      // Refresh all providers when location changes
-        Future.microtask(() => authProvider.refreshAllProviders(context));
-    } catch (e) {
-      _error = 'Failed to update location: ${e.toString()}';
-    } finally {
+      // Update in backend
+      await _repository.updateUserLocation(latitude, longitude);
+
       _isLoading = false;
       notifyListeners();
+    } catch (e) {
+      _error = 'Failed to update location: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<String> getAddressFromCoordinates(double lat, double lng) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://api.mapbox.com/geocoding/v5/mapbox.places/$lng,$lat.json?access_token=$mapboxToken',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          final feature = data['features'][0];
+          final placeName = feature['place_name'] as String;
+
+          // Extract just the city and state
+          final parts = placeName.split(', ');
+          if (parts.length >= 2) {
+            return '${parts[parts.length - 3]}, ${parts[parts.length - 2]}';
+          }
+          return placeName;
+        }
+      }
+      return 'Unknown Location';
+    } catch (e) {
+      print('Error getting address: $e');
+      return 'Unknown Location';
     }
   }
 

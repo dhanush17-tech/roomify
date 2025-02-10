@@ -607,8 +607,8 @@ class _SearchMapScreenState extends State<SearchMapScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final profileProvider = context.read<ProfileProvider>();
       context.read<SearchProvider>().loadInitialProperties(
-            profileProvider.latitude,
-            profileProvider.longitude,
+            profileProvider.latitude ?? 0.0,
+            profileProvider.longitude ?? 0.0,
           );
     });
 
@@ -704,8 +704,8 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                 builder: (context, provider, _) {
                   return MapView(
                     properties: provider.searchResults,
-                    latitude: profileProvider.latitude,
-                    longitude: profileProvider.longitude,
+                    latitude: profileProvider.latitude ?? 0.0,
+                    longitude: profileProvider.longitude ?? 0.0,
                   );
                 },
               ),
@@ -964,155 +964,8 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                   itemCount: provider.searchResults.length,
                   itemBuilder: (context, index) {
                     final property = provider.searchResults[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PropertyDetailsScreen(
-                              property,
-                              authProvider.latitude,
-                              authProvider.longitude,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        margin: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Stack(
-                              children: [
-                                Hero(
-                                  tag: 'property-image-${property.id}',
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(16),
-                                    ),
-                                    child: AspectRatio(
-                                      aspectRatio: 16 / 9,
-                                      child: property.imageUrls?.isEmpty ?? true
-                                          ? property.property?.imageUrls
-                                                      ?.isEmpty ??
-                                                  true
-                                              ? Image.asset(
-                                                  'assets/images/placeholder.png',
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : CachedNetworkImage(
-                                                  imageUrl: property
-                                                      .property!.imageUrls![0],
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) =>
-                                                      FadeShimmer(
-                                                    width: double.infinity,
-                                                    height: double.infinity,
-                                                    highlightColor:
-                                                        Colors.white,
-                                                    baseColor:
-                                                        Colors.grey[300]!,
-                                                  ),
-                                                  errorWidget:
-                                                      (context, url, error) =>
-                                                          Icon(Icons.error),
-                                                )
-                                          : CachedNetworkImage(
-                                              imageUrl: property.imageUrls![0],
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) =>
-                                                  FadeShimmer(
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                                highlightColor: Colors.white,
-                                                baseColor: Colors.grey[300]!,
-                                              ),
-                                              errorWidget:
-                                                  (context, url, error) =>
-                                                      Icon(Icons.error),
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Consumer<PropertyProvider>(
-                                    builder: (context, propertyProvider, _) {
-                                      return FavoriteButton(
-                                        isFavorite: propertyProvider
-                                            .isFavorite(property.id),
-                                        onTap: () => propertyProvider
-                                            .toggleFavorite(property),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Hero(
-                                    tag: 'property-title-${property.id}',
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: Text(
-                                        property.title,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Hero(
-                                    tag: 'property-price-${property.id}',
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: Text(
-                                        property.user!.isProfessional
-                                            ? property.property?.floorPlans !=
-                                                        null &&
-                                                    property.property!
-                                                        .floorPlans!.isNotEmpty
-                                                ? "\$${property.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${property.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
-                                                : "\$${property.price}"
-                                            : "\$${property.price}",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: orangeColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return PropertyCard(
+                        property, property.latitude!, property.longitude!);
                   },
                 );
               },

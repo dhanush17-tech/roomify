@@ -31,7 +31,8 @@ class EditProfileScreen extends StatefulWidget {
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> with SingleTickerProviderStateMixin {
+class _EditProfileScreenState extends State<EditProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -412,7 +413,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(height: MediaQuery.of(context).padding.top),
+                            SizedBox(
+                                height: MediaQuery.of(context).padding.top),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -445,7 +447,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                                     backgroundImage: _profileImage != null
                                         ? FileImage(File(_profileImage!.path))
                                         : (user?.profilePhotoUrl != null
-                                            ? NetworkImage(user!.profilePhotoUrl!)
+                                            ? NetworkImage(
+                                                user!.profilePhotoUrl!)
                                             : null) as ImageProvider?,
                                     child: user?.profilePhotoUrl == null &&
                                             _profileImage == null
@@ -470,8 +473,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                             ),
                             if (user?.profilePhotoUrl != null)
                               TextButton(
-                                onPressed: () =>
-                                    context.read<AuthProvider>().deleteProfilePhoto(),
+                                onPressed: () => context
+                                    .read<AuthProvider>()
+                                    .deleteProfilePhoto(),
                                 child: Text('Remove Photo'),
                               ),
                             if (!isProfessional) ...[
@@ -484,9 +488,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                             _buildInputFieldWithIndicator(
                               controller: _displayNameController,
                               keyboardType: TextInputType.name,
-                              label: isProfessional ? 'Company Name' : 'Display Name',
+                              label: isProfessional
+                                  ? 'Company Name'
+                                  : 'Display Name',
                               validator: (value) {
-                                if (value?.isEmpty ?? true) return 'Name is required';
+                                if (value?.isEmpty ?? true)
+                                  return 'Name is required';
                                 return null;
                               },
                             ),
@@ -495,8 +502,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                               label: "Email",
                               keyboardType: TextInputType.emailAddress,
                               validator: (value) {
-                                if (value?.isEmpty ?? true) return 'Email is required';
-                                if (!value!.contains('@')) return 'Invalid email';
+                                if (value?.isEmpty ?? true)
+                                  return 'Email is required';
+                                if (!value!.contains('@'))
+                                  return 'Invalid email';
                                 return null;
                               },
                             ),
@@ -584,16 +593,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: availablePreferences.map((preference) {
+                                children:
+                                    availablePreferences.map((preference) {
                                   return FilterChip(
                                     label: Text(preference),
-                                    selected: _selectedPreferences.contains(preference),
+                                    selected: _selectedPreferences
+                                        .contains(preference),
                                     onSelected: (selected) {
                                       setState(() {
                                         if (selected) {
                                           _selectedPreferences.add(preference);
                                         } else {
-                                          _selectedPreferences.remove(preference);
+                                          _selectedPreferences
+                                              .remove(preference);
                                         }
                                       });
                                     },
@@ -652,8 +664,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                                     borderSide: BorderSide.none,
                                   ),
                                 ),
-                                validator: (value) =>
-                                    value!.isEmpty ? 'Please enter a title' : null,
+                                validator: (value) => value!.isEmpty
+                                    ? 'Please enter a title'
+                                    : null,
                               ),
                               SizedBox(height: 12),
                               Text(
@@ -723,26 +736,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                                       _buildAmenityChip('Park'),
                                       _buildAmenityChip('Home theatre'),
                                       _buildAmenityChip("Kid's Friendly"),
-                                      ..._customFeatures
-                                          .map((feature) => _buildAmenityChip(feature)),
+                                      ..._customFeatures.map((feature) =>
+                                          _buildAmenityChip(feature)),
                                       InkWell(
                                         onTap: _showAddFeatureDialog,
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
                                               horizontal: 16, vertical: 12),
                                           decoration: BoxDecoration(
-                                            border: Border.all(color: Colors.grey[300]!),
-                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: Colors.grey[300]!),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(Icons.add,
-                                                  size: 18, color: Colors.grey[600]),
+                                                  size: 18,
+                                                  color: Colors.grey[600]),
                                               SizedBox(width: 8),
                                               Text(
                                                 'Add Amenities',
-                                                style: TextStyle(color: Colors.grey[600]),
+                                                style: TextStyle(
+                                                    color: Colors.grey[600]),
                                               ),
                                             ],
                                           ),
@@ -773,9 +790,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: _isLoading ? null : _handleProfileUpdate,
+                                onPressed:
+                                    _isLoading ? null : _handleProfileUpdate,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context).primaryColor,
+                                  backgroundColor:
+                                      Theme.of(context).primaryColor,
                                   foregroundColor: Colors.white,
                                   padding: EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
@@ -806,27 +825,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
   Future<void> _handleProfileUpdate() async {
     // Start animations
     await _animationController.forward();
-    
+
     // Update profile
     await context.read<AuthProvider>().updateProfile(
-      context: context,
-      displayName: _displayNameController.text,
-      bio: _bioController.text,
-      age: _ageController.text.isNotEmpty
-          ? int.tryParse(_ageController.text)
-          : null,
-      university: _universityController.text,
-      location: _locationController.text,
-      gender: _selectedGender,
-      status: _selectedStatus,
-      email: _emailController.text,
-      profileImage: _profileImage,
-      phoneNumber: _phoneNumber,
-    );
-    
+          context: context,
+          displayName: _displayNameController.text,
+          bio: _bioController.text,
+          age: _ageController.text.isNotEmpty
+              ? int.tryParse(_ageController.text)
+              : null,
+          university: _universityController.text,
+          location: _locationController.text,
+          gender: _selectedGender,
+          status: _selectedStatus,
+          email: _emailController.text,
+          profileImage: _profileImage,
+          phoneNumber: _phoneNumber,
+        );
+
     // Reset and play reverse animations
     await _animationController.reverse();
-    
+
     // Show success message and navigate back
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

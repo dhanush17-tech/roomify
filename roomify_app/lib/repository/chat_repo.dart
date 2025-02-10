@@ -8,6 +8,9 @@ import 'package:roomify_app/models/chatModel.dart';
 import 'dart:io';
 
 class ChatRepository {
+  /// Loads the list of chats for the current user
+  ///
+  /// Throws an [Exception] if the request fails
   Future<List<ChatRoom>> getChats() async {
     try {
       final token = await AuthRepository().getToken();
@@ -71,10 +74,23 @@ class ChatRepository {
       'Upgrade': 'websocket',
     };
 
-    return IOWebSocketChannel.connect(
-      Uri.parse(wsUrl),
-      headers: headers,
-    );
+    try {
+      final channel = IOWebSocketChannel.connect(
+        Uri.parse(wsUrl),
+        headers: headers,
+        pingInterval: Duration(seconds: 30),
+      );
+
+      // Add error handling
+      channel.stream.handleError((error) {
+        print('WebSocket error: $error');
+        throw Exception('WebSocket connection error: $error');
+      });
+
+      return channel;
+    } catch (e) {
+      throw Exception('Failed to connect to chat room: $e');
+    }
   }
 
   Future<ChatRoom> createOrGetChatRoom(String otherUserId) async {
@@ -125,7 +141,7 @@ class ChatRepository {
     }
   }
 
-  Future<void> requestDocuments(
+  Future<ChatMessage?> requestDocuments(
     String roomId,
     String recipientId,
     List<DocumentType> documents, {
@@ -138,13 +154,18 @@ class ChatRepository {
         'Authorization': 'Bearer $token',
       };
 
+      if (documents.isEmpty) {
+        throw Exception('No documents selected');
+      }
+
+      final documentStrings = documents.map((d) => d.name).toList();
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/chat/$roomId/request-document'),
         headers: headers,
         body: json.encode({
           'recipientId': recipientId,
-          'requestedDocuments':
-              documents.map((d) => d.toString().split('.').last).toList(),
+          'requestedDocuments': documentStrings,
           'customDocumentName': customDocumentName,
         }),
       );
@@ -152,6 +173,7 @@ class ChatRepository {
       if (response.statusCode != 200) {
         throw Exception('Failed to request documents: ${response.statusCode}');
       }
+      return ChatMessage.fromJson(json.decode(response.body));
     } catch (e) {
       throw Exception('Failed to request documents: $e');
     }
@@ -159,7 +181,7 @@ class ChatRepository {
 
   Future<List<String>> submitDocuments(
     String roomId,
-    String requestId,
+    String messageId,
     List<File> documents,
   ) async {
     try {
@@ -175,7 +197,7 @@ class ChatRepository {
       request.headers['Authorization'] = 'Bearer $token';
 
       // Add requestId as a field
-      request.fields['requestId'] = requestId;
+      request.fields['requestId'] = messageId;
 
       // Add all documents
       for (var document in documents) {

@@ -10,6 +10,7 @@ import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/home/home_screen.dart';
+import 'package:roomify_app/views/messaging/document_request_dialog.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/add_property.dart';
 import 'package:roomify_app/views/property/report_listing.dart';
@@ -51,6 +52,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
         curve: Curves.easeInOut,
       ),
     );
+    // Delay the location details loading to avoid build phase issues
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadLocationDetails();
+      }
+    });
   }
 
   @override
@@ -58,6 +65,40 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
     _pageController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  Map<String, dynamic>? _locationDetails;
+  bool _loadingLocationDetails = false;
+  TransitDetails? _transitDetails;
+  bool _isLoadingTransit = false;
+  String? _error;
+
+  Future<void> _loadLocationDetails() async {
+    if (!mounted) return;
+
+    setState(() {
+      _loadingLocationDetails = true;
+      _error = null;
+    });
+
+    try {
+      final provider = Provider.of<PropertyProvider>(context, listen: false);
+      final details = await provider.getLocationDetails(widget.listing.id);
+
+      if (mounted) {
+        setState(() {
+          _locationDetails = details;
+          _loadingLocationDetails = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loadingLocationDetails = false;
+        });
+      }
+    }
   }
 
   Future<void> _handlePropertyEdit() async {
@@ -143,213 +184,466 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
         opacity: _fadeAnimation,
         child: Stack(
           children: [
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(Icons.arrow_back, color: Colors.black87),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          margin: EdgeInsets.symmetric(horizontal: 4),
+                          child: IconButton(
+                            icon: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(Icons.share_rounded,
+                                  color: Colors.black87),
+                            ),
+                            onPressed: _shareListing,
+                          ),
+                        ),
+                        if (isOwnListing() &&
+                            !widget.listing.user!.isProfessional)
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: 4),
+                            child: IconButton(
+                              icon: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(Icons.edit_rounded,
+                                    color: orangeColor),
+                              ),
+                              onPressed: () async {
+                                final updatedListing = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddPropertyScreen(
+                                      existingListing: widget.listing,
+                                    ),
+                                  ),
+                                );
+
+                                if (updatedListing != null && mounted) {
+                                  setState(() {
+                                    widget.listing = updatedListing;
+                                  });
+                                }
+                              },
+                            ),
+                          )
+                        else ...[
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: 4),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (C) => ReportScreen(
+                                        listingId: widget.listing.id,
+                                        listingType: widget.listing.title,
+                                        latitude: widget.latitude,
+                                        longitude: widget.longitude,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.flag_rounded,
+                                        size: 18,
+                                        color: Colors.grey[600],
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        "Report",
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: 4),
+                            child: Consumer<PropertyProvider>(
+                              builder: (ctx, provider, _) => FavoriteButton(
+                                isFavorite:
+                                    provider.isFavorite(widget.listing.id),
+                                onTap: () =>
+                                    provider.toggleFavorite(widget.listing),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             // Main content
             CustomScrollView(
               slivers: [
                 // App Bar with image
                 SliverAppBar(
-                    expandedHeight: MediaQuery.of(context).size.height * 0.4,
-                    flexibleSpace: ClipRRect(
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
+                    pinned: true,
+                    expandedHeight: 400,
+                    backgroundColor: Colors.white,
+                    leading: IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.arrow_back, color: blackTextColor),
                       ),
-                      child: FlexibleSpaceBar(
-                        background: Hero(
-                          tag: 'property-image-${widget.listing.id}',
-                          child: Stack(
-                            children: [
-                              // Main image carousel
-                              PageView.builder(
-                                scrollDirection: Axis.vertical,
-                                controller: _pageController,
-                                onPageChanged: (index) {
-                                  setState(() {
-                                    _currentPage = index;
-                                  });
-                                },
-                                itemCount: widget.listing.imageUrls!.length > 0
-                                    ? widget.listing.imageUrls!.length
-                                    : widget
-                                        .listing.property!.imageUrls!.length,
-                                itemBuilder: (context, index) {
-                                  final imageUrl =
-                                      widget.listing.imageUrls!.length > 0
-                                          ? widget.listing.imageUrls![index]
-                                          : widget.listing.property!
-                                              .imageUrls![index];
-                                  return CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    placeholder: (context, url) => Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Icon(Icons.error),
-                                  );
-                                },
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.only(left: 13),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child:
+                              Icon(Icons.share_rounded, color: blackTextColor),
+                        ),
+                        onPressed: _shareListing,
+                      ),
+                      if (isOwnListing() &&
+                          !widget.listing.user!.isProfessional)
+                        IconButton(
+                          icon: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.edit_rounded, color: orangeColor),
+                          ),
+                          onPressed: _handlePropertyEdit,
+                        ),
+                      if (!isOwnListing())
+                        IconButton(
+                          icon: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.flag_rounded,
+                                color: Colors.grey[600]),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (C) => ReportScreen(
+                                  listingId: widget.listing.id,
+                                  listingType: widget.listing.title,
+                                  latitude: widget.latitude,
+                                  longitude: widget.longitude,
+                                ),
                               ),
+                            );
+                          },
+                        ),
+                      Consumer<PropertyProvider>(
+                        builder: (ctx, provider, _) => FavoriteButton(
+                          isFavorite: provider.isFavorite(widget.listing.id),
+                          onTap: () => provider.toggleFavorite(widget.listing),
+                        ),
+                      ),
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Hero(
+                        tag: 'property-image-${widget.listing.id}',
+                        child: Stack(
+                          children: [
+                            // Main image carousel
+                            PageView.builder(
+                              scrollDirection: Axis.vertical,
+                              controller: _pageController,
+                              onPageChanged: (index) {
+                                setState(() {
+                                  _currentPage = index;
+                                });
+                              },
+                              itemCount: widget.listing.imageUrls!.length > 0
+                                  ? widget.listing.imageUrls!.length
+                                  : widget.listing.property!.imageUrls!.length,
+                              itemBuilder: (context, index) {
+                                final imageUrl =
+                                    widget.listing.imageUrls!.length > 0
+                                        ? widget.listing.imageUrls![index]
+                                        : widget.listing.property!
+                                            .imageUrls![index];
+                                return CachedNetworkImage(
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.grey[200],
+                                    child: Icon(Icons.home_outlined,
+                                        color: Colors.grey[400], size: 50),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                    color: Colors.grey[200],
+                                    child: Icon(Icons.home_outlined,
+                                        color: Colors.grey[400], size: 50),
+                                  ),
+                                );
+                              },
+                            ),
 
-                              // Image gallery grid at bottom right
-                              Positioned(
-                                bottom: 16,
-                                right: 10,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (context) => Container(
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                                0.9,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.vertical(
-                                            top: Radius.circular(20),
-                                          ),
+                            // Image gallery grid at bottom right
+                            Positioned(
+                              bottom: 16,
+                              right: 10,
+                              child: GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (context) => Container(
+                                      height:
+                                          MediaQuery.of(context).size.height *
+                                              0.9,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(20),
                                         ),
-                                        child: Column(
-                                          children: [
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.all(16.0),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    'All Photos',
-                                                    style: TextStyle(
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'All Photos',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
-                                                  IconButton(
-                                                    icon: Icon(Icons.close),
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: GridView.builder(
-                                                padding: EdgeInsets.all(8),
-                                                gridDelegate:
-                                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                                  crossAxisCount: 2,
-                                                  mainAxisSpacing: 8,
-                                                  crossAxisSpacing: 8,
                                                 ),
-                                                itemCount: widget.listing
+                                                IconButton(
+                                                  icon: Icon(Icons.close),
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: GridView.builder(
+                                              padding: EdgeInsets.all(8),
+                                              gridDelegate:
+                                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                                crossAxisCount: 2,
+                                                mainAxisSpacing: 8,
+                                                crossAxisSpacing: 8,
+                                              ),
+                                              itemCount: widget.listing
+                                                          .imageUrls!.length >
+                                                      0
+                                                  ? widget
+                                                      .listing.imageUrls!.length
+                                                  : widget.listing.property!
+                                                      .imageUrls!.length,
+                                              itemBuilder: (context, index) {
+                                                final imageUrl = widget.listing
                                                             .imageUrls!.length >
                                                         0
-                                                    ? widget.listing.imageUrls!
-                                                        .length
+                                                    ? widget.listing
+                                                        .imageUrls![index]
                                                     : widget.listing.property!
-                                                        .imageUrls!.length,
-                                                itemBuilder: (context, index) {
-                                                  final imageUrl = widget
-                                                              .listing
-                                                              .imageUrls!
-                                                              .length >
-                                                          0
-                                                      ? widget.listing
-                                                          .imageUrls![index]
-                                                      : widget.listing.property!
-                                                          .imageUrls![index];
-                                                  return GestureDetector(
-                                                    onTap: () {
-                                                      _pageController
-                                                          .animateToPage(
-                                                        index,
-                                                        duration: Duration(
-                                                            milliseconds: 300),
-                                                        curve: Curves.easeInOut,
-                                                      );
-                                                      Navigator.pop(context);
-                                                    },
-                                                    child: ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                      child: CachedNetworkImage(
-                                                        imageUrl: imageUrl,
-                                                        fit: BoxFit.cover,
+                                                        .imageUrls![index];
+                                                return GestureDetector(
+                                                  onTap: () {
+                                                    _pageController
+                                                        .animateToPage(
+                                                      index,
+                                                      duration: Duration(
+                                                          milliseconds: 300),
+                                                      curve: Curves.easeInOut,
+                                                    );
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                    child: CachedNetworkImage(
+                                                      imageUrl: imageUrl,
+                                                      fit: BoxFit.cover,
+                                                      placeholder:
+                                                          (context, url) =>
+                                                              Container(
+                                                        color: Colors.grey[200],
+                                                        child: Icon(
+                                                            Icons.home_outlined,
+                                                            color: Colors
+                                                                .grey[400],
+                                                            size: 30),
+                                                      ),
+                                                      errorWidget: (context,
+                                                              url, error) =>
+                                                          Container(
+                                                        color: Colors.grey[200],
+                                                        child: Icon(
+                                                            Icons.home_outlined,
+                                                            color: Colors
+                                                                .grey[400],
+                                                            size: 30),
                                                       ),
                                                     ),
-                                                  );
-                                                },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_getTotalImages() > 2)
+                                      Container(
+                                        height: 80,
+                                        width: 80,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: const Color.fromARGB(
+                                                  179, 219, 219, 219),
+                                              width: 3),
+                                          image: DecorationImage(
+                                              fit: BoxFit.cover,
+                                              image: NetworkImage(widget.listing
+                                                          .imageUrls!.length >
+                                                      0
+                                                  ? widget.listing.imageUrls![0]
+                                                  : widget.listing.property!
+                                                      .imageUrls![0])),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Container(
+                                              height: 80,
+                                              width: 80,
+                                              decoration: BoxDecoration(
+                                                color: Colors.black
+                                                    .withOpacity(0.5),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                            Center(
+                                              child: DefaultTextStyle(
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                child: Text(
+                                                  '+${_getTotalImages().toString()}',
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    );
-                                  },
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      for (var i = 0;
-                                          i < min(2, _getTotalImages());
-                                          i++) ...[
-                                        Container(
-                                          height: 80,
-                                          width: 80,
-                                          decoration: BoxDecoration(
-                                              color:
-                                                  Colors.black.withOpacity(0.7),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Colors.white
-                                                    .withOpacity(0.3),
-                                                width: 3,
-                                              )),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _getImageUrl(i),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                      ],
-                                      if (_getTotalImages() > 2)
-                                        Container(
-                                          height: 80,
-                                          width: 80,
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.black.withOpacity(0.7),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              '+${_getTotalImages() - 2}',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     )),
@@ -366,42 +660,95 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                           children: [
                             Expanded(
                               flex: 2,
-                              child: Hero(
-                                tag: 'property-title-${widget.listing.id}',
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: Text(
-                                    widget.listing.title,
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1.2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Hero(
+                                    tag: 'property-title-${widget.listing.id}',
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: Text(
+                                        widget.listing.title.capitalize(),
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.2,
+                                        ),
+                                        overflow: TextOverflow.visible,
+                                        softWrap: true,
+                                        maxLines: null,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.visible,
-                                    softWrap: true,
-                                    maxLines: null,
                                   ),
-                                ),
+                                  SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.location_on,
+                                          color: Colors.grey[600], size: 16),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          widget.listing.location ?? '',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 14,
+                                            height: 1.2,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
+                            SizedBox(height: 4),
                             SizedBox(width: 16),
                             Hero(
                               tag: 'property-price-${widget.listing.id}',
                               child: Material(
                                 color: Colors.transparent,
-                                child: Text(
-                                  widget.listing.user!.isProfessional
-                                      ? widget.listing.property!.floorPlans !=
-                                                  null &&
-                                              widget.listing.property!
-                                                  .floorPlans!.isNotEmpty
-                                          ? "\$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
-                                          : "\$${widget.listing.price}"
-                                      : "\$${widget.listing.price}",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    color: orangeColor,
-                                    fontWeight: FontWeight.w600,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          widget.listing.user!.isProfessional
+                                              ? widget.listing.property!
+                                                              .floorPlans !=
+                                                          null &&
+                                                      widget
+                                                          .listing
+                                                          .property!
+                                                          .floorPlans!
+                                                          .isNotEmpty
+                                                  ? "\$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a < b ? a : b)} - \$${widget.listing.property!.floorPlans!.map((fp) => fp.price).reduce((a, b) => a > b ? a : b)}"
+                                                  : "\$${widget.listing.price}"
+                                              : "\$${widget.listing.price}",
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            color: orangeColor,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        'per month',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.normal,
+                                          height: 1.0,
+                                          letterSpacing: 0,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -421,6 +768,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                   Container(
                                     decoration: BoxDecoration(
                                       border: Border.all(
+                                          width: 2,
                                           color: Colors.grey.shade300),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -448,6 +796,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                   Container(
                                     decoration: BoxDecoration(
                                       border: Border.all(
+                                          width: 2,
                                           color: Colors.grey.shade300),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -475,6 +824,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                   Container(
                                     decoration: BoxDecoration(
                                       border: Border.all(
+                                          width: 2,
                                           color: Colors.grey.shade300),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -696,7 +1046,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                           ),
                         ],
 
-                        _buildLocationDetailsSection(widget.listing),
+                        _buildLocationDetailsSection(),
                         SizedBox(height: 130),
                       ],
                     ),
@@ -717,9 +1067,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
   }
 
   int _getTotalImages() {
-    return widget.listing.imageUrls!.length > 0
-        ? widget.listing.imageUrls!.length
-        : widget.listing.property!.imageUrls!.length;
+    final listingImages = widget.listing.imageUrls?.length ?? 0;
+    final propertyImages = widget.listing.property?.imageUrls?.length ?? 0;
+    return listingImages > 0 ? listingImages : propertyImages;
   }
 
   String _getImageUrl(int index) {
@@ -799,14 +1149,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                       width: 100,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        color: Colors.grey[200],
+                        child: Icon(Icons.home_outlined,
+                            color: Colors.grey[400], size: 30),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[300],
-                        child: Icon(Icons.error),
+                        color: Colors.grey[200],
+                        child: Icon(Icons.home_outlined,
+                            color: Colors.grey[400], size: 30),
                       ),
                     ),
                   ),
@@ -962,12 +1312,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
     return '$month $year';
   }
 
-  Widget _buildLocationDetailsSection(Listing listing) {
-    var _locationDetails = listing.property?.transitDetails;
-    var _loadingLocationDetails = false;
-
-    if (_locationDetails == null) {
-      _loadingLocationDetails = true;
+  Widget _buildLocationDetailsSection() {
+    if (_loadingLocationDetails) {
+      return Center(child: CircularProgressIndicator());
     }
 
     if (_locationDetails == null) {
@@ -1369,7 +1716,7 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                             ),
                             child: CircleAvatar(
                               radius: 30,
-                              backgroundColor: blackTextColor,
+                              backgroundColor: Colors.black,
                               backgroundImage:
                                   widget.user.profilePhotoUrl != null
                                       ? CachedNetworkImageProvider(
@@ -1568,6 +1915,91 @@ class FloorPlanViewer extends StatelessWidget {
             value: event == null
                 ? 0
                 : event.cumulativeBytesLoaded / event.expectedTotalBytes!,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FavoriteButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback onTap;
+
+  FavoriteButton({required this.isFavorite, required this.onTap});
+
+  @override
+  _FavoriteButtonState createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<FavoriteButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+    _animateIconChange();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _animateIconChange() {
+    _controller.forward().then((_) {
+      _controller.reverse();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        widget.onTap();
+        _animateIconChange();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: blackTextColor.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 100),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(
+                scale: animation,
+                child: child,
+              );
+            },
+            child: Icon(
+              widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+              key: ValueKey<bool>(widget.isFavorite),
+              color: widget.isFavorite ? Colors.red : Colors.grey,
+            ),
           ),
         ),
       ),

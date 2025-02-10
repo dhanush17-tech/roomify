@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/marketplace/item_details.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
@@ -15,10 +16,7 @@ class PinterestGrid extends StatelessWidget {
   final double latitude;
   final double longitude;
   PinterestGrid(this.items, this.latitude, this.longitude,
-      {Key? key,
-      this.physics,
-      this.showDeleteIcon = false,
-      this.onTapDelete})
+      {Key? key, this.physics, this.showDeleteIcon = false, this.onTapDelete})
       : super(key: key);
 
   @override
@@ -188,6 +186,18 @@ class FeaturedItemCard extends StatelessWidget {
     this.showDeleteIcon = false,
   }) : super(key: key);
 
+  int _getMinPrice(List<FloorPlan> floorPlans) {
+    return floorPlans
+        .map((fp) => fp.price.toInt())
+        .reduce((a, b) => a < b ? a : b);
+  }
+
+  int _getMaxPrice(List<FloorPlan> floorPlans) {
+    return floorPlans
+        .map((fp) => fp.price.toInt())
+        .reduce((a, b) => a > b ? a : b);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -211,12 +221,15 @@ class FeaturedItemCard extends StatelessWidget {
                               ? item.property?.imageUrls?.isNotEmpty == true
                                   ? item.property!.imageUrls!.first
                                   : 'https://via.placeholder.com/180'
-                              : item.marketplaceItem!.imageUrls?.isNotEmpty == true
+                              : item.marketplaceItem!.imageUrls?.isNotEmpty ==
+                                      true
                                   ? item.marketplaceItem!.imageUrls!.first
                                   : 'https://via.placeholder.com/180',
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => buildPropertyImageShimmer(),
-                          errorWidget: (context, url, error) => Icon(Icons.error),
+                          placeholder: (context, url) =>
+                              buildPropertyImageShimmer(),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.error),
                         ),
                       ),
                     ),
@@ -269,7 +282,12 @@ class FeaturedItemCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            '\$${item.price}',
+                            (item.type == ListingType.Property) &&
+                                    (item.user?.isProfessional == true) &&
+                                    item.property?.floorPlans?.isNotEmpty ==
+                                        true
+                                ? '\$${_getMinPrice(item.property!.floorPlans!)}-\$${_getMaxPrice(item.property!.floorPlans!)}'
+                              : '\$${item.price}',
                             style: const TextStyle(
                               color: Colors.blue,
                               fontWeight: FontWeight.bold,

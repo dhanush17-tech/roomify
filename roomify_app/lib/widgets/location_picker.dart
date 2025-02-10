@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
-import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/views/home/map_location_picker.dart';
 
-class LocationPickerWrapper extends StatelessWidget {
+class LocationPickerWrapper extends StatefulWidget {
   final double currentLat;
   final double currentLng;
 
@@ -16,10 +15,34 @@ class LocationPickerWrapper extends StatelessWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // Get providers from parent context
+  State<LocationPickerWrapper> createState() => _LocationPickerWrapperState();
+}
+
+class _LocationPickerWrapperState extends State<LocationPickerWrapper> {
+  String? _displayLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateDisplayLocation();
+  }
+
+  Future<void> _updateDisplayLocation() async {
     final profileProvider = context.read<ProfileProvider>();
-    final propertyProvider = context.read<PropertyProvider>();
+    final address = await profileProvider.getAddressFromCoordinates(
+      widget.currentLat,
+      widget.currentLng,
+    );
+    if (mounted) {
+      setState(() {
+        _displayLocation = address;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
     final authProvider = context.read<AuthProvider>();
 
     return GestureDetector(
@@ -29,8 +52,8 @@ class LocationPickerWrapper extends StatelessWidget {
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (bottomSheetContext) => LocationPickerSheet(
-            lat: currentLat,
-            lng: currentLng,
+            lat: widget.currentLat,
+            lng: widget.currentLng,
             onLocationSelected: (lat, lng) async {
               try {
                 await profileProvider.updateLocation(lat, lng, context);
@@ -67,7 +90,9 @@ class LocationPickerWrapper extends StatelessWidget {
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: 90),
               child: Text(
-                profileProvider.currentLocation ?? 'Pick a location',
+                _displayLocation ??
+                    profileProvider.currentLocation ??
+                    'Pick a location',
                 style: TextStyle(
                   color: Colors.grey,
                   fontWeight: FontWeight.w500,

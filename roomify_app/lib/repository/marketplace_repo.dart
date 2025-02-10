@@ -175,7 +175,7 @@ class MarketplaceRepository {
 
       var request = http.MultipartRequest(
         'PUT',
-        Uri.parse('$baseUrl/api/properties/$id'),
+        Uri.parse('$baseUrl/api/marketplace/$id'),
       );
       request.headers.addAll(headers);
 

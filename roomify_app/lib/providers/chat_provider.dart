@@ -66,17 +66,24 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  void _handleWebSocketMessage(dynamic message) {
+  void _handleWebSocketMessage(dynamic message, String roomId) {
     try {
-      final data = jsonDecode(message);
+      var data = jsonDecode(message);
 
-      // Handle ping messages
-      if (data['type'] == 'ping') {
-        _handlePing(data);
-        return;
+      // Step 1: Check if the message is a JSON object
+      if (data is! Map<String, dynamic>) {
+        data = jsonDecode(data);
       }
 
-      if (data['type'] == 'message_deleted') {
+      // Step 2: Decode the actual JSON object
+
+      final messageType = data['type'];
+      final messageData = data['message'];
+      if (messageType == 'ping') {
+        _handlePing(data, roomId);
+        return;
+      }
+      if (messageType == 'message_deleted') {
         final roomId = data['roomId'];
         final messageId = data['messageId'];
 
@@ -92,9 +99,6 @@ class ChatProvider extends ChangeNotifier {
         return;
       }
 
-      final messageType = data['type'];
-      final messageData = data['message'];
-
       if (messageData != null) {
         final chatMessage = ChatMessage.fromJson(messageData);
         final roomId = chatMessage.roomId;
@@ -102,23 +106,24 @@ class ChatProvider extends ChangeNotifier {
         // Replace temporary message if it exists
         if (messageType == 'message') {
           final roomMessages = _messages[roomId];
-          if (roomMessages != null) {
-            final tempIndex = roomMessages.indexWhere((m) =>
-                    m.content == chatMessage.content &&
-                    m.senderId == chatMessage.senderId &&
-                    m.id.contains('T') // Temporary ID check
-                );
-            if (tempIndex != -1) {
-              roomMessages[tempIndex] = chatMessage;
-              notifyListeners();
-              return;
-            }
-          }
+          // if (roomMessages != null) {
+          //   final tempIndex = roomMessages.indexWhere((m) =>
+          //           m.content == chatMessage.content &&
+          //           m.senderId == chatMessage.senderId &&
+          //           m.id.contains('T') // Temporary ID check
+          //       );
+          // if (tempIndex != -1) {
+          roomMessages!.add(chatMessage);
+          notifyListeners();
+          return;
+          // }
+          // }
         }
 
         switch (messageType) {
-          case 'message':
           case 'document_request':
+            _addMessage(roomId, chatMessage);
+            break;
           case 'document_submission':
             _addMessage(roomId, chatMessage);
             break;
@@ -131,8 +136,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  void _handlePing(Map<String, dynamic> data) {
-    final roomId = data['roomId'];
+  void _handlePing(Map<String, dynamic> data, String roomId) {
     final channel = _socketChannels[roomId];
     if (channel != null) {
       channel.sink.add(jsonEncode({'type': 'pong'}));
@@ -156,7 +160,7 @@ class ChatProvider extends ChangeNotifier {
       _socketChannels[roomId] = channel;
 
       channel.stream.listen(
-        _handleWebSocketMessage,
+        (message) => _handleWebSocketMessage(message, roomId),
         onError: (error) {
           print('WebSocket error: $error');
           _error = 'Connection error: $error';
@@ -213,19 +217,19 @@ class ChatProvider extends ChangeNotifier {
         'roomId': roomId,
       }));
 
-      // Don't wait for WebSocket response to update UI
-      final currentUser = _authProvider.user;
-      if (currentUser != null) {
-        final tempMessage = ChatMessage(
-            id: DateTime.now().toIso8601String(), // Temporary ID
-            content: content,
-            createdAt: DateTime.now(),
-            roomId: roomId,
-            senderId: currentUser.id,
-            sender: currentUser,
-            type: 'TEXT');
-        _addMessage(roomId, tempMessage);
-      }
+      // // Don't wait for WebSocket response to update UI
+      // final currentUser = _authProvider.user;
+      // if (currentUser != null) {
+      //   final tempMessage = ChatMessage(
+      //       id: DateTime.now().toIso8601String(), // Temporary ID
+      //       content: content,
+      //       createdAt: DateTime.now(),
+      //       roomId: roomId,
+      //       senderId: currentUser.id,
+      //       sender: currentUser,
+      //       type: 'TEXT');
+      //   _addMessage(roomId, tempMessage);
+      // }
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -323,35 +327,57 @@ class ChatProvider extends ChangeNotifier {
       {String? customDocumentName}) async {
     if (_disposed) return;
 
-    ChatMessage? tempMessage;
+    // ChatMessage? tempMessage;
     try {
       // Create a temporary message first
-      final currentUser = _authProvider.user;
-      if (currentUser != null) {
-        tempMessage = ChatMessage(
-          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-          content: 'Document Request',
-          createdAt: DateTime.now(),
-          roomId: roomId,
-          senderId: currentUser.id,
-          sender: currentUser,
-          type: 'DOCUMENT_REQUEST',
-          documentRequestStatus: 'PENDING',
-          requestedDocuments: documents,
-          customDocumentName: customDocumentName,
-        );
-        _addMessage(roomId, tempMessage);
-      }
+      // final currentUser = _authProvider.user;
+      // if (currentUser != null) {
+      //   final documentRequest = DocumentRequest(
+      //     id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      //     messageId: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      //     requestedDocuments: jsonEncode(
+      //         documents.map((d) => d.toString().split('.').last).toList()),
+      //     status: 'PENDING',
+      //     recipientId: recipientId,
+      //     createdAt: DateTime.now(),
+      //     customDocumentName: customDocumentName,
+      //   );
 
-      // Send request to server
-      await _repository.requestDocuments(
-        roomId,
-        recipientId,
-        documents,
-        customDocumentName: customDocumentName,
-      );
+      //   tempMessage = ChatMessage(
+      //     id: documentRequest.messageId,
+      //     type: 'DOCUMENT_REQUEST',
+      //     content: 'Document Request',
+      //     createdAt: DateTime.now(),
+      //     roomId: roomId,
+      //     senderId: currentUser.id,
+      //     sender: currentUser,
+      //     documentRequest: documentRequest,
+      //   );
+      //   _addMessage(roomId, tempMessage);
+      // }
 
-      // Send WebSocket message if connected
+      // // Send request to server
+      // final data = await _repository.requestDocuments(
+      //   roomId,
+      //   recipientId,
+      //   documents,
+      //   customDocumentName: customDocumentName,
+      // );
+
+      // // Replace temp message with server response
+      // if (data != null) {
+      //   final roomMessages = _messages[roomId];
+      //   if (roomMessages != null) {
+      //     final messageIndex =
+      //         roomMessages.indexWhere((m) => m.id == tempMessage!.id);
+      //     if (messageIndex != -1) {
+      //       roomMessages[messageIndex] = data;
+      //       notifyListeners();
+      //     }
+      //   }
+      // }
+
+      // Send WebSocket message
       final channel = _socketChannels[roomId];
       if (channel != null && !_disposed) {
         channel.sink.add(jsonEncode({
@@ -364,17 +390,16 @@ class ChatProvider extends ChangeNotifier {
         }));
       }
     } catch (e) {
-      // Remove temporary message if it exists
-      if (tempMessage != null && !_disposed) {
-        final roomMessages = _messages[roomId];
-        if (roomMessages != null) {
-          roomMessages.removeWhere((m) => m.id == tempMessage!.id);
-          notifyListeners();
-        }
-      }
+      // // Remove temporary message if it exists
+      // if (tempMessage != null && !_disposed) {
+      //   final roomMessages = _messages[roomId];
+      //   if (roomMessages != null) {
+      //     roomMessages.removeWhere((m) => m.id == tempMessage!.id);
+      //     notifyListeners();
+      //   }
+      // }
 
       if (_disposed) return;
-
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -397,7 +422,35 @@ class ChatProvider extends ChangeNotifier {
     List<DocumentType> documents, {
     String? customDocumentName,
   }) async {
+    // ChatMessage? tempMessage;
     try {
+      // // Create a temporary message first
+      // final currentUser = _authProvider.user;
+      // if (currentUser != null) {
+      //   final documentRequest = DocumentRequest(
+      //     id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      //     messageId: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      //     requestedDocuments: jsonEncode(
+      //         documents.map((d) => d.toString().split('.').last).toList()),
+      //     status: 'PENDING',
+      //     recipientId: recipientId,
+      //     createdAt: DateTime.now(),
+      //     customDocumentName: customDocumentName,
+      //   );
+
+      //   tempMessage = ChatMessage(
+      //     id: documentRequest.messageId,
+      //     type: 'DOCUMENT_REQUEST',
+      //     content: 'Document Request',
+      //     createdAt: DateTime.now(),
+      //     roomId: roomId,
+      //     senderId: currentUser.id,
+      //     sender: currentUser,
+      //     documentRequest: documentRequest,
+      //   );
+      //   _addMessage(roomId, tempMessage);
+      // }
+
       final channel = _socketChannels[roomId];
       if (channel == null) throw Exception('Not connected to room');
 
@@ -412,13 +465,35 @@ class ChatProvider extends ChangeNotifier {
         'customDocumentName': customDocumentName,
       }));
 
-      await _repository.requestDocuments(
-        roomId,
-        recipientId,
-        documents,
-        customDocumentName: customDocumentName,
-      );
+      // // Wait for server response
+      // final data = await _repository.requestDocuments(
+      //   roomId,
+      //   recipientId,
+      //   documents,
+      //   customDocumentName: customDocumentName,
+      // );
+
+      // // Replace temp message with server response
+      // if (data != null) {
+      //   final roomMessages = _messages[roomId];
+      //   if (roomMessages != null) {
+      //     final messageIndex =
+      //         roomMessages.indexWhere((m) => m.id == tempMessage!.id);
+      //     if (messageIndex != -1) {
+      //       roomMessages[messageIndex] = data;
+      //       notifyListeners();
+      //     }
+      //   }
+      // }
     } catch (e) {
+      // Remove temporary message if it exists
+      // if (tempMessage != null) {
+      //   final roomMessages = _messages[roomId];
+      //   if (roomMessages != null) {
+      //     roomMessages.removeWhere((m) => m.id == tempMessage!.id);
+      //     notifyListeners();
+      //   }
+      // }
       _error = e.toString();
       notifyListeners();
     }
@@ -426,14 +501,14 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> submitDocuments(
     String roomId,
-    String requestId,
+    String messageId,
     List<File> documents,
   ) async {
     try {
       // Submit documents and get URLs from server
       final documentUrls = await _repository.submitDocuments(
         roomId,
-        requestId,
+        messageId,
         documents,
       );
 
@@ -443,24 +518,9 @@ class ChatProvider extends ChangeNotifier {
         channel.sink.add(jsonEncode({
           'type': 'document_submission',
           'roomId': roomId,
-          'requestId': requestId,
-          'documents': documentUrls,
+          'requestId': messageId,
+          'documents': documentUrls
         }));
-      }
-
-      // Update local state
-      final roomMessages = _messages[roomId];
-      if (roomMessages != null) {
-        final messageIndex =
-            roomMessages.indexWhere((m) => m.documentRequestId == requestId);
-        if (messageIndex != -1) {
-          final updatedMessage = roomMessages[messageIndex].copyWith(
-            documentRequestStatus: 'FULFILLED',
-            submittedDocuments: documentUrls,
-          );
-          roomMessages[messageIndex] = updatedMessage;
-          notifyListeners();
-        }
       }
     } catch (e) {
       _error = e.toString();

@@ -482,6 +482,8 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
               SizedBox(height: 12),
               MapBoxAutoCompleteWidget(
                 hint: "Enter item location",
+                defaultLatitude: _latitude,
+                defaultLongitude: _longitude,
                 onSelect: (place) {
                   setState(() {
                     _locationController.text = place.placeName;

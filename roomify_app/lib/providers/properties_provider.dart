@@ -16,16 +16,102 @@ class PropertyProvider extends ChangeNotifier {
   String? _error;
   List<Listing> _recommendations = [];
   List<PropertyLead> _leads = [];
-
   List<Listing> _pairUpListings = [];
   List<Listing> _favorites = [];
+  bool _isInitialized = false;
+  bool _isLoadingReccomendations = false;
 
+  PropertyProvider(this._repository, this.context) {
+    // Delay initialization to avoid build phase issues
+    Future.microtask(() => initialize());
+  }
+
+  bool get isInitialized => _isInitialized;
   List<Listing> get pairUpListings => _pairUpListings;
   List<PropertyLead> get leads => _leads;
   List<Listing> get favorites => _favorites;
-
-  bool _isLoadingReccomendations = false;
   bool get isLoadingReccomendations => _isLoadingReccomendations;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  List<Listing> get recommendations => _recommendations;
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      await Future.wait([
+        fetchPairUpListings(),
+        loadFavorites(),
+        fetchRecommendations(
+          Provider.of<AuthProvider>(context, listen: false).user?.latitude ??
+              0.0,
+          Provider.of<AuthProvider>(context, listen: false).user?.longitude ??
+              0.0,
+        ),
+      ]);
+
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Error initializing PropertyProvider: $e';
+      print(_error);
+    }
+  }
+
+  Future<void> fetchPairUpListings() async {
+    if (_isLoading) return;
+
+    try {
+      _isLoading = true;
+      if (_isInitialized) notifyListeners();
+
+      _pairUpListings = await _repository.getPairUpProperties();
+
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+    }
+  }
+
+  Future<void> loadFavorites() async {
+    if (_isLoading) return;
+
+    try {
+      _isLoading = true;
+      if (_isInitialized) notifyListeners();
+
+      _favorites = await _repository.getFavorites();
+
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+    }
+  }
+
+  Future<void> fetchRecommendations(double latitude, double longitude) async {
+    if (_isLoadingReccomendations) return;
+
+    try {
+      _isLoadingReccomendations = true;
+      if (_isInitialized) notifyListeners();
+
+      _recommendations =
+          await _repository.getRecommendedProperties(latitude, longitude);
+
+      _isLoadingReccomendations = false;
+      if (_isInitialized) notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoadingReccomendations = false;
+      if (_isInitialized) notifyListeners();
+    }
+  }
 
   Future<void> loadLeads() async {
     try {
@@ -42,18 +128,6 @@ class PropertyProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  PropertyProvider(this._repository, this.context) {
-    fetchPairUpListings();
-    loadFavorites();
-    fetchRecommendations(
-        Provider.of<AuthProvider>(context, listen: false).user!.latitude!,
-        Provider.of<AuthProvider>(context, listen: false).user!.longitude!);
-  }
-
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  List<Listing> get recommendations => _recommendations;
 
   Future<Listing> createProperty(Listing listing,
       {List<File> images = const []}) async {
@@ -74,71 +148,6 @@ class PropertyProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       throw e;
-    }
-  }
-
-  Future<void> fetchRecommendations(
-      final double latitude, final double longitude) async {
-    try {
-      _isLoadingReccomendations = true;
-      _error = null;
-      notifyListeners();
-
-      _recommendations =
-          await _repository.getRecommendedProperties(latitude, longitude);
-
-      _isLoadingReccomendations = false;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to fetch recommendations: $e';
-      _isLoadingReccomendations = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> fetchPairUpListings() async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      _pairUpListings = await _repository.getPairUpProperties();
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to fetch pair-up listings: $e';
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> clearAll() async {
-    try {
-      _isLoading = true;
-      for (Listing favourites in _favorites) {
-        await _repository.removeFavorite(favourites.id);
-      }
-      _favorites = [];
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {}
-  }
-
-  Future<void> loadFavorites() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      // Get favorites from repository
-      _favorites = await _repository.getFavorites();
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
     }
   }
 
@@ -188,6 +197,29 @@ class PropertyProvider extends ChangeNotifier {
 
   Future<void> refreshFavorites() async {
     await loadFavorites();
+  }
+
+  Future<void> clearAll() async {
+    if (_isLoading) return;
+
+    try {
+      _isLoading = true;
+      if (_isInitialized) notifyListeners();
+
+      // Remove all favorites one by one
+      for (Listing favorite in _favorites) {
+        await _repository.removeFavorite(favorite.id);
+      }
+      _favorites = [];
+
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      if (_isInitialized) notifyListeners();
+      throw e;
+    }
   }
 
   Future<Listing> updateProperty(

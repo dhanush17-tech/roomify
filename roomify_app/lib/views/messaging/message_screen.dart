@@ -173,6 +173,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF8F8F8),
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           Container(
@@ -212,23 +213,32 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     Container(
                       width: 60,
                       height: 60,
-                      child: Hero(
-                        tag: 'profile-${widget.room.id}',
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white, width: 2),
-                            image: otherUser.profilePhotoUrl != null
-                                ? DecorationImage(
-                                    fit: BoxFit.cover,
-                                    image: CachedNetworkImageProvider(
-                                        otherUser.profilePhotoUrl!))
-                                : null,
-                          ),
-                          child: otherUser.profilePhotoUrl == null
-                              ? Center(child: Text(otherUser.displayName[0]))
-                              : null,
-                        ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: otherUser.profilePhotoUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: otherUser.profilePhotoUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: Colors.grey[200],
+                                  child: Icon(Icons.person,
+                                      color: Colors.grey[400], size: 30),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.grey[200],
+                                  child: Icon(Icons.person,
+                                      color: Colors.grey[400], size: 30),
+                                ),
+                              )
+                            : Container(
+                                color: Colors.grey[200],
+                                child: Icon(Icons.person,
+                                    color: Colors.grey[400], size: 30),
+                              ),
                       ),
                     ),
                     SizedBox(width: 12),
@@ -336,12 +346,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                             ],
                           ],
                           SizedBox(height: 16),
-                          Text(
-                            'Listings',
-                            style: AppTextStyles.title(
-                                fontSize: 15, color: orangeColor),
-                          ),
-                          SizedBox(height: 8),
                         ],
                         // the profile listings for the other user
                         if (_isLoadingListings == false &&
@@ -349,6 +353,12 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                                 .where((listing) =>
                                     listing.type == ListingType.Property)
                                 .isNotEmpty) ...[
+                          Text(
+                            'Listings',
+                            style: AppTextStyles.title(
+                                fontSize: 15, color: orangeColor),
+                          ),
+                          SizedBox(height: 8),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -723,8 +733,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
               ),
               Row(
                 children: [
-                  //delete icon
-
                   if (isPending)
                     Text(
                       'Pending',
@@ -734,7 +742,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       ),
                     ),
                   SizedBox(width: 10),
-                  //delete should only be shown if the message is my the current user
                   if (isMe)
                     GestureDetector(
                       onTap: () => _showDeleteDialog(message),
@@ -783,14 +790,73 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
           if (!isMe && isPending) ...[
             SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: () =>
-                  _showDocumentUploadDialog(message.documentRequestId!),
+              onPressed: () => _showDocumentUploadDialog(message.id!),
               icon: Icon(Icons.upload_file),
               label: Text('Upload Documents'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[900],
                 foregroundColor: Colors.white,
               ),
+            ),
+          ],
+          if (isFulfilled && message.submittedDocuments != null) ...[
+            SizedBox(height: 12),
+            Divider(color: Colors.green[200]),
+            SizedBox(height: 8),
+            Text(
+              'Submitted Documents',
+              style: TextStyle(
+                color: Colors.green[900],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: message.submittedDocuments!.map((url) {
+                final fileName = url.split('/').last;
+                final isImage = fileName.toLowerCase().endsWith('.jpg') ||
+                    fileName.toLowerCase().endsWith('.jpeg') ||
+                    fileName.toLowerCase().endsWith('.png');
+                final isPdf = fileName.toLowerCase().endsWith('.pdf');
+
+                return InkWell(
+                  onTap: () => _openDocument(url),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green[200]!),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isImage
+                              ? Icons.image
+                              : isPdf
+                                  ? Icons.picture_as_pdf
+                                  : Icons.insert_drive_file,
+                          size: 20,
+                          color: Colors.green[700],
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          fileName.length > 20
+                              ? '${fileName.substring(0, 17)}...'
+                              : fileName,
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ],
@@ -915,7 +981,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
               if (loadingDialogContext != null) {
                 Navigator.of(loadingDialogContext!).pop();
               }
-
+              print(e);
               // Show error message but keep dialog open
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
