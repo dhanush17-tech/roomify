@@ -20,6 +20,7 @@ import 'package:roomify_app/widgets/category_chip.dart';
 import 'package:roomify_app/widgets/amenity_chip.dart';
 import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl/intl.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final double latitude;
@@ -785,6 +786,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                             if (isProfessional) ...[
                               SizedBox(height: 10),
                               _buildEditFloorPlansSection(_listing),
+                              _buildOffersSection(),
                             ],
                             SizedBox(height: 25),
                             SizedBox(
@@ -1354,6 +1356,270 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         });
       },
     );
+  }
+
+  Widget _buildOffersSection() {
+    if (!context.read<AuthProvider>().user!.isProfessional) {
+      return SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 24),
+        Text(
+          'Special Offers',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: blackTextColor,
+          ),
+        ),
+        SizedBox(height: 12),
+        if (_listing?.property?.offers.isEmpty ?? true)
+          Center(
+            child: Text(
+              'No offers added yet',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: _listing!.property!.offers.length,
+            itemBuilder: (context, index) {
+              final offer = _listing!.property!.offers[index];
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            offer.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            offer.description,
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Valid until: ${DateFormat('MMM d, y').format(offer.validUntil)}',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => _deleteOffer(offer.id),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _showAddOfferDialog,
+            icon: Icon(Icons.add),
+            label: Text('Add New Offer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: orangeColor,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showAddOfferDialog() async {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    DateTime? selectedDate;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New Offer'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Offer Title',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                title: Text(
+                  selectedDate == null
+                      ? 'Select Valid Until Date'
+                      : 'Valid Until: ${DateFormat('MMM d, y').format(selectedDate!)}',
+                ),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().add(Duration(days: 30)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(Duration(days: 365)),
+                  );
+                  if (date != null) {
+                    setState(() => selectedDate = date);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (titleController.text.isNotEmpty &&
+                  descriptionController.text.isNotEmpty &&
+                  selectedDate != null) {
+                _addOffer(
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  validUntil: selectedDate!,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Add Offer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: orangeColor,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addOffer({
+    required String title,
+    required String description,
+    required DateTime validUntil,
+  }) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Add the offer through your API
+      final response = await context.read<PropertyProvider>().addOffer(
+            listingId: _listing!.id,
+            title: title,
+            description: description,
+            validUntil: validUntil,
+          );
+
+      setState(() {
+        if (_listing?.property != null) {
+          _listing!.property = _listing!.property!.copyWith(
+            offers: [..._listing!.property!.offers, response],
+          );
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Offer added successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add offer: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteOffer(String offerId) async {
+    try {
+      setState(() => _isLoading = true);
+
+      await context.read<PropertyProvider>().deleteOffer(
+            listingId: _listing!.id,
+            offerId: offerId,
+          );
+
+      setState(() {
+        if (_listing?.property != null) {
+          _listing!.property = _listing!.property!.copyWith(
+            offers: _listing!.property!.offers
+                .where((o) => o.id != offerId)
+                .toList(),
+          );
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Offer deleted successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete offer: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }
 

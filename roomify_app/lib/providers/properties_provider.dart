@@ -435,4 +435,40 @@ class PropertyProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  Future<PropertyOffer> addOffer({
+    required int listingId,
+    required String title,
+    required String description,
+    required DateTime validUntil,
+  }) async {
+    try {
+      final offer = await _repository.addOffer(listingId, {
+        'title': title,
+        'description': description,
+        'validUntil': validUntil.toIso8601String(),
+      });
+
+      notifyListeners();
+      return offer;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  Future<void> deleteOffer({
+    required int listingId,
+    required String offerId,
+  }) async {
+    try {
+      await _repository.deleteOffer(listingId, offerId);
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      throw e;
+    }
+  }
 }

@@ -19,6 +19,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   Listing listing;
@@ -1016,8 +1017,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                             ),
                           ),
                         ],
-                        if (widget.listing.property?.isLookingForRoomate ==
-                            true) ...[
+                        if (widget.listing.user?.isProfessional != true) ...[
                           SizedBox(height: 16),
                           Container(
                             padding: EdgeInsets.symmetric(
@@ -1045,9 +1045,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                             ),
                           ),
                         ],
-
+                        SizedBox(height: 11),
+                        _buildOffersSection(context),
                         _buildLocationDetailsSection(),
-                        SizedBox(height: 130),
                       ],
                     ),
                   ),
@@ -1558,6 +1558,139 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
     return minOccupancy == maxOccupancy
         ? minOccupancy.toString()
         : '$minOccupancy-$maxOccupancy';
+  }
+
+  Widget _buildOffersSection(BuildContext context) {
+    final isProfessionalListing = widget.listing.user?.isProfessional ?? false;
+    if (!isProfessionalListing) {
+      return SizedBox.shrink();
+    }
+
+    final offers = widget.listing.property?.offers ?? [];
+    if (offers.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_offer, color: Colors.orange),
+              SizedBox(width: 8),
+              Text(
+                'Special Offers',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${offers.length} ${offers.length == 1 ? 'Offer' : 'Offers'}',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          ListView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: offers.length,
+            itemBuilder: (context, index) {
+              final offer = offers[index];
+              final isValid = offer.validUntil.isAfter(DateTime.now());
+
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isValid ? Colors.grey[200]! : Colors.red[100]!,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            offer.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (!isValid)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Expired',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      offer.description,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Valid until: ${DateFormat('MMM d, y').format(offer.validUntil)}',
+                      style: TextStyle(
+                        color: isValid ? Colors.grey[500] : Colors.red[300],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 

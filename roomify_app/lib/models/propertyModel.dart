@@ -21,6 +21,7 @@ class Property {
   final bool isRoomifyChoice;
   final List<FloorPlan>? floorPlans;
   final bool isProfessionalListing;
+  final List<PropertyOffer> offers;
 
   Property({
     this.transitScore = 0,
@@ -40,6 +41,7 @@ class Property {
     this.isRoomifyChoice = false,
     this.floorPlans = const [],
     this.isProfessionalListing = false,
+    this.offers = const [],
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -53,9 +55,8 @@ class Property {
       rating: json['rating']?.toDouble(),
       amenities:
           List<String>.from(json['amenities']?.map((x) => x['amenity']) ?? []),
-      categories: [],
-      //List<String>.from(
-      // json['categories']?.map((x) => x['category']) ?? []),
+      categories: List<String>.from(
+          json['categories']?.map((x) => x['category']) ?? []),
       imageUrls:
           List<String>.from(json['images']?.map((x) => x['imageUrl']) ?? []),
       walkScore: json['walkScore'],
@@ -72,6 +73,10 @@ class Property {
               json['floorPlans'].map((x) => FloorPlan.fromJson(x)))
           : [],
       isProfessionalListing: json['isProfessionalListing'] ?? false,
+      offers: json['offers'] != null
+          ? List<PropertyOffer>.from(
+              json['offers'].map((x) => PropertyOffer.fromJson(x)))
+          : [],
     );
   }
 
@@ -94,6 +99,7 @@ class Property {
       'isRoomifyChoice': isRoomifyChoice,
       'floorPlans': floorPlans?.map((plan) => plan.toJson()).toList() ?? [],
       'isProfessionalListing': isProfessionalListing,
+      'offers': offers.map((offer) => offer.toJson()).toList(),
     };
   }
 
@@ -120,6 +126,7 @@ class Property {
     List<FloorPlan>? floorPlans,
     bool? isLookingForRoomate,
     bool? isProfessionalListing,
+    List<PropertyOffer>? offers,
   }) {
     return Property(
       numberOfBedrooms: numberOfBedrooms ?? this.numberOfBedrooms,
@@ -140,6 +147,7 @@ class Property {
       isLookingForRoomate: isLookingForRoomate ?? this.isLookingForRoomate,
       isProfessionalListing:
           isProfessionalListing ?? this.isProfessionalListing,
+      offers: offers ?? List<PropertyOffer>.from(this.offers),
     );
   }
 }
@@ -333,5 +341,37 @@ class TransitRoute {
       agency: json['agency'] ?? 'Unknown Agency',
       type: json['type'] ?? 'Unknown',
     );
+  }
+}
+
+class PropertyOffer {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime validUntil;
+
+  PropertyOffer({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.validUntil,
+  });
+
+  factory PropertyOffer.fromJson(Map<String, dynamic> json) {
+    return PropertyOffer(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'],
+      validUntil: DateTime.parse(json['validUntil']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'validUntil': validUntil.toIso8601String(),
+    };
   }
 }

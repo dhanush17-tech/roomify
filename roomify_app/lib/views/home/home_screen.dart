@@ -592,22 +592,23 @@ class PropertyCard extends StatelessWidget {
                         RoomifyVerified(),
                       if (listing.property?.isRoomifyChoice == true)
                         SizedBox(width: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.0, vertical: 4.0),
-                        child: Text(
-                          "2+ offers",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
+                      if (listing.property?.offers?.isNotEmpty == true)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          child: Text(
+                            "${listing.property?.offers?.length} ${listing.property?.offers?.length == 1 ? 'offer' : 'offers'} available",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

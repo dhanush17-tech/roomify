@@ -15,6 +15,9 @@ class ChatHome extends StatefulWidget {
 }
 
 class _ChatHomeState extends State<ChatHome> {
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  List<ChatRoom> _previousRooms = [];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,12 +81,47 @@ class _ChatHomeState extends State<ChatHome> {
                     );
                   }
 
-                  return ListView.builder(
+                  // Sort rooms by updatedAt in descending order
+                  final sortedRooms = List<ChatRoom>.from(provider.rooms)
+                    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+                  // Handle room reordering animations
+                  if (_previousRooms.isNotEmpty) {
+                    for (var i = 0; i < sortedRooms.length; i++) {
+                      final room = sortedRooms[i];
+                      final oldIndex =
+                          _previousRooms.indexWhere((r) => r.id == room.id);
+                      if (oldIndex != -1 && oldIndex != i) {
+                        // Room position has changed, animate it
+                        _listKey.currentState?.removeItem(
+                          oldIndex,
+                          (context, animation) => SizeTransition(
+                            sizeFactor: animation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: _buildChatTile(_previousRooms[oldIndex]),
+                            ),
+                          ),
+                        );
+                        _listKey.currentState?.insertItem(i);
+                      }
+                    }
+                  }
+
+                  _previousRooms = List.from(sortedRooms);
+
+                  return AnimatedList(
+                    key: _listKey,
+                    initialItemCount: sortedRooms.length,
                     padding: EdgeInsets.only(left: 16, right: 16),
-                    itemCount: provider.rooms.length,
-                    itemBuilder: (context, index) {
-                      final room = provider.rooms[index];
-                      return _buildChatTile(room);
+                    itemBuilder: (context, index, animation) {
+                      return SizeTransition(
+                        sizeFactor: animation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: _buildChatTile(sortedRooms[index]),
+                        ),
+                      );
                     },
                   );
                 },

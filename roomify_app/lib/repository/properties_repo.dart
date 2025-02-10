@@ -477,6 +477,38 @@ class PropertyRepository {
       return null;
     }
   }
+
+  Future<PropertyOffer> addOffer(
+      int listingId, Map<String, dynamic> offerData) async {
+    try {
+      final response = await _dio.post(
+        '/api/properties/$listingId/offers',
+        data: offerData,
+      );
+
+      if (response.statusCode == 200) {
+        return PropertyOffer.fromJson(response.data['offer']);
+      } else {
+        throw Exception('Failed to add offer');
+      }
+    } catch (e) {
+      throw Exception('Failed to add offer: $e');
+    }
+  }
+
+  Future<void> deleteOffer(int listingId, String offerId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/properties/$listingId/offers/$offerId',
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete offer');
+      }
+    } catch (e) {
+      throw Exception('Failed to delete offer: $e');
+    }
+  }
 }
 
 class AlreadyReportedException implements Exception {

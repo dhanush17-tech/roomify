@@ -36,7 +36,7 @@ class RoomateTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.blue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey[300]!),
       ),
@@ -46,7 +46,7 @@ class RoomateTag extends StatelessWidget {
           "looking for $noOfOccupants occupants",
           style: TextStyle(
             fontSize: 12,
-            color: Colors.black,
+            color: Colors.blue,
             fontWeight: FontWeight.w600,
           ),
         ),

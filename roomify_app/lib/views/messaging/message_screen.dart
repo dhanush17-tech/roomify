@@ -461,12 +461,34 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                   controller: _scrollController,
                   initialItemCount: _messages.length,
                   itemBuilder: (context, index, animation) {
-                    return SizeTransition(
-                      sizeFactor: animation,
+                    final curvedAnimation = CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutQuint,
+                      reverseCurve: Curves.easeInQuint,
+                    );
+
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).animate(curvedAnimation),
                       child: FadeTransition(
-                        opacity: animation,
-                        child: _buildMessage(
-                            _messages[_messages.length - 1 - index]),
+                        opacity: Tween<double>(
+                          begin: 0.0,
+                          end: 1.0,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Interval(0.2, 1.0, curve: Curves.easeOut),
+                        )),
+                        child: SizeTransition(
+                          sizeFactor: CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutQuart,
+                          ),
+                          child: _buildMessage(
+                            _messages[_messages.length - 1 - index],
+                          ),
+                        ),
                       ),
                     );
                   },
