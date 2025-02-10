@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import * as crypto from "crypto";
 import { signAndStoreToken, uploadToR2, deleteFromR2, verifyPassword } from '../helper/helper';
@@ -32,6 +32,14 @@ const app = new Hono<{
     }
 }>();
 
+//getAdressfromLatLong
+async function getAddressFromLatLong(latitude: number, longitude: number, c: Context): Promise<string> {
+    const apiKey = c.env.MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.features[0].place_name;
+}
 
 app.post('/', async (c) => {
     try {
@@ -70,12 +78,15 @@ app.post('/', async (c) => {
             imageUrls.push(fileUrl);
         }
 
+        //take the lat and long and use the mapbox geocoding api to get the address
+        const address = await getAddressFromLatLong(listingData.latitude, listingData.longitude, c);
+
         // Create the listing
         const listing = await prisma.listing.create({
             data: {
                 type: 'Property',
                 title: listingData.title,
-                location: listingData.location,
+                location: address,
                 price: listingData.price,
                 latitude: listingData.latitude,
                 longitude: listingData.longitude,
@@ -154,7 +165,7 @@ app.post('/', async (c) => {
                 profileImageUrl: listing.user.profileImageUrl,
                 email: listing.user.email,
             },
-            location: listing.location,
+            location: address,
             price: listing.price,
             isFavorite: false,
             latitude: listing.latitude,
@@ -722,7 +733,8 @@ app.get('/favorites', async (c) => {
                                 amenities: true,
                                 tags: true,
                                 images: true,
-                                categories: true
+                                categories: true,
+                                floorPlans: true
                             }
                         },
                         user: {
@@ -1155,11 +1167,12 @@ app.put('/:id', async (c) => {
 
         // If listing doesn't exist, create new one
         if (!existingListing) {
+            const address = await getAddressFromLatLong(listingData.latitude, listingData.longitude, c);
             const newListing = await prisma.listing.create({
                 data: {
                     type: 'Property',
                     title: listingData.title,
-                    location: listingData.location,
+                    location: address,
                     price: listingData.price,
                     latitude: listingData.latitude,
                     longitude: listingData.longitude,
@@ -1685,6 +1698,7 @@ app.post('/:listingId/floor-plans', async (c) => {
                 imageUrl: imageUrl ?? '',
                 propertyId: listing.id,
             },
+
         });
 
         // Get updated listing

@@ -52,8 +52,7 @@ app.post('/', async (c) => {
 
         // Send email with plain token
         await sendResetEmail(
-            //email,
-            "dhanush.kalaiselvan@gmail.com",
+            email,
             resetToken, c);
 
         return c.json({ message: 'Reset email sent successfully' });

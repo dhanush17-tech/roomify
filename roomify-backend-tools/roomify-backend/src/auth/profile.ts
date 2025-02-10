@@ -223,6 +223,7 @@ app.get('/listings', async (c) => {
 
                         categories: true,
                         images: true,
+
                     }
                 },
                 marketplace: {

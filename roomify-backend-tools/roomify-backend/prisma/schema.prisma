@@ -350,6 +350,7 @@ model DocumentSubmission {
   documents String // JSON string of document URLs
   createdAt DateTime    @default(now())
   
+  
 }
 
 model ChatMessage {

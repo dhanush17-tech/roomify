@@ -159,7 +159,7 @@ app.post('/create', async (c) => {
                         }
                     }
                 }
-                
+
             },
             include: {
                 participants: {
@@ -206,7 +206,7 @@ app.post('/create', async (c) => {
             });
         }
 
- 
+
         // If no existing room, create a new one
         const newRoom = await prisma.chatRoom.create({
             data: {
@@ -317,8 +317,10 @@ app.post("/:roomId/request-document", async (c) => {
                 content: 'Document Request',
                 roomId,
                 senderId: userId,
+
                 documentRequest: {
                     create: {
+
                         requestedDocuments: JSON.stringify(requestedDocuments),
                         status: 'PENDING',
                         recipientId: recipientId,
@@ -337,6 +339,8 @@ app.post("/:roomId/request-document", async (c) => {
             }
         });
 
+        console.log('Message created:', message);
+
         return c.json({ message });
     } catch (error) {
         console.error('Document request error:', error);
@@ -352,8 +356,6 @@ app.post("/:roomId/submit-document", async (c) => {
         if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
         const userId = payload.sub;
-
-        // Get the form data
         const formData = await c.req.formData();
         const requestId = formData.get('requestId') as string;
         const files = formData.getAll('documents') as File[];
@@ -365,46 +367,12 @@ app.post("/:roomId/submit-document", async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Upload each document to R2
+        // Upload documents to R2
         const uploadPromises = files.map(file => uploadToR2(file, 'documents', c));
         const uploadResults = await Promise.all(uploadPromises);
         const documentUrls = uploadResults.map(result => result.fileUrl);
 
-        // Create the message and document submission
-        const message = await prisma.chatMessage.create({
-            data: {
-                type: 'DOCUMENT_SUBMISSION',
-                content: 'Document Submission',
-                roomId,
-                senderId: userId,
-                documentSubmission: {
-                    create: {
-                        requestId,
-                        documents: JSON.stringify(documentUrls)
-                    }
-                }
-            },
-            include: {
-                documentSubmission: true,
-                sender: {
-                    select: {
-                        id: true,
-                        displayName: true,
-                    }
-                }
-            }
-        });
-
-        // Update the original request status
-        await prisma.documentRequest.update({
-            where: { id: requestId },
-            data: { status: 'FULFILLED' }
-        });
-
-        return c.json({
-            message,
-            documentUrls
-        });
+        return c.json({ documentUrls });
     } catch (error) {
         console.error('Document submission error:', error);
         return c.json({ error: 'Failed to submit documents' }, 500);

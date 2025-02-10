@@ -16,6 +16,7 @@ import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/messaging/document_request_dialog.dart';
 import 'package:roomify_app/views/messaging/document_upload_dialog.dart';
+import 'package:roomify_app/views/messaging/pdf_viewer_screen.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:roomify_app/views/property/property_details.dart';
@@ -47,12 +48,22 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
   bool _mounted = true;
   bool _isConnected = false;
   Timer? _reconnectTimer;
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  List<ChatMessage> _messages = [];
+
+  // Animation controllers for message animations
+  late AnimationController _messageAnimationController;
 
   List<Listing> otherUserListings = [];
 
   @override
   void initState() {
     super.initState();
+
+    _messageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
 
     _expandController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -139,6 +150,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
     _scrollController.dispose();
     _messageController.dispose();
     _expandController.dispose();
+    _messageAnimationController.dispose();
 
     // Schedule WebSocket disconnection for next frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -409,16 +421,54 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, provider, child) {
-                final messages = provider.getMessages(widget.room.id);
-                messages.sort((a, b) => a.compareTo(b));
+                final newMessages = provider.getMessages(widget.room.id);
+                newMessages.sort((a, b) => a.compareTo(b));
 
-                return ListView.builder(
+                // Handle message updates
+                if (_messages.length != newMessages.length) {
+                  if (_messages.length < newMessages.length) {
+                    // New message added
+                    for (var i = _messages.length;
+                        i < newMessages.length;
+                        i++) {
+                      _listKey.currentState?.insertItem(0);
+                    }
+                  } else {
+                    // Message deleted
+                    final deletedIndex = _messages.indexWhere((msg) =>
+                        !newMessages.any((newMsg) => newMsg.id == msg.id));
+                    if (deletedIndex != -1) {
+                      final deletedMessage = _messages[deletedIndex];
+                      _listKey.currentState?.removeItem(
+                        _messages.length - 1 - deletedIndex,
+                        (context, animation) => SizeTransition(
+                          sizeFactor: animation,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: _buildMessage(deletedMessage),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                  _messages = List.from(newMessages);
+                }
+
+                return AnimatedList(
+                  key: _listKey,
                   padding: EdgeInsets.all(16),
                   reverse: true,
                   controller: _scrollController,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    return _buildMessage(messages[messages.length - 1 - index]);
+                  initialItemCount: _messages.length,
+                  itemBuilder: (context, index, animation) {
+                    return SizeTransition(
+                      sizeFactor: animation,
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: _buildMessage(
+                            _messages[_messages.length - 1 - index]),
+                      ),
+                    );
                   },
                 );
               },
@@ -822,7 +872,12 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                 final isPdf = fileName.toLowerCase().endsWith('.pdf');
 
                 return InkWell(
-                  onTap: () => _openDocument(url),
+                  onTap: () {
+                    print('opening document');
+                    print(url);
+                    print(fileName);
+                    _openDocument(url);
+                  },
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
@@ -1049,47 +1104,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: Text('PDF Document'),
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            body: Container(),
-
-            // FutureBuilder<PDFDocument>(
-            //   future: (() async {
-            //     final response = await http.get(uri);
-            //     final dir = await getTemporaryDirectory();
-            //     final fileName = uri.pathSegments.last;
-            //     final file = File('${dir.path}/$fileName');
-            //     await file.writeAsBytes(response.bodyBytes);
-            //     return PDFDocument.fromFile(file);
-            //   })(),
-            //   builder: (context, snapshot) {
-            //     if (snapshot.connectionState == ConnectionState.waiting) {
-            //       return Center(child: CircularProgressIndicator());
-            //     }
-
-            //     if (snapshot.hasError) {
-            //       return Center(
-            //           child: Text('Error loading PDF: ${snapshot.error}'));
-            //     }
-
-            //     if (!snapshot.hasData) {
-            //       return Center(child: Text('Failed to load PDF'));
-            //     }
-
-            //     return PDFViewer(
-            //       document: snapshot.data!,
-            //       showPicker: false,
-            //       showNavigation: true,
-            //     );
-            //   },
-            // ),
-          ),
+          builder: (context) => PDFViewerScreen(file: File(uri.toString())),
         ),
       );
     } catch (e) {

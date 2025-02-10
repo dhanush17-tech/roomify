@@ -76,7 +76,6 @@ class ChatProvider extends ChangeNotifier {
       }
 
       // Step 2: Decode the actual JSON object
-
       final messageType = data['type'];
       final messageData = data['message'];
       if (messageType == 'ping') {
@@ -106,18 +105,20 @@ class ChatProvider extends ChangeNotifier {
         // Replace temporary message if it exists
         if (messageType == 'message') {
           final roomMessages = _messages[roomId];
-          // if (roomMessages != null) {
-          //   final tempIndex = roomMessages.indexWhere((m) =>
-          //           m.content == chatMessage.content &&
-          //           m.senderId == chatMessage.senderId &&
-          //           m.id.contains('T') // Temporary ID check
-          //       );
-          // if (tempIndex != -1) {
-          roomMessages!.add(chatMessage);
+          if (roomMessages != null) {
+            final tempIndex = roomMessages.indexWhere((m) =>
+                m.content == chatMessage.content &&
+                m.senderId == chatMessage.senderId &&
+                m.id.startsWith('temp_'));
+            if (tempIndex != -1) {
+              roomMessages[tempIndex] = chatMessage;
+              notifyListeners();
+              return;
+            }
+          }
+          roomMessages?.add(chatMessage);
           notifyListeners();
           return;
-          // }
-          // }
         }
 
         switch (messageType) {
@@ -211,25 +212,28 @@ class ChatProvider extends ChangeNotifier {
         throw Exception('Not connected to room');
       }
 
-      channel.sink.add(jsonEncode({
-        'type': 'message',
-        'content': content,
-        'roomId': roomId,
-      }));
+      // Add temporary message immediately
+      final currentUser = _authProvider.user;
+      if (currentUser != null) {
+        final tempMessage = ChatMessage(
+          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+          type: 'TEXT',
+          content: content,
+          createdAt: DateTime.now(),
+          roomId: roomId,
+          senderId: currentUser.id,
+          sender: currentUser,
+        );
+        _addMessage(roomId, tempMessage);
+      }
 
-      // // Don't wait for WebSocket response to update UI
-      // final currentUser = _authProvider.user;
-      // if (currentUser != null) {
-      //   final tempMessage = ChatMessage(
-      //       id: DateTime.now().toIso8601String(), // Temporary ID
-      //       content: content,
-      //       createdAt: DateTime.now(),
-      //       roomId: roomId,
-      //       senderId: currentUser.id,
-      //       sender: currentUser,
-      //       type: 'TEXT');
-      //   _addMessage(roomId, tempMessage);
-      // }
+      // Send the actual message through WebSocket with the correct data structure
+      final messageData = {
+        'type': 'message',
+        'roomId': roomId,
+        'content': content,
+      };
+      channel.sink.add(jsonEncode(messageData));
     } catch (e) {
       _error = e.toString();
       notifyListeners();
