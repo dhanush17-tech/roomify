@@ -111,11 +111,6 @@ app.post('/', async (c) => {
                                 category
                             })) || []
                         },
-                        tags: {
-                            create: listingData.property.tags?.map((tag: string) => ({
-                                tag
-                            }))
-                        },
                         images: {
                             create: imageUrls.map(url => ({
                                 imageUrl: url
@@ -131,6 +126,13 @@ app.post('/', async (c) => {
                                 squareFootage: floorPlan.squareFootage,
                                 name: floorPlan.name,
                             }))
+                        },
+                        offers: {
+                            create: listingData.property.offers?.map((offer: any) => ({
+                                title: offer.title,
+                                description: offer.description,
+                                validUntil: new Date(offer.validUntil),
+                            })) || []
                         }
                     }
                 }
@@ -147,7 +149,8 @@ app.post('/', async (c) => {
                         tags: true,
                         categories: true,
                         images: true,
-                        floorPlans: true
+                        floorPlans: true,
+                        offers: true
                     }
                 }
             }
@@ -159,6 +162,7 @@ app.post('/', async (c) => {
             title: listing.title,
             description: listing.description,
             createdAt: listing.createdAt.toISOString(),
+
             user: {
                 id: listing.user.id,
                 displayName: listing.user.displayName,
@@ -183,7 +187,8 @@ app.post('/', async (c) => {
                 rating: listing.property!.rating,
                 amenities: listing.property!.amenities,
                 tags: listing.property!.tags ?? [],
-                comments: []
+                comments: [],
+                offers: listing.property!.offers
             },
             marketplaceItem: null
         };
@@ -261,6 +266,7 @@ app.get('/', async (c) => {
                         categories: true,
                         images: true,
                         floorPlans: true,
+                        offers: true,
                     }
                 },
                 favorites: {
@@ -303,6 +309,7 @@ app.get('/', async (c) => {
                 floorPlans: listing.property.floorPlans,
                 walkScore: listing.property.walkScore,
                 transitScore: listing.property.transitScore,
+                offers: listing.property.offers,
                 transitDetails: listing.property.transitDetails ? JSON.parse(listing.property.transitDetails) : { railLines: [], busLines: [] }
             } : null,
             marketplaceItem: null
@@ -375,6 +382,7 @@ app.get('/', async (c) => {
                         categories: true,
                         images: true,
                         floorPlans: true,
+                        offers: true,
                     }
                 },
                 favorites: {
@@ -417,6 +425,7 @@ app.get('/', async (c) => {
                 floorPlans: listing.property.floorPlans,
                 walkScore: listing.property.walkScore,
                 transitScore: listing.property.transitScore,
+                offers: listing.property.offers,
                 transitDetails: listing.property.transitDetails ? JSON.parse(listing.property.transitDetails) : { railLines: [], busLines: [] }
             } : null,
             marketplaceItem: null
@@ -511,6 +520,7 @@ app.get('/recommended-listings', async (c) => {
                         categories: true,
                         images: true,
                         floorPlans: true,
+                        offers: true,
                     }
                 },
                 favorites: {
@@ -588,6 +598,7 @@ app.get('/recommended-listings', async (c) => {
                 categories: item!.listing.property.categories,
                 imageUrls: item!.listing.property.images.map(img => img.imageUrl),
                 floorPlans: item!.listing.property.floorPlans,
+                offers: item!.listing.property.offers,
             } : null
         }));
         console.log("this is formatted listings", formattedListings);
@@ -1197,11 +1208,6 @@ app.put('/:id', async (c) => {
                                     category
                                 })) || []
                             },
-                            tags: {
-                                create: listingData.property.tags?.map((tag: string) => ({
-                                    tag
-                                })) || []
-                            },
                             images: {
                                 create: imageUrls.map(url => ({
                                     imageUrl: url
@@ -1216,6 +1222,13 @@ app.put('/:id', async (c) => {
                                     squareFootage: floorPlan.squareFootage,
                                     unitsAvailable: floorPlan.unitsAvailable,
                                     imageUrl: floorPlan.imageUrl,
+                                })) || []
+                            },
+                            offers: {
+                                create: listingData.property.offers?.map((offer: any) => ({
+                                    title: offer.title,
+                                    description: offer.description,
+                                    validUntil: new Date(offer.validUntil),
                                 })) || []
                             }
                         }
@@ -1437,6 +1450,7 @@ app.get('/:id/location-details', async (c) => {
                         lastLocationDetailsUpdate: true,
                         walkScore: true,
                         transitScore: true,
+                        offers: true
                     }
                 }
             }
@@ -1636,7 +1650,8 @@ app.put('/floor-plan/:id/units', async (c) => {
                     include: {
                         amenities: true,
                         categories: true,
-                        images: true
+                        images: true,
+                        offers: true
                     }
                 }
             }
@@ -1711,6 +1726,7 @@ app.post('/:listingId/floor-plans', async (c) => {
                         amenities: true,
                         categories: true,
                         floorPlans: true,
+                        offers: true,
                     },
                 },
                 user: true,
@@ -1982,6 +1998,104 @@ app.get('/:id', async (c) => {
     } catch (error) {
         console.error('Get property error:', error);
         return c.json({ error: 'Failed to fetch property' }, 500);
+    }
+});
+
+// Add new endpoint for managing offers
+app.post('/:listingId/offers', async (c) => {
+    try {
+        const listingId = parseInt(c.req.param('listingId'));
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const { title, description, validUntil } = await c.req.json();
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Check if user owns the property
+        const listing = await prisma.listing.findFirst({
+            where: {
+                id: listingId,
+                userId,
+            },
+            include: {
+                user: true,
+            },
+        });
+
+        if (!listing) {
+            return c.json({ error: 'Property not found or unauthorized' }, 404);
+        }
+
+        if (!listing.user.isProfessional) {
+            return c.json({ error: 'Only professional users can add offers' }, 403);
+        }
+
+        const offer = await prisma.propertyOffer.create({
+            data: {
+                title,
+                description,
+                validUntil: new Date(validUntil),
+                propertyId: listingId,
+            },
+        });
+
+        return c.json({ offer });
+    } catch (error) {
+        console.error('Add offer error:', error);
+        return c.json({ error: 'Failed to add offer' }, 500);
+    }
+});
+
+app.delete('/:listingId/offers/:offerId', async (c) => {
+    try {
+        const listingId = parseInt(c.req.param('listingId'));
+        const offerId = c.req.param('offerId');
+        const payload = c.get('jwtPayload');
+        if (!payload) return c.json({ error: 'Unauthorized' }, 401);
+
+        const userId = payload.sub;
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Check if user owns the property
+        const listing = await prisma.listing.findFirst({
+            where: {
+                id: listingId,
+                userId,
+            },
+            include: {
+                property: {
+                    include: {
+                        offers: true,
+                    },
+                },
+            },
+        });
+
+        if (!listing) {
+            return c.json({ error: 'Property not found or unauthorized' }, 404);
+        }
+
+        // Check if offer exists and belongs to this property
+        const offer = listing.property?.offers.find(o => o.id === offerId);
+        if (!offer) {
+            return c.json({ error: 'Offer not found' }, 404);
+        }
+
+        // Delete the offer
+        await prisma.propertyOffer.delete({
+            where: {
+                id: offerId,
+            },
+        });
+
+        return c.json({ success: true });
+    } catch (error) {
+        console.error('Delete offer error:', error);
+        return c.json({ error: 'Failed to delete offer' }, 500);
     }
 });
 

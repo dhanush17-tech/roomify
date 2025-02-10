@@ -117,7 +117,7 @@ model Property {
   companyWebsite      String?
   companyDescription  String?
   isProfessionalListing Boolean @default(false)
-
+  offers              PropertyOffer[]
 
   // Relations
   listing    Listing            @relation(fields: [listingId], references: [id])
@@ -399,4 +399,18 @@ model PropertyLead {
   property Listing @relation(fields: [propertyId], references: [id])
 
   @@unique([userId, propertyId])
+}
+
+model PropertyOffer {
+  id          String   @id @default(cuid())
+  propertyId  Int
+  title       String
+  description String
+  validUntil  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property    Property @relation(fields: [propertyId], references: [listingId])
+
+  @@index([propertyId])
 }
