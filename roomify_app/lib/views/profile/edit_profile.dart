@@ -1367,13 +1367,22 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 24),
-        Text(
-          'Special Offers',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: blackTextColor,
-          ),
+        Row(
+          children: [
+            Text(
+              'Special Offers',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: blackTextColor,
+              ),
+            ),
+            Spacer(),
+            IconButton(
+              icon: Icon(Icons.add, color: orangeColor),
+              onPressed: _showAddOfferDialog,
+            ),
+          ],
         ),
         SizedBox(height: 12),
         if (_listing?.property?.offers.isEmpty ?? true)
@@ -1450,22 +1459,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             },
           ),
         SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _showAddOfferDialog,
-            icon: Icon(Icons.add),
-            label: Text('Add New Offer'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: orangeColor,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -1474,83 +1467,194 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     DateTime? selectedDate;
+    final _formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add New Offer'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  labelText: 'Offer Title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              ListTile(
-                title: Text(
-                  selectedDate == null
-                      ? 'Select Valid Until Date'
-                      : 'Valid Until: ${DateFormat('MMM d, y').format(selectedDate!)}',
-                ),
-                trailing: Icon(Icons.calendar_today),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now().add(Duration(days: 30)),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(Duration(days: 365)),
-                  );
-                  if (date != null) {
-                    setState(() => selectedDate = date);
-                  }
-                },
-              ),
-            ],
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty &&
-                  descriptionController.text.isNotEmpty &&
-                  selectedDate != null) {
-                _addOffer(
-                  title: titleController.text,
-                  description: descriptionController.text,
-                  validUntil: selectedDate!,
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: Text('Add Offer'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: orangeColor,
-              foregroundColor: Colors.white,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Add Special Offer",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: TextFormField(
+                      controller: titleController,
+                      decoration: InputDecoration(
+                        hintText: "Offer Title",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(16),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter an offer title';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: TextFormField(
+                      controller: descriptionController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: "Offer Description",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(16),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter an offer description';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  StatefulBuilder(
+                    builder: (context, setState) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate:
+                                  DateTime.now().add(Duration(days: 30)),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(Duration(days: 365)),
+                            );
+                            if (date != null) {
+                              setState(() => selectedDate = date);
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: selectedDate == null
+                                    ? Colors.red
+                                    : Colors.grey[300]!,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today,
+                                    color: Colors.grey[600]),
+                                SizedBox(width: 12),
+                                Text(
+                                  selectedDate == null
+                                      ? "Select Valid Until Date"
+                                      : "Valid Until: ${DateFormat('MMM d, y').format(selectedDate!)}",
+                                  style: TextStyle(
+                                    color: selectedDate == null
+                                        ? Colors.grey[600]
+                                        : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (selectedDate == null)
+                          Padding(
+                            padding: EdgeInsets.only(left: 16, top: 8),
+                            child: Text(
+                              'Please select a valid until date',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.grey[100],
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text("Cancel"),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate() &&
+                                selectedDate != null) {
+                              _addOffer(
+                                title: titleController.text,
+                                description: descriptionController.text,
+                                validUntil: selectedDate!,
+                              );
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: orangeColor,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "Add Offer",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1634,48 +1738,36 @@ class FloorPlanDialog extends StatefulWidget {
 
 class _FloorPlanDialogState extends State<FloorPlanDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _bedroomsController;
-  late TextEditingController _bathroomsController;
-  late TextEditingController _priceController;
-  late TextEditingController _squareFeetController;
-  late TextEditingController _availableUnitsController;
+  final _nameController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _squareFeetController = TextEditingController();
+  final _bedroomsController = TextEditingController(text: '0');
+  final _bathroomsController = TextEditingController(text: '0');
+  final _availableUnitsController = TextEditingController(text: '0');
   File? _selectedImage;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.floorPlan?.name ?? '');
-    _bedroomsController = TextEditingController(
-        text: widget.floorPlan?.bedrooms.toString() ?? '0');
-    _bathroomsController = TextEditingController(
-        text: widget.floorPlan?.bathrooms.toString() ?? '0');
-    _priceController =
-        TextEditingController(text: widget.floorPlan?.price.toString() ?? '0');
-    _squareFeetController = TextEditingController(
-        text: widget.floorPlan?.squareFeet.toString() ?? '0');
-    _availableUnitsController = TextEditingController(
-        text: widget.floorPlan?.availableUnits.toString() ?? '0');
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _bedroomsController.dispose();
-    _bathroomsController.dispose();
-    _priceController.dispose();
-    _squareFeetController.dispose();
-    _availableUnitsController.dispose();
-    super.dispose();
+    if (widget.floorPlan != null) {
+      _nameController.text = widget.floorPlan!.name;
+      _priceController.text = widget.floorPlan!.price.toString();
+      _squareFeetController.text = widget.floorPlan!.squareFeet.toString();
+      _bedroomsController.text = widget.floorPlan!.bedrooms.toString();
+      _bathroomsController.text = widget.floorPlan!.bathrooms.toString();
+      _availableUnitsController.text =
+          widget.floorPlan!.availableUnits.toString();
+    }
   }
 
   Widget _buildFeatureCounter(String label, TextEditingController controller) {
     return Container(
-      padding: EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
       ),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1683,57 +1775,37 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
             label,
             style: TextStyle(
               fontSize: 16,
-              color: blackTextColor,
+              color: Colors.black87,
             ),
           ),
           Row(
             children: [
               IconButton(
-                icon: Icon(Icons.remove),
+                icon: Icon(Icons.remove_circle_outline),
                 onPressed: () {
-                  setState(() {
-                    final currentValue = int.tryParse(controller.text) ?? 0;
-                    if (currentValue > 0) {
-                      controller.text = (currentValue - 1).toString();
-                    }
-                  });
+                  final value = int.tryParse(controller.text) ?? 0;
+                  if (value > 0) {
+                    controller.text = (value - 1).toString();
+                  }
                 },
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  padding: EdgeInsets.all(8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
               ),
               Container(
                 width: 40,
-                alignment: Alignment.center,
-                child: Text(
-                  controller.text,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                child: TextField(
+                  controller: controller,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
                   ),
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.add),
+                icon: Icon(Icons.add_circle_outline),
                 onPressed: () {
-                  setState(() {
-                    final currentValue = int.tryParse(controller.text) ?? 0;
-                    controller.text = (currentValue + 1).toString();
-                  });
+                  final value = int.tryParse(controller.text) ?? 0;
+                  controller.text = (value + 1).toString();
                 },
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  padding: EdgeInsets.all(8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
               ),
             ],
           ),
@@ -1746,306 +1818,288 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Hero(
-        tag: widget.floorPlan != null
-            ? 'floor-plan-${widget.floorPlan!.id}'
-            : 'new-floor-plan',
-        child: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        height: 100,
+      child: Container(
+        padding: EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.floorPlan == null
+                      ? "Add Floor Plan"
+                      : "Edit Floor Plan",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final ImagePicker picker = ImagePicker();
+                        final XFile? image = await picker.pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 70,
+                        );
+                        if (image != null) {
+                          setState(() {
+                            _selectedImage = File(image.path);
+                          });
+                        }
+                      },
+                      child: Container(
+                        height: 150,
                         width: double.infinity,
                         decoration: BoxDecoration(
+                          color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(12),
-                          image: _selectedImage != null
-                              ? DecorationImage(
-                                  image: FileImage(_selectedImage!),
+                          border: Border.all(
+                            color: (_selectedImage == null &&
+                                    widget.floorPlan?.imageUrl == null)
+                                ? Colors.red
+                                : Colors.grey[300]!,
+                          ),
+                        ),
+                        child: _selectedImage != null ||
+                                widget.floorPlan?.imageUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  _selectedImage ??
+                                      File(widget.floorPlan!.imageUrl),
                                   fit: BoxFit.cover,
-                                )
-                              : widget.floorPlan?.imageUrl != null
-                                  ? DecorationImage(
-                                      image: NetworkImage(
-                                          widget.floorPlan!.imageUrl!),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                        ),
-                        child: _selectedImage == null &&
-                                widget.floorPlan?.imageUrl == null
-                            ? Center(
-                                child: Icon(Icons.image,
-                                    size: 50, color: Colors.grey))
-                            : null,
+                                ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_photo_alternate_outlined,
+                                      size: 40, color: Colors.grey[600]),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    "Add Floor Plan Image",
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
+                    ),
+                    if (_selectedImage == null &&
+                        widget.floorPlan?.imageUrl == null)
                       Positioned(
-                        right: 8,
-                        top: 0,
-                        child: Container(
-                          width: 35,
-                          padding: EdgeInsets.all(0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black.withOpacity(0.2),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.all(0),
-                            onPressed: () async {
-                              final ImagePicker picker = ImagePicker();
-                              final XFile? image = await picker.pickImage(
-                                source: ImageSource.gallery,
-                                imageQuality: 70,
-                              );
-                              if (image != null) {
-                                setState(() {
-                                  _selectedImage = File(image.path);
-                                });
-                              }
-                            },
-                            icon: Icon(Icons.edit_rounded,
-                                color: Colors.orange, size: 20),
+                        bottom: 8,
+                        left: 16,
+                        child: Text(
+                          'Please select an image',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
                           ),
                         ),
                       ),
-                    ],
+                  ],
+                ),
+                SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
                   ),
-                  SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Floor Plan Name',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            CustomTextField(
-                              controller: _nameController,
-                              hintText: 'Floor Plan Name',
-                              validator: (value) {
-                                if (value?.isEmpty ?? true) {
-                                  return 'Please enter a name';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Square Feet',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            CustomTextField(
-                              controller: _squareFeetController,
-                              hintText: 'Square Feet',
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value?.isEmpty ?? true) {
-                                  return 'Required';
-                                }
-                                if (double.tryParse(value!) == null) {
-                                  return 'Invalid number';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  child: TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      hintText: "Floor Plan Name",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a floor plan name';
+                      }
+                      return null;
+                    },
                   ),
-                  SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Price',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            CustomTextField(
-                              controller: _priceController,
-                              hintText: 'Price',
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value?.isEmpty ?? true) {
-                                  return 'Please enter a price';
-                                }
-                                if (double.tryParse(value!) == null) {
-                                  return 'Invalid price';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
+                ),
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
                         ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Available Units',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            CustomTextField(
-                              controller: _availableUnitsController,
-                              hintText: 'Available Units',
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value?.isEmpty ?? true) {
-                                  return 'Required';
-                                }
-                                if (int.tryParse(value!) == null) {
-                                  return 'Invalid number';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  _buildFeatureCounter('Bedrooms', _bedroomsController),
-                  SizedBox(height: 16),
-                  _buildFeatureCounter('Bathrooms', _bathroomsController),
-                  SizedBox(height: 16),
-                  Row(
-                    children: [
-                      if (widget.floorPlan != null) ...[
-                        GestureDetector(
-                          onTap: () {
-                            // Return a FloorPlan with empty id to indicate deletion
-                            Navigator.pop(
-                              context,
-                              FloorPlan(
-                                id: '',
-                                name: '',
-                                bedrooms: 0,
-                                bathrooms: 0,
-                                squareFeet: 0,
-                                price: 0,
-                                availableUnits: 0,
-                                imageUrl: '',
-                              ),
-                            );
+                        child: TextFormField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            hintText: "Price",
+                            prefixText: "\$ ",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Invalid price';
+                            }
+                            return null;
                           },
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              border: Border.all(color: Colors.grey.shade300),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: TextFormField(
+                          controller: _squareFeetController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            hintText: "Square Feet",
+                            suffixText: "sq ft",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Invalid value';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                _buildFeatureCounter("Bedrooms", _bedroomsController),
+                SizedBox(height: 16),
+                _buildFeatureCounter("Bathrooms", _bathroomsController),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    if (widget.floorPlan != null)
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () =>
+                              Navigator.pop(context, {"delete": true}),
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.1),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12.0),
-                              child: Center(
-                                child: Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                          ),
+                          child: Text(
+                            "Delete",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        Spacer(),
-                      ],
-                      GestureDetector(
-                        onTap: () {
-                          if (_formKey.currentState!.validate()) {
-                            final floorPlan = {
+                      ),
+                    if (widget.floorPlan != null) SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate() &&
+                              (_selectedImage != null ||
+                                  widget.floorPlan?.imageUrl != null)) {
+                            // Validate bedrooms and bathrooms
+                            final bedrooms =
+                                int.tryParse(_bedroomsController.text);
+                            final bathrooms =
+                                int.tryParse(_bathroomsController.text);
+
+                            if (bedrooms == null ||
+                                bedrooms < 0 ||
+                                bathrooms == null ||
+                                bathrooms < 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Please enter valid numbers for bedrooms and bathrooms'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            Navigator.pop(context, {
                               "imageFile": _selectedImage,
                               "floorPlan": FloorPlan(
                                 id: widget.floorPlan?.id ?? '',
                                 name: _nameController.text,
-                                bedrooms: int.parse(_bedroomsController.text),
-                                bathrooms: int.parse(_bathroomsController.text),
+                                imageUrl: widget.floorPlan?.imageUrl ?? '',
+                                bedrooms: bedrooms,
+                                bathrooms: bathrooms,
+                                price: double.parse(_priceController.text),
                                 squareFeet:
                                     double.parse(_squareFeetController.text),
-                                price: double.parse(_priceController.text),
                                 availableUnits:
                                     int.parse(_availableUnitsController.text),
-                                imageUrl: widget.floorPlan?.imageUrl ?? '',
-                              )
-                            };
-                            Navigator.pop(context, floorPlan);
+                              ),
+                            });
+                          } else if (_selectedImage == null &&
+                              widget.floorPlan?.imageUrl == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Please select a floor plan image'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
                           }
                         },
-                        child: Container(
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            border: Border.all(color: Colors.grey.shade300),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: orangeColor,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
-                            child: Center(
-                              child: Text(
-                                widget.floorPlan == null
-                                    ? 'Add Floor Plan'
-                                    : 'Update Floor Plan',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                        ),
+                        child: Text(
+                          widget.floorPlan == null
+                              ? "Add Floor Plan"
+                              : "Update",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

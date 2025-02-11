@@ -8,6 +8,7 @@ import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/utils/text_styles.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 class LeadsScreen extends StatefulWidget {
   @override
@@ -83,6 +84,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
               return ListView.builder(
                 shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(vertical: 10),
                 itemCount: provider.leads.length,
                 itemBuilder: (context, index) {
@@ -299,12 +301,13 @@ class _LeadsScreenState extends State<LeadsScreen> {
                       },
                       child: Container(
                         padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.phone_outlined,
@@ -312,13 +315,25 @@ class _LeadsScreenState extends State<LeadsScreen> {
                               color: Colors.green[700],
                             ),
                             SizedBox(width: 8),
-                            Text(
-                              lead.user.phoneNumber!,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption().copyWith(
-                                color: Colors.green[700],
-                                fontWeight: FontWeight.w500,
-                              ),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width * 0.3,
+                                  ),
+                                  child: AutoSizeText(
+                                    lead.user.phoneNumber!,
+                                    style: AppTextStyles.caption().copyWith(
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    minFontSize: 8,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

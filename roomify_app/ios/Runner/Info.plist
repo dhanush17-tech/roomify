@@ -60,6 +60,10 @@
 	<string>Roomify needs access to location to curate the best results.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Roomify needs access to your photo library to upload files.</string>
+	<key>NSPhoneUsageDescription</key>
+	<string>We need access to your phone number to auto-fill the registration form.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>We need access to your contacts to help you find your phone number.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

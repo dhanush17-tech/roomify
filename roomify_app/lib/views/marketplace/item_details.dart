@@ -13,6 +13,51 @@ import 'package:roomify_app/views/marketplace/add_marketplace.dart';
 import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/property/report_listing.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class LocationButton extends StatelessWidget {
+  final String? location;
+  final VoidCallback onTap;
+
+  const LocationButton({
+    Key? key,
+    required this.location,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  color: Colors.grey[600], size: 20),
+              SizedBox(width: 4),
+              Container(
+                width: 150,
+                child: Text(
+                  location ?? '',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    height: 1.2,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class ItemDetailsScreen extends StatelessWidget {
   final Listing item;
@@ -237,16 +282,15 @@ class ItemDetailsScreen extends StatelessWidget {
                                 ),
                                 Row(
                                   children: [
-                                    Icon(Icons.location_on_outlined,
-                                        color: Colors.grey, size: 20),
-                                    SizedBox(width: 4),
-                                    Container(
-                                      width: 150,
-                                      child: Text(
-                                        item.location,
-                                        style: TextStyle(color: Colors.grey),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                    LocationButton(
+                                      location: item.location,
+                                      onTap: () async {
+                                        final url =
+                                            'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+                                        if (await canLaunch(url)) {
+                                          await launch(url);
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),

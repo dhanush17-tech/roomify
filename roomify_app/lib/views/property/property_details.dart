@@ -20,6 +20,50 @@ import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class LocationButton extends StatelessWidget {
+  final String? location;
+  final VoidCallback onTap;
+
+  const LocationButton({
+    Key? key,
+    required this.location,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(Icons.location_on, color: Colors.grey[600], size: 16),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  location ?? '',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class PropertyDetailsScreen extends StatefulWidget {
   Listing listing;
@@ -175,6 +219,27 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
       'Check out this property on Roomify: $shareUrl',
       subject: widget.listing.title,
     );
+  }
+
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.listing.latitude;
+    final lng = widget.listing.longitude;
+
+    if (lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location coordinates not available')),
+      );
+      return;
+    }
+
+    final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Google Maps')),
+      );
+    }
   }
 
   @override
@@ -669,7 +734,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                     child: Material(
                                       color: Colors.transparent,
                                       child: Text(
-                                        widget.listing.title.capitalize(),
+                                        widget.listing.title
+                                            .trim()
+                                            .capitalize(),
                                         style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
@@ -681,30 +748,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.location_on,
-                                          color: Colors.grey[600], size: 16),
-                                      SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          widget.listing.location ?? '',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 14,
-                                            height: 1.2,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                                  SizedBox(height: 8),
+                                  LocationButton(
+                                    location: widget.listing.location,
+                                    onTap: _openInGoogleMaps,
                                   ),
                                 ],
                               ),
                             ),
-                            SizedBox(height: 4),
                             SizedBox(width: 16),
                             Hero(
                               tag: 'property-price-${widget.listing.id}',

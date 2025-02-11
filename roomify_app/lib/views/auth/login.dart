@@ -9,11 +9,20 @@ import 'package:roomify_app/providers/marketplace_provider.dart';
 import 'package:roomify_app/repository/profile_repo.dart';
 import 'package:roomify_app/repository/properties_repo.dart';
 import 'package:roomify_app/repository/marketplace_repo.dart';
+import 'package:roomify_app/utils.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/services.dart';
+import 'package:phone_number_hint/phone_number_hint.dart';
 
 import '../onboarding/main_onboarding.dart';
 
@@ -44,11 +53,16 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   String _phoneNumber = '';
   double? _latitude;
   double? _longitude;
+  final _signupFormKey = GlobalKey<FormState>();
+  bool _isLocationLoading = false;
+  bool _isPhoneLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _getCurrentLocation();
+    _getPhoneNumber();
   }
 
   @override
@@ -415,231 +429,352 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                       SingleChildScrollView(
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInputField(
-                                controller: _nameController,
-                                hintText: "Full Name",
-                                icon: Icons.person_outline,
-                              ),
-                              SizedBox(height: 16),
-                              _buildInputField(
-                                controller: _emailController,
-                                hintText: "Email",
-                                icon: Icons.email_outlined,
-                              ),
-                              SizedBox(height: 16),
-                              _buildInputField(
-                                controller: _passwordController,
-                                hintText: "Password",
-                                icon: Icons.lock_outline,
-                                obscureText: true,
-                              ),
-                              SizedBox(height: 16),
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey[300]!),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "I am a:",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    RadioListTile<bool>(
-                                      title:
-                                          Text("Student looking for housing"),
-                                      value: false,
-                                      groupValue: _isProfessionalUser,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _isProfessionalUser = value!;
-                                        });
-                                      },
-                                      activeColor: orangeColor,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                    RadioListTile<bool>(
-                                      title: Text("Property manager/company"),
-                                      value: true,
-                                      groupValue: _isProfessionalUser,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _isProfessionalUser = value!;
-                                        });
-                                      },
-                                      activeColor: orangeColor,
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (!_isProfessionalUser) ...[
-                                SizedBox(height: 16),
-                                _buildInputField(
-                                  controller: _ageController,
-                                  hintText: "Age",
-                                  icon: Icons.cake_outlined,
+                          child: Form(
+                            key: _signupFormKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextFormField(
+                                  controller: _nameController,
+                                  decoration: _getInputDecoration(
+                                    hintText: "Full Name",
+                                    icon: Icons.person_outline,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Full name is required';
+                                    }
+                                    return null;
+                                  },
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                                 ),
                                 SizedBox(height: 16),
-                                _buildInputField(
-                                  controller: _collegeController,
-                                  hintText: "University/College",
-                                  icon: Icons.school_outlined,
+                                TextFormField(
+                                  controller: _emailController,
+                                  decoration: _getInputDecoration(
+                                    hintText: "Email",
+                                    icon: Icons.email_outlined,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Email is required';
+                                    }
+                                    if (!RegExp(
+                                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                        .hasMatch(value)) {
+                                      return 'Please enter a valid email';
+                                    }
+                                    return null;
+                                  },
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                ),
+                                SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  decoration: _getInputDecoration(
+                                    hintText: "Password",
+                                    icon: Icons.lock_outline,
+                                  ),
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Password is required';
+                                    }
+                                    if (value.length < 6) {
+                                      return 'Password must be at least 6 characters';
+                                    }
+                                    return null;
+                                  },
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
                                 ),
                                 SizedBox(height: 16),
                                 Container(
-                  
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-                                  child: MapBoxAutoCompleteWidget(
-                                    hint: "Enter your location",
-                                    inputDecoration: InputDecoration(
-                                      hintText: "Enter your location",
-                                      hintStyle:
-                                          TextStyle(color: Colors.grey[500]),
-                                      prefixIcon: Icon(Icons.location_on_outlined,
-                                          color: Colors.grey[600], size: 22),
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 16),
-                                    ),
-                                    onSelect: (Place place) {
-                                      setState(() {
-                                        _locationController.text =
-                                            place.placeName;
-                                        _latitude = place.geometry.coordinates[1];
-                                        _longitude =
-                                            place.geometry.coordinates[0];
-                                      });
-                                    },
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
                                   ),
-                                ),
-                                SizedBox(height: 16),
-                                IntlPhoneField(
-                                  pickerDialogStyle: PickerDialogStyle(
-                                    padding: EdgeInsets.all(16),
-                                    searchFieldInputDecoration: InputDecoration(
-                                      hintText: 'Search for a country',
-                                      prefixIcon: Icon(
-                                        Icons.search_outlined,
-                                        color: Colors.grey[600],
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "I am a:",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
                                       ),
-                                      hintStyle: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(30),
-                                      ),
-                                    ),
-                                  ),
-                                  decoration: InputDecoration(
-                                    labelText: 'Phone Number',
-                                    hintText: 'Phone Number',
-                                    hintStyle: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide:
-                                          BorderSide(color: Colors.grey[300]!),
-                                    ),
-                                  ),
-                                  initialCountryCode: 'US',
-                                  onChanged: (phone) {
-                                    setState(() {
-                                      _phoneNumber = phone.completeNumber;
-                                    });
-                                  },
-                                ),
-                              ],
-                              SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: authViewModel.isLoading
-                                      ? null
-                                      : () {
-                                          if (!_isProfessionalUser &&
-                                              (_ageController.text.isEmpty ||
-                                                  _collegeController
-                                                      .text.isEmpty ||
-                                                  _locationController
-                                                      .text.isEmpty)) {
-                                            _showErrorDialog(
-                                                'Please fill in all required fields');
-                                            return;
-                                          }
-
-                                          authViewModel.register(
-                                            context: context,
-                                            email: _emailController.text,
-                                            password: _passwordController.text,
-                                            displayName: _nameController.text,
-                                            phoneNumber: _phoneNumber,
-                                            university: _isProfessionalUser
-                                                ? null
-                                                : _collegeController.text,
-                                            location: _isProfessionalUser
-                                                ? null
-                                                : _locationController.text,
-                                            latitude: _isProfessionalUser
-                                                ? null
-                                                : _latitude,
-                                            longitude: _isProfessionalUser
-                                                ? null
-                                                : _longitude,
-                                            age: _isProfessionalUser
-                                                ? null
-                                                : int.tryParse(
-                                                    _ageController.text),
-                                            isProfessional: _isProfessionalUser,
-                                            onSuccess: () =>
-                                                _handleSuccessfulAuth(context),
-                                          );
+                                      RadioListTile<bool>(
+                                        title:
+                                            Text("Student looking for housing"),
+                                        value: false,
+                                        groupValue: _isProfessionalUser,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _isProfessionalUser = value!;
+                                          });
                                         },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: orangeColor,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
+                                        activeColor: orangeColor,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                      RadioListTile<bool>(
+                                        title: Text("Property manager/company"),
+                                        value: true,
+                                        groupValue: _isProfessionalUser,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _isProfessionalUser = value!;
+                                          });
+                                        },
+                                        activeColor: orangeColor,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ],
                                   ),
-                                  child: authViewModel.isLoading
-                                      ? SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
+                                ),
+                                if (!_isProfessionalUser) ...[
+                                  SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _ageController,
+                                    decoration: _getInputDecoration(
+                                      hintText: "Age",
+                                      icon: Icons.cake_outlined,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Age is required';
+                                      }
+                                      final age = int.tryParse(value);
+                                      if (age == null ||
+                                          age < 18 ||
+                                          age > 100) {
+                                        return 'Please enter a valid age between 18 and 100';
+                                      }
+                                      return null;
+                                    },
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
+                                  ),
+                                  SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _collegeController,
+                                    decoration: _getInputDecoration(
+                                      hintText: "University/College",
+                                      icon: Icons.school_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'University/College is required';
+                                      }
+                                      return null;
+                                    },
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border:
+                                          Border.all(color: Colors.grey[300]!),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        MapBoxAutoCompleteWidget(
+                                          hint: _isLocationLoading
+                                              ? "Loading location..."
+                                              : "Enter your location",
+                                          inputDecoration: InputDecoration(
+                                            hintText: _isLocationLoading
+                                                ? "Loading location..."
+                                                : "Enter your location",
+                                            hintStyle: TextStyle(
+                                                color: Colors.grey[500]),
+                                            prefixIcon: Icon(
+                                              _isLocationLoading
+                                                  ? Icons.location_searching
+                                                  : Icons.location_on_outlined,
+                                              color: Colors.grey[600],
+                                              size: 22,
+                                            ),
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 16),
                                           ),
-                                        )
-                                      : Text(
-                                          "Create Account",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
+                                          onSelect: (Place place) {
+                                            setState(() {
+                                              _locationController.text =
+                                                  place.placeName;
+                                              _latitude =
+                                                  place.geometry.coordinates[1];
+                                              _longitude =
+                                                  place.geometry.coordinates[0];
+                                            });
+                                          },
+                                        ),
+                                        if (_isLocationLoading)
+                                          Positioned.fill(
+                                            child: Container(
+                                              color:
+                                                  Colors.white.withOpacity(0.7),
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Stack(
+                                    children: [
+                                      IntlPhoneField(
+                                        enabled: !_isPhoneLoading,
+                                        initialValue: _phoneNumber,
+                                        pickerDialogStyle: PickerDialogStyle(
+                                          padding: EdgeInsets.all(16),
+                                          searchFieldInputDecoration:
+                                              InputDecoration(
+                                            hintText: 'Search for a country',
+                                            prefixIcon: Icon(
+                                                Icons.search_outlined,
+                                                color: Colors.grey[600]),
+                                            border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(30)),
                                           ),
                                         ),
+                                        decoration: InputDecoration(
+                                          labelText: _isPhoneLoading
+                                              ? 'Loading phone number...'
+                                              : 'Phone Number',
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                        ),
+                                        initialCountryCode: 'US',
+                                        onChanged: (phone) {
+                                          setState(() {
+                                            _phoneNumber = phone.completeNumber;
+                                          });
+                                        },
+                                      ),
+                                      if (_isPhoneLoading)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color:
+                                                Colors.white.withOpacity(0.7),
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                                SizedBox(height: 24),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 56,
+                                  child: ElevatedButton(
+                                    onPressed: authViewModel.isLoading
+                                        ? null
+                                        : () {
+                                            if (!_signupFormKey.currentState!
+                                                .validate()) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                    content: Text(
+                                                        'Please fill all required fields')),
+                                              );
+                                              return;
+                                            }
+
+                                            if (!_isProfessionalUser &&
+                                                (_phoneNumber.isEmpty ||
+                                                    _locationController
+                                                        .text.isEmpty)) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                    content: Text(
+                                                        'Phone number and location are required')),
+                                              );
+                                              return;
+                                            }
+
+                                            authViewModel.register(
+                                              context: context,
+                                              email: _emailController.text,
+                                              password:
+                                                  _passwordController.text,
+                                              displayName: _nameController.text,
+                                              phoneNumber: _phoneNumber,
+                                              university: _isProfessionalUser
+                                                  ? null
+                                                  : _collegeController.text,
+                                              location: _isProfessionalUser
+                                                  ? null
+                                                  : _locationController.text,
+                                              latitude: _isProfessionalUser
+                                                  ? null
+                                                  : _latitude,
+                                              longitude: _isProfessionalUser
+                                                  ? null
+                                                  : _longitude,
+                                              age: _isProfessionalUser
+                                                  ? null
+                                                  : int.tryParse(
+                                                      _ageController.text),
+                                              isProfessional:
+                                                  _isProfessionalUser,
+                                              onSuccess: () =>
+                                                  _handleSuccessfulAuth(
+                                                      context),
+                                            );
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: orangeColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: authViewModel.isLoading
+                                        ? SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Text(
+                                            "Create Account",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -722,6 +857,133 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLocationLoading = true);
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please enable location services')),
+        );
+        setState(() => _isLocationLoading = false);
+        return;
+      }
+
+      // Request permissions one by one
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.location,
+        Permission.phone,
+      ].request();
+
+      // Check if location permission is granted
+      if (statuses[Permission.location] == PermissionStatus.granted) {
+        // Get current position with high accuracy
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        );
+
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          _locationController.text = "Loading address...";
+        });
+
+        // Reverse geocoding using Mapbox
+        try {
+          final response = await http.get(Uri.parse(
+              'https://api.mapbox.com/geocoding/v5/mapbox.places/${position.longitude},${position.latitude}.json?access_token=${mapboxToken}'));
+
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            if (data['features'] != null && data['features'].isNotEmpty) {
+              setState(() {
+                _locationController.text = data['features'][0]['place_name'];
+              });
+            }
+          } else {
+            setState(() {
+              _locationController.text =
+                  '${position.latitude}, ${position.longitude}';
+            });
+          }
+        } catch (e) {
+          print("Error in reverse geocoding: $e");
+          setState(() {
+            _locationController.text =
+                '${position.latitude}, ${position.longitude}';
+          });
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permission denied')),
+        );
+      }
+
+      // Handle phone permission separately
+      if (statuses[Permission.phone] == PermissionStatus.granted) {
+        // Phone permission granted, you can handle phone-related functionality here
+        await _getPhoneNumber();
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e')),
+      );
+    } finally {
+      setState(() => _isLocationLoading = false);
+    }
+  }
+
+  Future<void> _getPhoneNumber() async {
+    try {
+      final phoneHint = PhoneNumberHint();
+      final phoneNumber = await phoneHint.requestHint();
+      if (phoneNumber != null) {
+        setState(() {
+          _phoneNumber = phoneNumber;
+        });
+      }
+    } catch (e) {
+      print('Error getting phone number: $e');
+    }
+  }
+
+  InputDecoration _getInputDecoration({
+    required String hintText,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(color: Colors.grey[500]),
+      prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: orangeColor),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red),
+      ),
+      filled: true,
+      fillColor: Colors.grey[100],
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 }
