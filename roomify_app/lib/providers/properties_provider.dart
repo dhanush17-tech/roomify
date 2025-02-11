@@ -8,6 +8,7 @@ import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/repository/properties_repo.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
+import 'package:roomify_app/repository/search_repo.dart';
 
 class PropertyProvider extends ChangeNotifier {
   final PropertyRepository _repository;
@@ -101,8 +102,8 @@ class PropertyProvider extends ChangeNotifier {
       _isLoadingReccomendations = true;
       if (_isInitialized) notifyListeners();
 
-      _recommendations =
-          await _repository.getRecommendedProperties(latitude, longitude);
+      _recommendations = await SearchRepository()
+          .getRecommendedProperties(latitude, longitude);
 
       _isLoadingReccomendations = false;
       if (_isInitialized) notifyListeners();

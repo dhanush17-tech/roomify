@@ -34,15 +34,28 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
   Timer? _debounce;
 
   late Dio _dio;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _dio = Dio(BaseOptions(
       connectTimeout: Duration(seconds: 1000),
       receiveTimeout: Duration(seconds: 1000),
     ));
+    _updateLocationFromDefaults();
+  }
 
+  @override
+  void didUpdateWidget(MapBoxAutoCompleteWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Check if default coordinates have changed
+    if (widget.defaultLatitude != oldWidget.defaultLatitude ||
+        widget.defaultLongitude != oldWidget.defaultLongitude) {
+      _updateLocationFromDefaults();
+    }
+  }
+
+  void _updateLocationFromDefaults() {
     if (widget.defaultLatitude != null && widget.defaultLongitude != null) {
       _reverseGeocode(widget.defaultLatitude!, widget.defaultLongitude!);
     }

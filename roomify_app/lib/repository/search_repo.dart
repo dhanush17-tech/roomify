@@ -23,6 +23,30 @@ class SearchRepository {
     );
   }
 
+  Future<List<Listing>> getRecommendedProperties(
+      double latitude, double longitude) async {
+    try {
+      final response = await _dio.get(
+        '/api/properties/recommended-listings',
+        queryParameters: {
+          'latitude': latitude,
+          'longitude': longitude,
+          'radius': 20, // Default 20km radius
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = response.data['results'];
+        return results
+            .map((json) => Listing.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Failed to fetch recommendations');
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
   Future<List<Listing>> search({
     String? query,
     String type = 'Property',

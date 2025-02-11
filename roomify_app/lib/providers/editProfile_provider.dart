@@ -53,8 +53,7 @@ class ProfileProvider extends ChangeNotifier {
       if (user != null && user.latitude != null && user.longitude != null) {
         _latitude = user.latitude!;
         _longitude = user.longitude!;
-        _currentLocation = await _getLocationName(
-          _latitude!, _longitude!);
+        _currentLocation = await _getLocationName(_latitude!, _longitude!);
         notifyListeners();
         return;
       }

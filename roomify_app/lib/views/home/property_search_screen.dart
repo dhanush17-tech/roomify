@@ -22,6 +22,7 @@ import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:roomify_app/models/suggestion.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 // Price range filter chip widget
 class PriceFilterChips extends StatelessWidget {
@@ -41,7 +42,7 @@ class PriceFilterChips extends StatelessWidget {
   List<Map<String, double>> _generatePriceRanges() {
     if (properties.isEmpty) return [];
 
-    // Get all prices, considering floor plans for professional listings
+    // Get all prices from original properties
     List<double> allPrices = properties.map((listing) {
       if (listing.user?.isProfessional == true &&
           listing.property?.floorPlans != null &&
@@ -56,45 +57,20 @@ class PriceFilterChips extends StatelessWidget {
     // Sort prices and remove duplicates
     allPrices = allPrices.toSet().toList()..sort();
 
-    // If we have 4 or fewer unique prices, create ranges based on actual prices
-    if (allPrices.length <= 4) {
-      return allPrices
-          .map((price) => {
-                'min': price,
-                'max': price,
-              })
-          .toList();
-    }
-
-    // Calculate price ranges
+    // Generate ranges based on actual price distribution
     double minPrice = allPrices.first;
     double maxPrice = allPrices.last;
     double range = maxPrice - minPrice;
 
-    // Create 4 price ranges
+    // Create 4 evenly distributed ranges
     List<Map<String, double>> ranges = [];
+    double increment = range / 4;
 
-    if (range <= 500) {
-      // For small ranges, create smaller increments
-      double increment = range / 4;
-      for (int i = 0; i < 4; i++) {
-        ranges.add({
-          'min': minPrice + (i * increment),
-          'max': minPrice + ((i + 1) * increment),
-        });
-      }
-    } else {
-      // For larger ranges, round to nearest hundred
-      double roundedMin = (minPrice / 500).floor() * 500;
-      double roundedMax = (maxPrice / 500).ceil() * 500;
-      double increment = (roundedMax - roundedMin) / 4;
-
-      for (int i = 0; i < 4; i++) {
-        ranges.add({
-          'min': roundedMin + (i * increment),
-          'max': roundedMin + ((i + 1) * increment),
-        });
-      }
+    for (int i = 0; i < 4; i++) {
+      ranges.add({
+        'min': minPrice + (i * increment),
+        'max': minPrice + ((i + 1) * increment),
+      });
     }
 
     return ranges;
@@ -105,7 +81,6 @@ class PriceFilterChips extends StatelessWidget {
     final priceRanges = _generatePriceRanges();
 
     return Container(
-      padding: EdgeInsets.only(top: 0),
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -135,7 +110,6 @@ class PriceFilterChips extends StatelessWidget {
               ),
             ),
           ),
-
           ...priceRanges.map((range) {
             bool isSelected = selectedMinPrice == range['min'] &&
                 selectedMaxPrice == range['max'];
@@ -145,9 +119,8 @@ class PriceFilterChips extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                label: Text(range['min'] == range['max']
-                    ? '\$${range['min']!.toInt()}'
-                    : '\$${range['min']!.toInt()}-\$${range['max']!.toInt()}'),
+                label: Text(
+                    '\$${range['min']!.toInt()}-\$${range['max']!.toInt()}'),
                 selected: isSelected,
                 onSelected: (selected) {
                   if (selected) {
@@ -573,13 +546,15 @@ class SearchMapScreen extends StatefulWidget {
 }
 
 class _SearchMapScreenState extends State<SearchMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   late DraggableScrollableController _bottomSheetController;
   bool _showSuggestions = false;
   late AnimationController _suggestionsAnimationController;
   late Animation<double> _suggestionsAnimation;
+  late AnimationController _filterAnimationController;
+  late Animation<double> _filterAnimation;
   double? _selectedMinPrice;
   double? _selectedMaxPrice;
   int? _selectedBedrooms;
@@ -592,7 +567,7 @@ class _SearchMapScreenState extends State<SearchMapScreen>
     _bottomSheetController = DraggableScrollableController();
     _searchFocusNode.requestFocus();
 
-    // Initialize animation controller
+    // Initialize suggestions animation controller
     _suggestionsAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
@@ -600,6 +575,17 @@ class _SearchMapScreenState extends State<SearchMapScreen>
 
     _suggestionsAnimation = CurvedAnimation(
       parent: _suggestionsAnimationController,
+      curve: Curves.easeInOut,
+    );
+
+    // Initialize filter animation controller
+    _filterAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+
+    _filterAnimation = CurvedAnimation(
+      parent: _filterAnimationController,
       curve: Curves.easeInOut,
     );
 
@@ -646,33 +632,48 @@ class _SearchMapScreenState extends State<SearchMapScreen>
   }
 
   void _showFilterSheet() {
+    _filterAnimationController.forward();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: FilterSheet(
-          selectedMinPrice: _selectedMinPrice,
-          selectedMaxPrice: _selectedMaxPrice,
-          selectedBedrooms: _selectedBedrooms,
-          selectedBathrooms: _selectedBathrooms,
-          selectedRadius: _selectedRadius,
-          onApplyFilters: (minPrice, maxPrice, bedrooms, bathrooms, radius) {
-            setState(() {
-              _selectedMinPrice = minPrice;
-              _selectedMaxPrice = maxPrice;
-              _selectedBedrooms = bedrooms;
-              _selectedBathrooms = bathrooms;
-              _selectedRadius = radius;
-            });
-            _onSearchSubmitted(_searchController.text);
-          },
+      builder: (context) => AnimatedBuilder(
+        animation: _filterAnimation,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, 100 * (1 - _filterAnimation.value)),
+            child: Opacity(
+              opacity: _filterAnimation.value,
+              child: child,
+            ),
+          );
+        },
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: FilterSheet(
+            selectedMinPrice: _selectedMinPrice,
+            selectedMaxPrice: _selectedMaxPrice,
+            selectedBedrooms: _selectedBedrooms,
+            selectedBathrooms: _selectedBathrooms,
+            selectedRadius: _selectedRadius,
+            onApplyFilters: (minPrice, maxPrice, bedrooms, bathrooms, radius) {
+              setState(() {
+                _selectedMinPrice = minPrice;
+                _selectedMaxPrice = maxPrice;
+                _selectedBedrooms = bedrooms;
+                _selectedBathrooms = bathrooms;
+                _selectedRadius = radius;
+              });
+              _onSearchSubmitted(_searchController.text);
+              _filterAnimationController.reverse();
+              Navigator.pop(context);
+            },
+          ),
         ),
       ),
-    );
+    ).whenComplete(() => _filterAnimationController.reverse());
   }
 
   void _onSearchSubmitted(String query) {
@@ -689,6 +690,42 @@ class _SearchMapScreenState extends State<SearchMapScreen>
             radius: _selectedRadius,
           ),
         );
+  }
+
+  void _onFilterSelected(double? min, double? max) {
+    setState(() {
+      // Only update if values are different from current selection
+      if (_selectedMinPrice != min || _selectedMaxPrice != max) {
+        _selectedMinPrice = min;
+        _selectedMaxPrice = max;
+
+        // Get original unfiltered properties
+        final originalProperties =
+            context.read<SearchProvider>().originalProperties;
+
+        // Apply filter while preserving original price ranges
+        if (min != null && max != null) {
+          context.read<SearchProvider>().searchResults =
+              originalProperties.where((element) {
+            double price;
+            if (element.user?.isProfessional == true &&
+                element.property?.floorPlans != null &&
+                element.property!.floorPlans!.isNotEmpty) {
+              // Get minimum price from floor plans for professional listings
+              price = element.property!.floorPlans!
+                  .map((plan) => plan.price)
+                  .reduce((curr, next) => curr < next ? curr : next);
+            } else {
+              price = element.price.toDouble();
+            }
+            return price >= min && price <= max;
+          }).toList();
+        } else {
+          // Reset to show all properties
+          context.read<SearchProvider>().searchResults = originalProperties;
+        }
+      }
+    });
   }
 
   @override
@@ -729,28 +766,8 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                   if (!_showSuggestions &&
                       searchProvider.searchResults.isNotEmpty)
                     PriceFilterChips(
-                      properties: searchProvider.searchResults,
-                      onFilterSelected: (min, max) {
-                        setState(() {
-                          _selectedMinPrice = min;
-                          _selectedMaxPrice = max;
-                        });
-                        // filter the search results by price with the min and max price
-
-                        searchProvider.searchResults =
-                            searchProvider.searchResults
-                                .where((element) =>
-                                    (element.price >= _selectedMinPrice! &&
-                                        element.price <= _selectedMaxPrice!) ||
-                                    (element.property?.floorPlans?.any(
-                                            (floorPlan) =>
-                                                floorPlan.price >=
-                                                    _selectedMinPrice! &&
-                                                floorPlan.price <=
-                                                    _selectedMaxPrice!) ??
-                                        false))
-                                .toList();
-                      },
+                      properties: searchProvider.originalProperties,
+                      onFilterSelected: _onFilterSelected,
                       selectedMinPrice: _selectedMinPrice,
                       selectedMaxPrice: _selectedMaxPrice,
                     ),
@@ -877,7 +894,9 @@ class _SearchMapScreenState extends State<SearchMapScreen>
   }
 
   Widget _buildResultsSheet(ScrollController scrollController) {
-    return Container(
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -887,18 +906,25 @@ class _SearchMapScreenState extends State<SearchMapScreen>
       ),
       child: Column(
         children: [
-          // Tab indicator
-          Container(
-            margin: EdgeInsets.symmetric(vertical: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          // Animated drag handle
+          TweenAnimationBuilder(
+            duration: Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0, end: 1),
+            builder: (context, double value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Container(
+                  margin: EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            },
           ),
-          SizedBox(height: 10),
-          // Results list
           Expanded(
             child: Consumer<SearchProvider>(
               builder: (context, provider, _) {
@@ -907,7 +933,17 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(),
+                        TweenAnimationBuilder(
+                          duration: Duration(milliseconds: 1000),
+                          tween: Tween<double>(begin: 0, end: 1),
+                          builder: (context, double value, child) {
+                            return Opacity(
+                              opacity: value,
+                              child: child,
+                            );
+                          },
+                          child: CircularProgressIndicator(),
+                        ),
                         SizedBox(height: 16),
                         Text(
                           'Searching...',
@@ -922,51 +958,77 @@ class _SearchMapScreenState extends State<SearchMapScreen>
                 }
 
                 if (provider.searchResults.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_rounded,
-                          size: 64,
-                          color: Colors.grey[400],
+                  return TweenAnimationBuilder(
+                    duration: Duration(milliseconds: 500),
+                    tween: Tween<double>(begin: 0, end: 1),
+                    builder: (context, double value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: child,
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No properties available',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
+                      );
+                    },
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            size: 64,
+                            color: Colors.grey[400],
                           ),
-                        ),
-                        SizedBox(height: 8),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            'Check back later for personalized property suggestions',
-                            textAlign: TextAlign.center,
+                          SizedBox(height: 16),
+                          Text(
+                            'No properties available',
                             style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              'Check back later for personalized property suggestions',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
-                final authProvider = context.read<AuthProvider>();
 
-                return ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                  controller: scrollController,
-                  itemCount: provider.searchResults.length,
-                  itemBuilder: (context, index) {
-                    final property = provider.searchResults[index];
-                    return PropertyCard(
-                        property, property.latitude!, property.longitude!);
-                  },
+                return AnimationLimiter(
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                    controller: scrollController,
+                    itemCount: provider.searchResults.length,
+                    itemBuilder: (context, index) {
+                      final property = provider.searchResults[index];
+                      return AnimationConfiguration.staggeredList(
+                        position: index,
+                        duration: Duration(milliseconds: 375),
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child: PropertyCard(
+                              property,
+                              property.latitude!,
+                              property.longitude!,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -982,6 +1044,7 @@ class _SearchMapScreenState extends State<SearchMapScreen>
     _searchFocusNode.dispose();
     _bottomSheetController.dispose();
     _suggestionsAnimationController.dispose();
+    _filterAnimationController.dispose();
     super.dispose();
   }
 }

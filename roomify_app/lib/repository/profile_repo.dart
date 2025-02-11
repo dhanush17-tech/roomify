@@ -36,16 +36,17 @@ class ProfileUpdateRepo {
     try {
       final response = await _dio.put(
         '/api/user/preferences',
-        data: {
-          'preferences': preferences,
-        },
+        data: {'preferences': preferences, 'socialLinks': {}},
       );
 
       if (response.statusCode != 200) {
         throw Exception('Failed to update preferences');
       }
+
+      print('Preferences update response: ${response.data}');
       return User.fromJson(response.data);
     } catch (e) {
+      print('Preferences update error: $e');
       throw Exception('Failed to connect to server: $e');
     }
   }
@@ -125,6 +126,7 @@ class ProfileUpdateRepo {
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
           },
         ),
       );

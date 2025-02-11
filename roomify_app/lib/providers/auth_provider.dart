@@ -215,9 +215,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authRepository.signOut();
       _user = null;
-      final marketplaceProvider =
-          Provider.of<MarketplaceProvider>(context, listen: false);
-      marketplaceProvider.clearItems();
+      // final marketplaceProvider =
+      //     Provider.of<MarketplaceProvider>(context, listen: false);
+      // marketplaceProvider.clearItems();
       notifyListeners();
     } catch (e) {
       throw Exception('Failed to sign out: $e');

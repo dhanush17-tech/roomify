@@ -12,6 +12,7 @@ import 'package:roomify_app/repository/marketplace_repo.dart';
 import 'package:roomify_app/utils.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/views/auth/forgot_passoword.dart';
+import 'package:roomify_app/views/auth/register.dart';
 import 'package:roomify_app/views/home/bottom_nav.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
@@ -26,6 +27,26 @@ import 'package:phone_number_hint/phone_number_hint.dart';
 
 import '../onboarding/main_onboarding.dart';
 
+class KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const KeepAlivePage({Key? key, required this.child}) : super(key: key);
+
+  @override
+  _KeepAlivePageState createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
 class SignUpLoginScreen extends StatefulWidget {
   final double latitude;
   final double longitude;
@@ -35,38 +56,51 @@ class SignUpLoginScreen extends StatefulWidget {
 }
 
 class _SignUpLoginScreenState extends State<SignUpLoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _collegeController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _loginEmailController = TextEditingController();
-  final _loginPasswordController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _displayNameController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _passwordController;
+  late TextEditingController _collegeController;
+  late TextEditingController _locationController;
+  late TextEditingController _loginEmailController;
+  late TextEditingController _loginPasswordController;
+  late TextEditingController _ageController;
+  late TextEditingController _displayNameController;
   bool _isLogin = true;
   bool _isProfessionalUser = false;
   bool _rememberMe = true;
-  final _formKey = GlobalKey<FormState>();
-  String _phoneNumber = '';
-  double? _latitude;
-  double? _longitude;
-  final _signupFormKey = GlobalKey<FormState>();
-  bool _isLocationLoading = false;
-  bool _isPhoneLoading = false;
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _getCurrentLocation();
-    _getPhoneNumber();
+    _initializeControllers();
+
+    // Add listener for tab changes
+    _tabController.addListener(() {
+      // Remove focus when switching tabs
+      FocusScope.of(context).unfocus();
+    });
+  }
+
+  void _initializeControllers() {
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+    _collegeController = TextEditingController();
+    _locationController = TextEditingController();
+    _loginEmailController = TextEditingController();
+    _loginPasswordController = TextEditingController();
+    _ageController = TextEditingController();
+    _displayNameController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -75,7 +109,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
     _ageController.dispose();
-    _tabController.dispose();
+    _displayNameController.dispose();
     super.dispose();
   }
 
@@ -146,7 +180,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     );
   }
 
-  void _handleSuccessfulAuth(BuildContext context) {
+  void handleSuccessfulAuth(BuildContext context) {
     if (!mounted) return;
 
     Navigator.pushAndRemoveUntil(
@@ -251,531 +285,14 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                     controller: _tabController,
                     children: [
                       // Login Tab
-                      SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            children: [
-                              _buildInputField(
-                                controller: _emailController,
-                                hintText: "Email",
-                                icon: Icons.email_outlined,
-                              ),
-                              SizedBox(height: 16),
-                              _buildInputField(
-                                controller: _passwordController,
-                                hintText: "Password",
-                                icon: Icons.lock_outline,
-                                obscureText: true,
-                              ),
-                              SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: Checkbox(
-                                          value: _rememberMe,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _rememberMe = value!;
-                                            });
-                                          },
-                                          activeColor: orangeColor,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        "Remember me",
-                                        style: TextStyle(
-                                          color: Colors.grey[700],
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (c) =>
-                                              ForgotPasswordScreen(),
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                      "Forgot Password?",
-                                      style: TextStyle(
-                                        color: orangeColor,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: authViewModel.isLoading
-                                      ? null
-                                      : () {
-                                          if (_emailController.text.isEmpty ||
-                                              _passwordController
-                                                  .text.isEmpty) {
-                                            _showErrorDialog(
-                                                'Please fill in all fields');
-                                            return;
-                                          }
-
-                                          authViewModel.login(
-                                            context,
-                                            _emailController.text,
-                                            _passwordController.text,
-                                            () =>
-                                                _handleSuccessfulAuth(context),
-                                            rememberMe: _rememberMe,
-                                          );
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: orangeColor,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: authViewModel.isLoading
-                                      ? SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : Text(
-                                          "Log In",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                              SizedBox(height: 24),
-                              Row(
-                                children: [
-                                  Expanded(
-                                      child: Divider(color: Colors.grey[300])),
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      "Don't have an account?",
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                      child: Divider(color: Colors.grey[300])),
-                                ],
-                              ),
-                              SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    _tabController
-                                        .animateTo(1); // Switch to signup tab
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey[100],
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side:
-                                          BorderSide(color: Colors.grey[300]!),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: Text(
-                                    "Create an account",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      KeepAlivePage(
+                        child: _buildLoginView(authViewModel),
                       ),
-                      // Sign Up Tab
-                      SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Form(
-                            key: _signupFormKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: _getInputDecoration(
-                                    hintText: "Full Name",
-                                    icon: Icons.person_outline,
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Full name is required';
-                                    }
-                                    return null;
-                                  },
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                ),
-                                SizedBox(height: 16),
-                                TextFormField(
-                                  controller: _emailController,
-                                  decoration: _getInputDecoration(
-                                    hintText: "Email",
-                                    icon: Icons.email_outlined,
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Email is required';
-                                    }
-                                    if (!RegExp(
-                                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                        .hasMatch(value)) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                ),
-                                SizedBox(height: 16),
-                                TextFormField(
-                                  controller: _passwordController,
-                                  decoration: _getInputDecoration(
-                                    hintText: "Password",
-                                    icon: Icons.lock_outline,
-                                  ),
-                                  obscureText: true,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Password is required';
-                                    }
-                                    if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
-                                    return null;
-                                  },
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                ),
-                                SizedBox(height: 16),
-                                Container(
-                                  padding: EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border:
-                                        Border.all(color: Colors.grey[300]!),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "I am a:",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      RadioListTile<bool>(
-                                        title:
-                                            Text("Student looking for housing"),
-                                        value: false,
-                                        groupValue: _isProfessionalUser,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _isProfessionalUser = value!;
-                                          });
-                                        },
-                                        activeColor: orangeColor,
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                      RadioListTile<bool>(
-                                        title: Text("Property manager/company"),
-                                        value: true,
-                                        groupValue: _isProfessionalUser,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _isProfessionalUser = value!;
-                                          });
-                                        },
-                                        activeColor: orangeColor,
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (!_isProfessionalUser) ...[
-                                  SizedBox(height: 16),
-                                  TextFormField(
-                                    controller: _ageController,
-                                    decoration: _getInputDecoration(
-                                      hintText: "Age",
-                                      icon: Icons.cake_outlined,
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Age is required';
-                                      }
-                                      final age = int.tryParse(value);
-                                      if (age == null ||
-                                          age < 18 ||
-                                          age > 100) {
-                                        return 'Please enter a valid age between 18 and 100';
-                                      }
-                                      return null;
-                                    },
-                                    autovalidateMode:
-                                        AutovalidateMode.onUserInteraction,
-                                  ),
-                                  SizedBox(height: 16),
-                                  TextFormField(
-                                    controller: _collegeController,
-                                    decoration: _getInputDecoration(
-                                      hintText: "University/College",
-                                      icon: Icons.school_outlined,
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'University/College is required';
-                                      }
-                                      return null;
-                                    },
-                                    autovalidateMode:
-                                        AutovalidateMode.onUserInteraction,
-                                  ),
-                                  SizedBox(height: 16),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        MapBoxAutoCompleteWidget(
-                                          hint: _isLocationLoading
-                                              ? "Loading location..."
-                                              : "Enter your location",
-                                          inputDecoration: InputDecoration(
-                                            hintText: _isLocationLoading
-                                                ? "Loading location..."
-                                                : "Enter your location",
-                                            hintStyle: TextStyle(
-                                                color: Colors.grey[500]),
-                                            prefixIcon: Icon(
-                                              _isLocationLoading
-                                                  ? Icons.location_searching
-                                                  : Icons.location_on_outlined,
-                                              color: Colors.grey[600],
-                                              size: 22,
-                                            ),
-                                            border: InputBorder.none,
-                                            contentPadding:
-                                                EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 16),
-                                          ),
-                                          onSelect: (Place place) {
-                                            setState(() {
-                                              _locationController.text =
-                                                  place.placeName;
-                                              _latitude =
-                                                  place.geometry.coordinates[1];
-                                              _longitude =
-                                                  place.geometry.coordinates[0];
-                                            });
-                                          },
-                                        ),
-                                        if (_isLocationLoading)
-                                          Positioned.fill(
-                                            child: Container(
-                                              color:
-                                                  Colors.white.withOpacity(0.7),
-                                              child: Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  Stack(
-                                    children: [
-                                      IntlPhoneField(
-                                        enabled: !_isPhoneLoading,
-                                        initialValue: _phoneNumber,
-                                        pickerDialogStyle: PickerDialogStyle(
-                                          padding: EdgeInsets.all(16),
-                                          searchFieldInputDecoration:
-                                              InputDecoration(
-                                            hintText: 'Search for a country',
-                                            prefixIcon: Icon(
-                                                Icons.search_outlined,
-                                                color: Colors.grey[600]),
-                                            border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(30)),
-                                          ),
-                                        ),
-                                        decoration: InputDecoration(
-                                          labelText: _isPhoneLoading
-                                              ? 'Loading phone number...'
-                                              : 'Phone Number',
-                                          border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                        ),
-                                        initialCountryCode: 'US',
-                                        onChanged: (phone) {
-                                          setState(() {
-                                            _phoneNumber = phone.completeNumber;
-                                          });
-                                        },
-                                      ),
-                                      if (_isPhoneLoading)
-                                        Positioned.fill(
-                                          child: Container(
-                                            color:
-                                                Colors.white.withOpacity(0.7),
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                                SizedBox(height: 24),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 56,
-                                  child: ElevatedButton(
-                                    onPressed: authViewModel.isLoading
-                                        ? null
-                                        : () {
-                                            if (!_signupFormKey.currentState!
-                                                .validate()) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                    content: Text(
-                                                        'Please fill all required fields')),
-                                              );
-                                              return;
-                                            }
-
-                                            if (!_isProfessionalUser &&
-                                                (_phoneNumber.isEmpty ||
-                                                    _locationController
-                                                        .text.isEmpty)) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                    content: Text(
-                                                        'Phone number and location are required')),
-                                              );
-                                              return;
-                                            }
-
-                                            authViewModel.register(
-                                              context: context,
-                                              email: _emailController.text,
-                                              password:
-                                                  _passwordController.text,
-                                              displayName: _nameController.text,
-                                              phoneNumber: _phoneNumber,
-                                              university: _isProfessionalUser
-                                                  ? null
-                                                  : _collegeController.text,
-                                              location: _isProfessionalUser
-                                                  ? null
-                                                  : _locationController.text,
-                                              latitude: _isProfessionalUser
-                                                  ? null
-                                                  : _latitude,
-                                              longitude: _isProfessionalUser
-                                                  ? null
-                                                  : _longitude,
-                                              age: _isProfessionalUser
-                                                  ? null
-                                                  : int.tryParse(
-                                                      _ageController.text),
-                                              isProfessional:
-                                                  _isProfessionalUser,
-                                              onSuccess: () =>
-                                                  _handleSuccessfulAuth(
-                                                      context),
-                                            );
-                                          },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: orangeColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: authViewModel.isLoading
-                                        ? SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : Text(
-                                            "Create Account",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      // Register Tab
+                      KeepAlivePage(
+                        child: Register(
+                          authViewModel: authViewModel,
+                          onSuccess: handleSuccessfulAuth,
                         ),
                       ),
                     ],
@@ -789,201 +306,234 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
     );
   }
 
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String hintText,
-    required IconData icon,
-    bool obscureText = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        style: TextStyle(fontSize: 16),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: Colors.grey[500]),
-          prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required VoidCallback onPressed,
-    required String icon,
-    required String text,
-    Color backgroundColor = Colors.white,
-    Color textColor = Colors.black87,
-  }) {
-    return SizedBox(
-      height: 56,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: backgroundColor == Colors.white
-                ? BorderSide(color: Colors.grey[300]!)
-                : BorderSide.none,
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              icon,
-              height: 24,
-              width: 24,
-            ),
-            SizedBox(width: 12),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textColor,
+  Widget _buildLoginView(AuthProvider authViewModel) {
+    return Form(
+      key: _loginFormKey,
+      child: SingleChildScrollView(
+        physics: ClampingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _loginEmailController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Email is required';
+                  }
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(value)) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+                decoration: getInputDecoration(
+                  hintText: "Email",
+                  icon: Icons.email_outlined,
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _loginPasswordController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Password is required';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+                obscureText: true,
+                decoration: getInputDecoration(
+                  hintText: "Password",
+                  icon: Icons.lock_outline,
+                ),
+              ),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: Checkbox(
+                          value: _rememberMe,
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value!;
+                            });
+                          },
+                          activeColor: orangeColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "Remember me",
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (c) => ForgotPasswordScreen(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "Forgot Password?",
+                      style: TextStyle(
+                        color: orangeColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: authViewModel.isLoading
+                      ? null
+                      : () => _handleLogin(authViewModel),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: orangeColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: authViewModel.isLoading
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          "Log In",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "Don't have an account?",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                ],
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _tabController.animateTo(1);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[100],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "Create an account",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _getCurrentLocation() async {
-    setState(() => _isLocationLoading = true);
+  Future<void> _handleLogin(AuthProvider authViewModel) async {
+    if (!_loginFormKey.currentState!.validate()) return;
+
     try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please enable location services')),
-        );
-        setState(() => _isLocationLoading = false);
-        return;
-      }
-
-      // Request permissions one by one
-      Map<Permission, PermissionStatus> statuses = await [
-        Permission.location,
-        Permission.phone,
-      ].request();
-
-      // Check if location permission is granted
-      if (statuses[Permission.location] == PermissionStatus.granted) {
-        // Get current position with high accuracy
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
-        );
-
-        setState(() {
-          _latitude = position.latitude;
-          _longitude = position.longitude;
-          _locationController.text = "Loading address...";
-        });
-
-        // Reverse geocoding using Mapbox
-        try {
-          final response = await http.get(Uri.parse(
-              'https://api.mapbox.com/geocoding/v5/mapbox.places/${position.longitude},${position.latitude}.json?access_token=${mapboxToken}'));
-
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
-            if (data['features'] != null && data['features'].isNotEmpty) {
-              setState(() {
-                _locationController.text = data['features'][0]['place_name'];
-              });
-            }
-          } else {
-            setState(() {
-              _locationController.text =
-                  '${position.latitude}, ${position.longitude}';
-            });
-          }
-        } catch (e) {
-          print("Error in reverse geocoding: $e");
-          setState(() {
-            _locationController.text =
-                '${position.latitude}, ${position.longitude}';
-          });
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permission denied')),
-        );
-      }
-
-      // Handle phone permission separately
-      if (statuses[Permission.phone] == PermissionStatus.granted) {
-        // Phone permission granted, you can handle phone-related functionality here
-        await _getPhoneNumber();
-      }
-    } catch (e) {
-      print('Error getting location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get location: $e')),
+      await authViewModel.login(
+        context,
+        _loginEmailController.text,
+        _loginPasswordController.text,
+        () => handleSuccessfulAuth(context),
+        rememberMe: _rememberMe,
       );
-    } finally {
-      setState(() => _isLocationLoading = false);
-    }
-  }
-
-  Future<void> _getPhoneNumber() async {
-    try {
-      final phoneHint = PhoneNumberHint();
-      final phoneNumber = await phoneHint.requestHint();
-      if (phoneNumber != null) {
-        setState(() {
-          _phoneNumber = phoneNumber;
-        });
-      }
     } catch (e) {
-      print('Error getting phone number: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login failed: ${e.toString()}')),
+      );
     }
   }
+}
 
-  InputDecoration _getInputDecoration({
-    required String hintText,
-    required IconData icon,
-  }) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: TextStyle(color: Colors.grey[500]),
-      prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: orangeColor),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red),
-      ),
-      filled: true,
-      fillColor: Colors.grey[100],
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    );
-  }
+InputDecoration getInputDecoration({
+  required String hintText,
+  required IconData icon,
+}) {
+  return InputDecoration(
+    hintText: hintText,
+    hintStyle: TextStyle(color: Colors.grey[500]),
+    prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: orangeColor),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.red),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.red),
+    ),
+    filled: true,
+    fillColor: Colors.grey[100],
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+  );
 }

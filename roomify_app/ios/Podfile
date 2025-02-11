@@ -32,7 +32,7 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
-  pod 'MapboxMaps', '11.9.0'
+  pod 'MapboxMaps', '11.9.2'
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do

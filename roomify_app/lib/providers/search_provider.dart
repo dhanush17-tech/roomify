@@ -5,6 +5,7 @@ import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/suggestion.dart' as models;
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/repository/properties_repo.dart';
 import 'package:roomify_app/repository/search_repo.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -16,8 +17,7 @@ class SearchProvider with ChangeNotifier {
   final BuildContext context;
 
   List<Listing> _searchResults = [];
-  List<models.LocationSuggestion> _locationSuggestions = [];
-  List<models.PropertySuggestion> _propertySuggestions = [];
+  List<Listing> _originalProperties = [];
   bool _isLoading = false;
   Timer? _debounceTimer;
   String _searchQuery = '';
@@ -27,6 +27,9 @@ class SearchProvider with ChangeNotifier {
   double? _searchLat;
   double? _searchLng;
   String? _selectedLocation;
+  String? _error;
+  List<models.LocationSuggestion> _locationSuggestions = [];
+  List<models.PropertySuggestion> _propertySuggestions = [];
 
   SearchProvider(this._repository, this.context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -34,10 +37,7 @@ class SearchProvider with ChangeNotifier {
   }
 
   List<Listing> get searchResults => _searchResults;
-  List<models.LocationSuggestion> get locationSuggestions =>
-      _locationSuggestions;
-  List<models.PropertySuggestion> get propertySuggestions =>
-      _propertySuggestions;
+  List<Listing> get originalProperties => _originalProperties;
   bool get isLoading => _isLoading;
   String get activeTab => _activeTab;
   FilterOptions? get currentFilters => _currentFilters;
@@ -47,6 +47,16 @@ class SearchProvider with ChangeNotifier {
   double? get searchLng => _searchLng;
   bool get hasSuggestions =>
       _locationSuggestions.isNotEmpty || _propertySuggestions.isNotEmpty;
+  String? get error => _error;
+  List<models.LocationSuggestion> get locationSuggestions =>
+      _locationSuggestions;
+  List<models.PropertySuggestion> get propertySuggestions =>
+      _propertySuggestions;
+
+  set searchResults(List<Listing> results) {
+    _searchResults = results;
+    notifyListeners();
+  }
 
   Future<void> search(String query,
       {double? searchLat,
@@ -60,13 +70,15 @@ class SearchProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _searchResults = await _repository.search(
+      final results = await _repository.search(
         query: query,
         type: 'Property',
         searchLatitude: _searchLat,
         searchLongitude: _searchLng,
         filterOptions: filterOptions,
       );
+      _searchResults = results;
+      _originalProperties = List.from(results);
     } catch (e) {
       print('Error searching: $e');
       _searchResults = [];
@@ -74,11 +86,6 @@ class SearchProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  set searchResults(List<Listing> value) {
-    _searchResults = value;
-    notifyListeners();
   }
 
   Future<void> getSuggestions(String query) async {
@@ -145,12 +152,14 @@ class SearchProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _searchResults = await _repository.search(
+      final results = await _repository.search(
         query: query,
         searchLatitude: _searchLat,
         searchLongitude: _searchLng,
         filterOptions: filterOptions,
       );
+      _searchResults = results;
+      _originalProperties = List.from(results);
       notifyListeners();
     } catch (e) {
       print('Error searching properties: $e');
@@ -182,14 +191,10 @@ class SearchProvider with ChangeNotifier {
       _noResults = false;
       notifyListeners();
 
-      _searchResults = await _repository.search(
-        query: '',
-        type: _activeTab,
-        filterOptions: _currentFilters,
-        searchLatitude: latitude,
-        searchLongitude: longitude,
-        radius: 10.0,
-      );
+      final properties =
+          await _repository.getRecommendedProperties(latitude, longitude);
+      _searchResults = properties;
+      _originalProperties = List.from(properties);
 
       _noResults = _searchResults.isEmpty;
     } catch (e) {
