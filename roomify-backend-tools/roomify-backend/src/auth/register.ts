@@ -111,7 +111,7 @@ app.post('/register', async (c: Context<{
             latitude: user.latitude,
             longitude: user.longitude,
             isProfessional: user.isProfessional,
-            profilePhotoUrl: user.profileImageUrl,
+            profileImageUrl: user.profileImageUrl,
             preferences: user.preferences.map(p => ({ preference: p.preference })),
             phoneNumber: user.phoneNumber,
             bio: user.bio,

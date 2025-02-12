@@ -18,7 +18,7 @@ app.patch('/users/professional', async (c) => {
             return c.json({ error: 'Unauthorized' }, 401);
         }
 
-        const { email } = await c.req.json();
+        const { email, isProfessional } = await c.req.json();
         if (!email) {
             return c.json({ error: 'Email is required' }, 400);
         }
@@ -29,7 +29,7 @@ app.patch('/users/professional', async (c) => {
         // Find and update the user
         const user = await prisma.user.update({
             where: { email: email },
-            data: { isProfessional: true }
+            data: { isProfessional: isProfessional }
         });
 
         if (!user) {
@@ -168,9 +168,10 @@ app.get('/', async (c) => {
                 id: lead.user.id,
                 displayName: lead.user.displayName,
                 email: lead.user.email,
-                profilePhotoUrl: lead.user.profileImageUrl,
+                profileImageUrl: lead.user.profileImageUrl,
                 university: lead.user.university,
-                phoneNumber: lead.user.phoneNumber
+                phoneNumber: lead.user.phoneNumber,
+                
             },
             propertyId: lead.propertyId,
             propertyTitle: lead.property.title,

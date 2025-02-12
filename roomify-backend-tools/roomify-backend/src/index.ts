@@ -17,8 +17,7 @@ import leads from "./property/leads";
 export { ChatRoom } from './chat/durable_objects';
 
 const app = new Hono<{
-	Bindings: En
-	v,
+	Bindings: Env,
 	Variables: {
 		userId: string;
 	}
@@ -43,7 +42,7 @@ app.route('/api/user/profile', profile)
 app.route("/api/roommate-match", roomate_match)
 app.route("/api/search", search)
 app.route("/api/properties", properties)
-app.route("/api/user", prefrences)
+app.route("/api/user/preferences", prefrences)
 app.route("/api/chat", chat)
 app.route("/api/marketplace", marketplace)
 app.route("/api/leads", leads)

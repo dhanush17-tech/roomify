@@ -4,5 +4,10 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks://roomifyusa.com/</string>
+		<string>applinks://roomify-landingpage.vercel.app/</string>
+	</array>
 </dict>
 </plist>

@@ -57,7 +57,11 @@
 	<key>NSDocumentDirectoryUsageDescription</key>
 	<string>Roomify needs access to your documents to pick files.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Roomify needs access to location to curate the best results.</string>
+	<string>Roomify needs access to location to find properties and roommates near you and provide accurate search results.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Roomify needs location access to provide you with real-time updates about nearby properties and roommate matches.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Roomify needs location access to help you find nearby properties, get directions, and receive relevant recommendations.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Roomify needs access to your photo library to upload files.</string>
 	<key>NSPhoneUsageDescription</key>

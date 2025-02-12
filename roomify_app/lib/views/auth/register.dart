@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -11,6 +10,7 @@ import 'package:roomify_app/widgets/map_box_auto_complete_widget.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:phone_number_hint/phone_number_hint.dart';
+import 'package:roomify_app/utils/location_manager.dart';
 
 class Register extends StatefulWidget {
   final AuthProvider authViewModel;
@@ -62,65 +62,37 @@ class _RegisterState extends State<Register> {
   Future<void> _getCurrentLocation() async {
     setState(() => _isLocationLoading = true);
     try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please enable location services')),
-        );
-        setState(() => _isLocationLoading = false);
-        return;
-      }
+      final position = await LocationManager().getCurrentPosition();
 
-      // Request permissions one by one
-      Map<Permission, PermissionStatus> statuses = await [
-        Permission.location,
-        Permission.phone,
-      ].request();
+      setState(() {
+        _locationController.text = "Loading address...";
+      });
 
-      // Check if location permission is granted
-      if (statuses[Permission.location] == PermissionStatus.granted) {
-        // Get current position with high accuracy
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
-        );
+      // Reverse geocoding using Mapbox
+      try {
+        final response = await http.get(Uri.parse(
+            'https://api.mapbox.com/geocoding/v5/mapbox.places/${position.longitude},${position.latitude}.json?access_token=${mapboxToken}'));
 
-        setState(() {
-          _locationController.text = "Loading address...";
-        });
-
-        // Reverse geocoding using Mapbox
-        try {
-          final response = await http.get(Uri.parse(
-              'https://api.mapbox.com/geocoding/v5/mapbox.places/${position.longitude},${position.latitude}.json?access_token=${mapboxToken}'));
-
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
-            if (data['features'] != null && data['features'].isNotEmpty) {
-              setState(() {
-                _locationController.text = data['features'][0]['place_name'];
-                _latitude = position.latitude;
-                _longitude = position.longitude;
-              });
-            }
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['features'] != null && data['features'].isNotEmpty) {
+            setState(() {
+              _locationController.text = data['features'][0]['place_name'];
+              _latitude = position.latitude;
+              _longitude = position.longitude;
+            });
           }
-        } catch (e) {
-          print("Error in reverse geocoding: $e");
-          setState(() {
-            _locationController.text =
-                '${position.latitude}, ${position.longitude}';
-          });
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permission denied')),
-        );
+      } catch (e) {
+        print("Error in reverse geocoding: $e");
+        setState(() {
+          _locationController.text =
+              '${position.latitude}, ${position.longitude}';
+        });
       }
 
       // Handle phone permission separately
-      if (statuses[Permission.phone] == PermissionStatus.granted) {
-        // Phone permission granted, you can handle phone-related functionality here
+      if (await Permission.phone.request().isGranted) {
         await _getPhoneNumber();
       }
     } catch (e) {
@@ -156,6 +128,18 @@ class _RegisterState extends State<Register> {
   }
 
   @override
+  /// Builds the sign up form with the following fields:
+  ///
+  /// * Full name
+  /// * Email
+  /// * Password
+  /// * I am a [Student looking for housing / Property manager/company]
+  /// * If student: Age, University/College, Location, Phone number
+  /// * If property manager/company: None
+  ///
+  /// The form is validated and if all fields are valid, it calls the [register]
+  /// function of the [AuthViewModel] with the provided fields and [onSuccess]
+  /// callback.
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(

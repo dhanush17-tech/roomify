@@ -113,6 +113,7 @@ app.put('/', async (c) => {
             latitude: parseFloat(formData.get('latitude') as string) || undefined,
             longitude: parseFloat(formData.get('longitude') as string) || undefined,
             status: formData.get('status'),
+            preferences: formData.get('preferences'),
         };
 
         // Update user in database
@@ -129,6 +130,8 @@ app.put('/', async (c) => {
                 phoneNumber: updateData.phoneNumber as string,
                 profileImageUrl: updateData.profileImageUrl,
                 status: updateData.status as string,
+
+
             },
             select: {
                 id: true,

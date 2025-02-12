@@ -78,14 +78,27 @@ class ChatRepository {
       final channel = IOWebSocketChannel.connect(
         Uri.parse(wsUrl),
         headers: headers,
-        pingInterval: Duration(seconds: 30),
+        pingInterval: Duration(seconds: 15),
+     
+        connectTimeout: Duration(seconds: 10),
       );
 
-      // Add error handling
+      // Add connection monitoring
       channel.stream.handleError((error) {
         print('WebSocket error: $error');
         throw Exception('WebSocket connection error: $error');
       });
+      channel.stream.listen(
+        (dynamic message) {
+      
+        },
+        onDone: () {
+          connectToRoom(roomId);
+        },
+        onError: (error) {
+          // connectToRoom(roomId);
+        },
+      );
 
       return channel;
     } catch (e) {

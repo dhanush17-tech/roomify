@@ -43,7 +43,7 @@ class RoomateTag extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Text(
-          "looking for $noOfOccupants occupants",
+          "needs $noOfOccupants roommate",
           style: TextStyle(
             fontSize: 12,
             color: Colors.blue,

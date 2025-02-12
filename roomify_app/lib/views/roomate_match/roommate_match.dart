@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/userModel.dart';
@@ -321,21 +322,6 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     await context.read<RoommateMatchProvider>().loadMatches();
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.bottom),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Find Roommates',
-            style: AppTextStyles.title(fontSize: 24),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSwipeOverlay() {
     bool isLeft = currentDirection == CardSwiperDirection.left;
     bool isRight = currentDirection == CardSwiperDirection.right;
@@ -453,7 +439,9 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   Widget _buildProfileCard(User profile) {
     final screenHeight = MediaQuery.of(context).size.height;
     return Container(
-      height: screenHeight * 0.7,
+      height: screenHeight -
+          screenHeight *
+              0.24, // 30px top + 30px bottom + app bar/status bar space
       child: Listener(
         onPointerDown: (details) {
           setState(() {
@@ -645,48 +633,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                 }).toList(),
                               ),
                             ],
-                            SizedBox(height: 20),
-                            // Contact Button
-                            GestureDetector(
-                              onTap: () async {
-                                final chatRoom = await context
-                                    .read<ChatProvider>()
-                                    .createOrGetChatRoom(profile.id);
 
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        ChatMessageScreen(room: chatRoom),
-                                    settings: RouteSettings(
-                                      name: 'ChatMessageScreen',
-                                      arguments:
-                                          ChatMessageScreen(room: chatRoom),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 20,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: orangeColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Contact',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
                             // Listings Section
                             if (profile.listings
                                 .where((listing) =>
@@ -902,58 +849,49 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                                         ),
                                                       ),
                                                       // Right Column
-                                                      Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
-                                                          Text(
-                                                            '\$${listing.price}/month',
-                                                            style: TextStyle(
-                                                              fontSize: 16,
-                                                              color:
-                                                                  Colors.orange,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
+                                                      Container(
+                                                        width: 130,
+                                                        height: 80,
+                                                        child: Column(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              '\$${listing.price}/month',
+                                                              style: TextStyle(
+                                                                fontSize: 16,
+                                                                color: Colors
+                                                                    .orange,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
                                                             ),
-                                                          ),
-                                                          SizedBox(height: 8),
-                                                          SizedBox(width: 4),
-                                                          Container(
-                                                            padding: EdgeInsets
-                                                                .symmetric(
-                                                                    horizontal:
-                                                                        10,
-                                                                    vertical:
-                                                                        4),
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: Colors.blue
-                                                                  .withOpacity(
-                                                                      0.1),
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          10),
-                                                            ),
-                                                            child: Column(
-                                                              children: [
-                                                                Text(
-                                                                  '${listing.property?.maxOccupancy}',
-                                                                  style:
-                                                                      TextStyle(
-                                                                    color: Colors
-                                                                        .blue,
-                                                                    fontSize:
-                                                                        16,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
+                                                            Spacer(),
+                                                            Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                        horizontal:
+                                                                            10,
+                                                                        vertical:
+                                                                            4),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: Colors
+                                                                      .blue
+                                                                      .withOpacity(
+                                                                          0.1),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              10),
                                                                 ),
-                                                                Text(
-                                                                  'looking for roomates',
+                                                                child: Text(
+                                                                  'need ${listing.property?.maxOccupancy}\n${listing.property?.maxOccupancy == 1 ? 'roomate' : 'roomates'}',
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .center,
                                                                   style:
                                                                       TextStyle(
                                                                     color: Colors
@@ -961,11 +899,9 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                                                     fontSize:
                                                                         12,
                                                                   ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
+                                                                )),
+                                                          ],
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
@@ -980,6 +916,48 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                 ],
                               ),
                             ],
+                            SizedBox(height: 30),
+                            // Contact Button
+                            GestureDetector(
+                              onTap: () async {
+                                final chatRoom = await context
+                                    .read<ChatProvider>()
+                                    .createOrGetChatRoom(profile.id);
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ChatMessageScreen(room: chatRoom),
+                                    settings: RouteSettings(
+                                      name: 'ChatMessageScreen',
+                                      arguments:
+                                          ChatMessageScreen(room: chatRoom),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 20,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: orangeColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Contact',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1022,16 +1000,39 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                     child: Column(
                       children: [
                         Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: EdgeInsets.only(
+                              top: MediaQuery.of(context).padding.top,
+                              left: 16,
+                              right: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Find Roommates',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: orangeColor,
+                           children: [
+                              RichText(
+                                text: TextSpan(
+                                  text: 'Roomate ',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.bold,
+                                    color: orangeColor,
+                                  ),
+                                  children: <TextSpan>[
+                                    TextSpan(
+                                      text: 'Drama?\nNah, we\'ll find you a ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 21,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'bestie!',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 21,
+                                        fontWeight: FontWeight.bold,
+                                        color: orangeColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1039,7 +1040,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                         ),
                         Container(
                           height: MediaQuery.of(context).size.height -
-                              100, // Adjust height as needed
+                              190, // Matches card height
                           child: provider.matches.isEmpty || isExhausted
                               ? _buildNoMoreMatches()
                               : Stack(

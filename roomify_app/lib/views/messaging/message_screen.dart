@@ -422,7 +422,8 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
             child: Consumer<ChatProvider>(
               builder: (context, provider, child) {
                 final newMessages = provider.getMessages(widget.room.id);
-                newMessages.sort((a, b) => a.compareTo(b));
+                // Sort messages in reverse chronological order (newest first)
+                newMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                 // Handle message updates
                 if (_messages.length != newMessages.length) {
@@ -431,8 +432,18 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     for (var i = _messages.length;
                         i < newMessages.length;
                         i++) {
-                      _listKey.currentState?.insertItem(0);
+                      _listKey.currentState?.insertItem(
+                          0); // Insert at the start since list is reversed
                     }
+
+                    // Auto-scroll to top (which is the bottom of the screen) after message is added
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _scrollController.animateTo(
+                        0, // Scroll to top since list is reversed
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    });
                   } else {
                     // Message deleted
                     final deletedIndex = _messages.indexWhere((msg) =>
@@ -440,7 +451,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     if (deletedIndex != -1) {
                       final deletedMessage = _messages[deletedIndex];
                       _listKey.currentState?.removeItem(
-                        _messages.length - 1 - deletedIndex,
+                        deletedIndex,
                         (context, animation) => SizeTransition(
                           sizeFactor: animation,
                           child: FadeTransition(
@@ -456,39 +467,22 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
 
                 return AnimatedList(
                   key: _listKey,
-                  padding: EdgeInsets.all(16),
-                  reverse: true,
                   controller: _scrollController,
+                  reverse: true, // Show newest messages at bottom
+                  padding: EdgeInsets.only(
+                    top: 20,
+                    left: 16,
+                    right: 16,
+                    bottom: 8,
+                  ),
+                  physics: AlwaysScrollableScrollPhysics(),
                   initialItemCount: _messages.length,
                   itemBuilder: (context, index, animation) {
-                    final curvedAnimation = CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutQuint,
-                      reverseCurve: Curves.easeInQuint,
-                    );
-
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(1.0, 0.0),
-                        end: Offset.zero,
-                      ).animate(curvedAnimation),
+                    return SizeTransition(
+                      sizeFactor: animation,
                       child: FadeTransition(
-                        opacity: Tween<double>(
-                          begin: 0.0,
-                          end: 1.0,
-                        ).animate(CurvedAnimation(
-                          parent: animation,
-                          curve: Interval(0.2, 1.0, curve: Curves.easeOut),
-                        )),
-                        child: SizeTransition(
-                          sizeFactor: CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutQuart,
-                          ),
-                          child: _buildMessage(
-                            _messages[_messages.length - 1 - index],
-                          ),
-                        ),
+                        opacity: animation,
+                        child: _buildMessage(_messages[index]),
                       ),
                     );
                   },
@@ -642,19 +636,21 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
     final currentUserId = context.read<AuthProvider>().user?.id;
     final isMe = message.senderId == currentUserId;
     return Padding(
-      padding: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: 8),
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
+          margin: EdgeInsets.only(bottom: 4),
           child: Column(
             crossAxisAlignment:
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: isMe ? Color(0xFF2B3F6C) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -675,11 +671,11 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                 ),
               ),
               Padding(
-                padding: EdgeInsets.only(top: 4, left: 4, right: 4),
+                padding: EdgeInsets.only(top: 2, left: 4, right: 4),
                 child: Text(
                   timeago.format(message.createdAt, locale: 'en'),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.grey[600],
                   ),
                 ),

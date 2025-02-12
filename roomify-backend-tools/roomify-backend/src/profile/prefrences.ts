@@ -14,7 +14,7 @@ const app = new Hono<{
 }>();
 
 
-app.put('/preferences', async (c) => {
+app.put('/', async (c) => {
     try {
         const payload = c.get('jwtPayload');
         if (!payload) {
@@ -91,72 +91,6 @@ app.put('/preferences', async (c) => {
             details: error.message
         }, 500);
     }
-});
-app.put('/api/user/preferences', async (c) => {
-    try {
-        const payload = c.get('jwtPayload');
-        if (!payload) {
-            return c.json({ error: 'Unauthorized' }, 401);
-        }
-
-        const userId = payload.sub;
-        const {  preferences, socialLinks } = await c.req.json();
-
-        const adapter = new PrismaD1(c.env.DB);
-        const prisma = new PrismaClient({ adapter });
-
- 
-        await prisma.userPreference.deleteMany({
-            where: { userId }
-        });
-
-        await prisma.userSocialLink.deleteMany({
-            where: { userId }
-        });
- 
-
-        // Create new preferences
-        if (preferences?.length) {
-            for (const preference of preferences) {
-                await prisma.userPreference.create({
-                    data: {
-                        userId,
-                        preference
-                    }
-                });
-            }
-        }
-
-        // Create new social links
-        if (socialLinks) {
-            for (const [platform, username] of Object.entries(socialLinks)) {
-                await prisma.userSocialLink.create({
-                    data: {
-                        userId,
-                        platform,
-                        username: username as string
-                    }
-                });
-            }
-        }
-
-        // Get updated user data
-        const updatedUser = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                 preferences: true,
-                socialLinks: true
-            }
-        });
-
-        return c.json(updatedUser);
-    } catch (error) {
-        console.error('Update preferences error:', error);
-        return c.json({
-            error: 'Failed to update preferences',
-            details: error.message
-        }, 500);
-    }
-});
+}); 
 
 export default app
