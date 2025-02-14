@@ -870,30 +870,44 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
       // Update preferences only for non-professional users
       final user = context.read<AuthProvider>().user;
-      if (!user!.isProfessional) {
-        print('Updating preferences: $_selectedPreferences'); // Debug log
-        await context.read<ProfileProvider>().updatePreferences(
-              preferences: _selectedPreferences,
-            );
+      if (user!.isProfessional) {
+        if (_listing != null) {
+          // Calculate deleted image URLs by comparing original URLs with current URLs
+          final currentUrls = _listing!.property?.imageUrls ?? [];
+          final deletedUrls = _originalImageUrls
+              .where((url) => !currentUrls.contains(url))
+              .toList();
+          print(deletedUrls);
+          final updatedListing =
+              await context.read<PropertyProvider>().updateProperty(
+                    _listing!,
+                    newImages: _images,
+                    deletedImageUrls: deletedUrls,
+                  );
+          setState(() {
+            _listing = updatedListing;
+            _images = []; // Clear new images after successful update
+          });
+        }
       }
-
-      // Then update the profile
       await context.read<AuthProvider>().updateProfile(
             context: context,
             displayName: _displayNameController.text,
-            email: _emailController.text,
             bio: _bioController.text,
-            age: int.tryParse(_ageController.text),
+            age: _ageController.text.isNotEmpty
+                ? int.tryParse(_ageController.text)
+                : null,
+            university: _universityController.text,
+            location: _locationController.text,
             gender: _selectedGender,
             status: _selectedStatus,
-            location: _locationController.text,
-            university: _universityController.text,
-            phoneNumber: _phoneNumber,
+            email: _emailController.text,
             profileImage: _profileImage,
-            latitude: widget.latitude,
-            longitude: widget.longitude,
+            phoneNumber: _phoneNumber,
           );
-
+      await context.read<ProfileProvider>().updatePreferences(
+            preferences: _selectedPreferences,
+          );
       // Add success animation
       await Future.delayed(Duration(milliseconds: 300));
 
@@ -1287,12 +1301,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           defaultLongitude: _listing?.longitude,
           onSelect: (place) {
             setState(() {
-              _locationController.text =
-                  '${place.city ?? ''}, ${place.state ?? ''}'.trim();
+              _locationController.text = place.placeName.trim();
 
               _address = place.placeName;
-              _listing!.location =
-                  '${place.city ?? ''}, ${place.state ?? ''}'.trim();
+              _listing!.location = place.placeName.trim();
               _listing!.latitude = place.geometry.coordinates[1];
               _listing!.longitude = place.geometry.coordinates[0];
               // Update location with city and state
@@ -1848,6 +1860,9 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
       _bathroomsController.text = widget.floorPlan!.bathrooms.toString();
       _availableUnitsController.text =
           widget.floorPlan!.availableUnits.toString();
+
+      _availableUnitsController.text =
+          widget.floorPlan!.availableUnits.toString();
     }
   }
 
@@ -1954,6 +1969,18 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(12),
+                          image: _selectedImage != null
+                              ? DecorationImage(
+                                  image: FileImage(_selectedImage!),
+                                  fit: BoxFit.cover,
+                                )
+                              : widget.floorPlan?.imageUrl != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(
+                                          widget.floorPlan!.imageUrl!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                           border: Border.all(
                             color: (_selectedImage == null &&
                                     widget.floorPlan?.imageUrl == null)
@@ -2066,6 +2093,9 @@ class _FloorPlanDialogState extends State<FloorPlanDialog> {
                 _buildFeatureCounter("Bedrooms", _bedroomsController),
                 SizedBox(height: 16),
                 _buildFeatureCounter("Bathrooms", _bathroomsController),
+                SizedBox(height: 16),
+                _buildFeatureCounter(
+                    "Available Units", _availableUnitsController),
                 SizedBox(height: 24),
                 Row(
                   children: [

@@ -25,7 +25,6 @@ class PropertyRepository {
     );
   }
 
-
   Future<List<Listing>> getPairUpProperties() async {
     try {
       final response = await _dio.get('/api/properties/pair-up');
@@ -188,12 +187,11 @@ class PropertyRepository {
     }
   }
 
-  Future<Listing> updateProperty(Listing listing,
-      {List<File> images = const [],
-      List<File> floorPlanImages = const [],
-      List<String> deletedImageUrls = const [],
-      List<String> deletedFloorPlanUrls = const [],
-      List<String> deletedDocumentUrls = const []}) async {
+  Future<Listing> updateProperty(
+    Listing listing, {
+    List<File> newImages = const [],
+    List<String> deletedImageUrls = const [],
+  }) async {
     try {
       final token = await AuthRepository().getToken();
       final _headers = {
@@ -208,32 +206,15 @@ class PropertyRepository {
       request.headers.addAll(_headers);
       request.fields['listing'] = jsonEncode(listing.toJson());
       request.fields['deletedImageUrls'] = jsonEncode(deletedImageUrls);
-      request.fields['deletedFloorPlanUrls'] = jsonEncode(deletedFloorPlanUrls);
-      request.fields['deletedDocumentUrls'] = jsonEncode(deletedDocumentUrls);
 
       // Add new property images
-      for (var image in images) {
+      for (var image in newImages) {
         final fileName = image.path.split('/').last;
         final stream = http.ByteStream(image.openRead());
         final length = await image.length();
 
         final multipartFile = http.MultipartFile(
           'images',
-          stream,
-          length,
-          filename: fileName,
-        );
-        request.files.add(multipartFile);
-      }
-
-      // Add new floor plan images
-      for (var image in floorPlanImages) {
-        final fileName = image.path.split('/').last;
-        final stream = http.ByteStream(image.openRead());
-        final length = await image.length();
-
-        final multipartFile = http.MultipartFile(
-          'floorPlanImages',
           stream,
           length,
           filename: fileName,

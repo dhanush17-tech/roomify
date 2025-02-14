@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:roomify_app/models/filterModel.dart';
 import 'package:roomify_app/models/itemModel.dart';
 import 'package:roomify_app/models/propertyModel.dart';
 import 'package:roomify_app/models/userModel.dart';
@@ -467,18 +468,59 @@ class PropertyCard extends StatelessWidget {
   final Listing listing;
   final double latitude;
   final double longitude;
+  final FilterOptions? filterOptions;
 
-  const PropertyCard(this.listing, this.latitude, this.longitude);
+  const PropertyCard(this.listing, this.latitude, this.longitude,
+      {this.filterOptions});
 
   // Helper method to get minimum floor plan details
 
   @override
   Widget build(BuildContext context) {
-    // Get minimum price floor plan if it's a professional listing
-    final minPriceFloorPlan = listing.user?.isProfessional == true
-        ? getMinPriceFloorPlan(listing)
-        : null;
+    FloorPlan? getFilteredFloorPlan(Listing listing) {
+      if (listing.property?.floorPlans == null ||
+          listing.property!.floorPlans!.isEmpty) {
+        return null;
+      }
 
+      if (filterOptions != null) {
+        final matchingFloorPlans = listing.property!.floorPlans!
+            .map((floorPlan) {
+              bool matches = true;
+
+              if (filterOptions!.minPrice != null &&
+                  filterOptions!.minPrice! > 0) {
+                matches =
+                    matches && floorPlan.price >= filterOptions!.minPrice!;
+              }
+              if (filterOptions!.maxPrice != null) {
+                matches =
+                    matches && floorPlan.price <= filterOptions!.maxPrice!;
+              }
+              if (filterOptions!.bedrooms != null) {
+                matches =
+                    matches && floorPlan.bedrooms == filterOptions!.bedrooms;
+              }
+              if (filterOptions!.bathrooms != null) {
+                matches =
+                    matches && floorPlan.bathrooms == filterOptions!.bathrooms;
+              }
+
+              return matches ? floorPlan : null;
+            })
+            .where((floorPlan) => floorPlan != null)
+            .toList();
+
+        return matchingFloorPlans.isNotEmpty
+            ? matchingFloorPlans.first
+            : getMinPriceFloorPlan(listing);
+      }
+
+      return getMinPriceFloorPlan(listing);
+    }
+
+    final filteredFloorPlan = getFilteredFloorPlan(listing);
+    print(filteredFloorPlan);
     return GestureDetector(
       onTap: () {
         // Track the property view
@@ -713,7 +755,9 @@ class PropertyCard extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '\$${minPriceFloorPlan?.price.toStringAsFixed(0)} - \$${getMaxPriceFloorPlan(listing)?.price.toStringAsFixed(0)}',
+                                        listing.user?.isProfessional == true
+                                            ? '\$${filteredFloorPlan?.price.toStringAsFixed(0) ?? listing.price}/month'
+                                            : '\$${listing.price}/month',
                                         style: TextStyle(
                                           fontSize: 18,
                                           color: orangeColor,
@@ -753,7 +797,9 @@ class PropertyCard extends StatelessWidget {
                                 color: Colors.grey[600], size: 20),
                             SizedBox(width: 4),
                             Text(
-                              '${minPriceFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms} beds',
+                              listing.user?.isProfessional == true
+                                  ? '${filteredFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms} beds'
+                                  : '${listing.property?.numberOfBedrooms} beds',
                               style: TextStyle(
                                 color: Colors.grey[800],
                                 fontSize: 14,
@@ -765,7 +811,9 @@ class PropertyCard extends StatelessWidget {
                                 color: Colors.grey[600], size: 20),
                             SizedBox(width: 4),
                             Text(
-                              '${minPriceFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms} baths',
+                              listing.user?.isProfessional == true
+                                  ? '${filteredFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms} baths'
+                                  : '${listing.property?.numberOfBathrooms} baths',
                               style: TextStyle(
                                 color: Colors.grey[800],
                                 fontSize: 14,

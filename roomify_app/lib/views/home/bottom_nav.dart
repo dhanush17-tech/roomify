@@ -162,7 +162,10 @@ class _MainScreenState extends State<MainScreen> {
               latitude: widget.latitude,
               longitude: widget.longitude,
             ),
-            RoommateMatchScreen(widget.latitude, widget.longitude),
+            RoommateMatchScreen(
+              widget.latitude,
+              widget.longitude,
+            ),
             Container(), // Empty container for center button
             MarketplaceHomeScreen(
               widget.latitude,

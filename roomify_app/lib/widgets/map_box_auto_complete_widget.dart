@@ -238,7 +238,7 @@ class _MapBoxAutoCompleteWidgetState extends State<MapBoxAutoCompleteWidget> {
   }
 }
 
-class Place {
+class  Place {
   final String placeName;
   final Geometry geometry;
   final List<Context> context;

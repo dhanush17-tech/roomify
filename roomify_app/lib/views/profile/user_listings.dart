@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/models/itemModel.dart';
+import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/utils/colors.dart';
 import 'package:roomify_app/widgets/pinterest_grid.dart';
@@ -83,6 +84,7 @@ class _UserListingScreenState extends State<UserListingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
     return Consumer<ProfileProvider>(
       builder: (context, provider, _) {
         return Scaffold(
@@ -129,14 +131,20 @@ class _UserListingScreenState extends State<UserListingScreen>
                         labelColor: orangeColor,
                         unselectedLabelColor: blackTextColor,
                         labelStyle: TextStyle(fontWeight: FontWeight.w400),
-                        tabs: [
-                          Tab(
-                              text:
-                                  'Properties (${provider.properties.length})'),
-                          Tab(
-                              text:
-                                  'Marketplace (${provider.marketplaceItems.length})'),
-                        ],
+                        tabs: user!.isProfessional
+                            ? [
+                                Tab(
+                                    text:
+                                        'Properties (${provider.properties.length})'),
+                              ]
+                            : [
+                                Tab(
+                                    text:
+                                        'Properties (${provider.properties.length})'),
+                                Tab(
+                                    text:
+                                        'Marketplace (${provider.marketplaceItems.length})'),
+                              ],
                       ),
                     ),
                   ),
@@ -149,7 +157,9 @@ class _UserListingScreenState extends State<UserListingScreen>
                         controller: _tabController,
                         children: [
                           _buildListingTab(provider.properties),
-                          _buildListingTab(provider.marketplaceItems),
+                          user!.isProfessional
+                              ? Container()
+                              : _buildListingTab(provider.marketplaceItems),
                         ],
                       ),
                     ),

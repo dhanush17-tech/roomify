@@ -175,19 +175,31 @@ Future<void> handleNotificationTap(
 
       if (data['type'] == 'chat' && data['roomId'] != null) {
         final chatProvider = navigatorKey.currentContext?.read<ChatProvider>();
-        if (chatProvider != null) {
-          final chatRoom = await chatProvider.createOrGetChatRoom(
-            data['senderId'],
-          );
-          if (chatRoom != null) {
-            Navigator.push(
-              navigatorKey.currentContext!,
-              MaterialPageRoute(
-                builder: (context) => ChatMessageScreen(room: chatRoom),
-                settings: RouteSettings(
-                  name: 'ChatMessageScreen',
-                  arguments: ChatMessageScreen(room: chatRoom),
+        final authProvider = navigatorKey.currentContext?.read<AuthProvider>();
+
+        if (chatProvider != null && authProvider != null) {
+          // Check if recipient is not the current user
+          if (data['recipientId'] != authProvider.user?.id) {
+            final chatRoom = await chatProvider.createOrGetChatRoom(
+              data['senderId'],
+            );
+            if (chatRoom != null) {
+              Navigator.push(
+                navigatorKey.currentContext!,
+                MaterialPageRoute(
+                  builder: (context) => ChatMessageScreen(room: chatRoom),
+                  settings: RouteSettings(
+                    name: 'ChatMessageScreen',
+                    arguments: ChatMessageScreen(room: chatRoom),
+                  ),
                 ),
+              );
+            }
+          } else {
+            // Optional: Show a message that you can't chat with yourself
+            ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+              const SnackBar(
+                content: Text("You cannot start a chat with yourself"),
               ),
             );
           }

@@ -83,7 +83,6 @@ class DocumentRequest {
     );
   }
 }
-
 class DocumentSubmission {
   final String id;
   final String messageId;
@@ -99,12 +98,24 @@ class DocumentSubmission {
     required this.createdAt,
   });
 
+  List<String> get documentsList {
+    try {
+      final decoded = jsonDecode(documents);
+      return List<String>.from(decoded);
+    } catch (e) {
+      print('Error parsing documents: $e');
+      return [];
+    }
+  }
+
   factory DocumentSubmission.fromJson(Map<String, dynamic> json) {
     return DocumentSubmission(
       id: json['id'],
       messageId: json['messageId'],
       requestId: json['requestId'],
-      documents: json['documents'],
+      documents: json['documents'] is String
+          ? json['documents']
+          : jsonEncode(json['documents']),
       createdAt: DateTime.parse(json['createdAt']),
     );
   }

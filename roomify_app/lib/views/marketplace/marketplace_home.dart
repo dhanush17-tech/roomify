@@ -129,6 +129,15 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: FilterChip(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: !isSelected
+                          ? blackTextColor.withOpacity(0.5)
+                          : Colors.transparent,
+                      width: 1.8,
+                    ),
+                  ),
                   selected: isSelected,
                   label: Text(range.label),
                   onSelected: (bool selected) {
@@ -141,8 +150,7 @@ class _MarketplaceHomeScreenState extends State<MarketplaceHomeScreen> {
                   checkmarkColor: Colors.blue,
                   labelStyle: TextStyle(
                     color: isSelected ? Colors.blue : blackTextColor,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.bold,
                   ),
                 ),
               );

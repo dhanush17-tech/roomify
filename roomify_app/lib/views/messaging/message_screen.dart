@@ -103,6 +103,9 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
         // Connect to WebSocket
         _initializeWebSocket();
       }
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     });
   }
 
@@ -422,27 +425,27 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
             child: Consumer<ChatProvider>(
               builder: (context, provider, child) {
                 final newMessages = provider.getMessages(widget.room.id);
-                // Sort messages in reverse chronological order (newest first)
+                // Sort messages in reverse chronological order (newest last)
                 newMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                // Handle message updates
                 if (_messages.length != newMessages.length) {
                   if (_messages.length < newMessages.length) {
                     // New message added
                     for (var i = _messages.length;
                         i < newMessages.length;
                         i++) {
-                      _listKey.currentState?.insertItem(
-                          0); // Insert at the start since list is reversed
+                      _listKey.currentState?.insertItem(0); // Insert at the top
                     }
 
-                    // Auto-scroll to top (which is the bottom of the screen) after message is added
+                    // Auto-scroll to bottom for new messages
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _scrollController.animateTo(
-                        0, // Scroll to top since list is reversed
-                        duration: Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          0, // Scroll to top since list is reversed
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      }
                     });
                   } else {
                     // Message deleted
@@ -462,18 +465,18 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       );
                     }
                   }
-                  _messages = List.from(newMessages);
                 }
+                _messages = List.from(newMessages);
 
                 return AnimatedList(
                   key: _listKey,
                   controller: _scrollController,
-                  reverse: true, // Show newest messages at bottom
+                  reverse: true, // Keep this true to show newest at bottom
                   padding: EdgeInsets.only(
-                    top: 20,
+                    top: 8,
                     left: 16,
                     right: 16,
-                    bottom: 8,
+                    bottom: 20, // Increased bottom padding
                   ),
                   physics: AlwaysScrollableScrollPhysics(),
                   initialItemCount: _messages.length,
@@ -799,36 +802,27 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                   color: isFulfilled ? Colors.green[900] : Colors.black87,
                 ),
               ),
-              Row(
-                children: [
-                  if (isPending)
-                    Text(
-                      'Pending',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  SizedBox(width: 10),
-                  if (isMe)
-                    GestureDetector(
-                      onTap: () => _showDeleteDialog(message),
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.delete,
-                            color: Colors.redAccent, size: 20),
-                      ),
-                    ),
-                ],
-              )
+              if (isPending)
+                Text(
+                  'Pending',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
             ],
           ),
           SizedBox(height: 8),
+          // Display requested documents
           if (message.requestedDocuments != null) ...[
+            Text(
+              'Requested Documents:',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 4),
             ...message.requestedDocuments!
                 .where((doc) => doc != DocumentType.Custom)
                 .map(
@@ -836,10 +830,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     padding: EdgeInsets.only(left: 8, bottom: 4),
                     child: Text(
                       '• ${doc.toString().split('.').last.replaceAll(RegExp(r'(?=[A-Z])'), ' ')}',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: Colors.black87),
                     ),
                   ),
                 ),
@@ -848,13 +839,12 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                 padding: EdgeInsets.only(left: 8, bottom: 4),
                 child: Text(
                   '• ${message.customDocumentName}',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: Colors.black87),
                 ),
               ),
           ],
+
+          // Upload button for recipient
           if (!isMe && isPending) ...[
             SizedBox(height: 12),
             ElevatedButton.icon(
@@ -867,6 +857,8 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
               ),
             ),
           ],
+
+          // Display submitted documents
           if (isFulfilled && message.submittedDocuments != null) ...[
             SizedBox(height: 12),
             Divider(color: Colors.green[200]),
@@ -890,12 +882,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                 final isPdf = fileName.toLowerCase().endsWith('.pdf');
 
                 return InkWell(
-                  onTap: () {
-                    print('opening document');
-                    print(url);
-                    print(fileName);
-                    _openDocument(url);
-                  },
+                  onTap: () => _openDocument(url),
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(

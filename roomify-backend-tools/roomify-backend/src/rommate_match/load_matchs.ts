@@ -46,28 +46,9 @@ app.get('/', async (c) => {
                 isProfessional: false,
                 AND: [
                     {
-                        OR: [
-                            { university: currentUser.university },
-                            { university: null }
-                        ]
+                        isProfessional: false,
                     },
-                    {
-                        OR: [
-                            { location: currentUser.location },
-                            { location: null }
-                        ]
-                    },
-                    {
-                        OR: [
-                            {
-                                age: {
-                                    gte: currentUser.age ? currentUser.age - 3 : undefined,
-                                    lte: currentUser.age ? currentUser.age + 3 : undefined
-                                }
-                            },
-                            { age: null }
-                        ]
-                    }
+
                 ]
             },
             include: {
@@ -76,6 +57,7 @@ app.get('/', async (c) => {
                     where: {
                         reported: false,  // Only include non-reported listings
                         property: {
+
                             OR: [
                                 { moveInDate: 'Anytime' },
                                 {
@@ -100,6 +82,7 @@ app.get('/', async (c) => {
             }
         });
 
+
         const matches = potentialMatches.map(match => {
             const score = calculateMatchScore(currentUser, match);
             return {
@@ -117,39 +100,14 @@ app.get('/', async (c) => {
             };
         });
 
+
+
         // Sort matches by score and other criteria
         const sortedMatches = matches.sort((a, b) => {
             // Primary sort by match score
-            if (b.matchScore !== a.matchScore) {
-                return b.matchScore - a.matchScore;
-            }
 
-            // Secondary sort by location match
-            if (currentUser.location) {
-                const aLocationMatch = a.location === currentUser.location;
-                const bLocationMatch = b.location === currentUser.location;
-                if (aLocationMatch !== bLocationMatch) {
-                    return bLocationMatch ? 1 : -1;
-                }
-            }
+            return b.matchScore - a.matchScore;
 
-            // Tertiary sort by university match
-            if (currentUser.university) {
-                const aUniMatch = a.university === currentUser.university;
-                const bUniMatch = b.university === currentUser.university;
-                if (aUniMatch !== bUniMatch) {
-                    return bUniMatch ? 1 : -1;
-                }
-            }
-
-            // Finally sort by age difference
-            if (currentUser.age && a.age && b.age) {
-                const aAgeDiff = Math.abs(currentUser.age - a.age);
-                const bAgeDiff = Math.abs(currentUser.age - b.age);
-                return aAgeDiff - bAgeDiff;
-            }
-
-            return 0;
         });
 
         return c.json({ matches: sortedMatches });
@@ -245,41 +203,6 @@ app.post('/swipe', async (c) => {
         return c.json({ error: 'Failed to process swipe' }, 500);
     }
 });
-
-function calculateMatchScore(currentUser: any, match: any): number {
-    let score = 0;
-    let maxScore = 0;
-
-    // Preference matching (40%)
-    if (currentUser.preferences && match.preferences) {
-        maxScore += 40;
-        const preferenceMatch = currentUser.preferences.filter((p: { preference: string }) =>
-            match.preferences.some((mp: { preference: string }) => mp.preference === p.preference)
-        ).length;
-        score += (preferenceMatch / currentUser.preferences.length) * 40;
-    }
-
-
-    // Location matching (15%)
-    if (currentUser.location && match.location) {
-        maxScore += 15;
-        if (currentUser.location === match.location) {
-            score += 15;
-        }
-    }
-
-    // Age proximity (15%)
-    if (currentUser.age && match.age) {
-        maxScore += 15;
-        const ageDiff = Math.abs(currentUser.age - match.age);
-        if (ageDiff <= 1) score += 15;
-        else if (ageDiff <= 2) score += 10;
-        else if (ageDiff <= 3) score += 5;
-    }
-
-    return maxScore > 0 ? (score / maxScore) * 100 : 0;
-}
-
 // Add this new endpoint to get mutual matches
 app.get('/matches', async (c) => {
     try {
@@ -378,5 +301,88 @@ app.get('/matches', async (c) => {
         return c.json({ error: 'Failed to fetch matches' }, 500);
     }
 });
+
+
+function calculateMatchScore(currentUser: any, match: any): number {
+    let score = 0;
+    let maxScore = 0;
+
+    // Preference matching (35%)
+    if (currentUser.preferences?.length && match.preferences?.length) {
+        maxScore += 35;
+        const preferenceMatch = currentUser.preferences.filter((p: { preference: string }) =>
+            match.preferences.some((mp: { preference: string }) => mp.preference === p.preference)
+        ).length;
+        score += preferenceMatch > 0 ? (preferenceMatch / currentUser.preferences.length) * 35 : 0;
+    }
+
+    // Location matching (20%)
+    if (currentUser.latitude && currentUser.longitude && match.latitude && match.longitude) {
+        maxScore += 20;
+        const distance = calculateDistance(
+            currentUser.latitude,
+            currentUser.longitude,
+            match.latitude,
+            match.longitude
+        );
+        if (distance > 30) return 0;
+        if (distance <= 5) score += 20;
+        else if (distance <= 10) score += 35;
+        else if (distance <= 20) score += 25;
+        else if (distance <= 30) score += 15;
+    }
+
+    // University matching (15%)
+    if (currentUser.university && match.university) {
+        maxScore += 15;
+        if (currentUser.university === match.university) {
+            score += 15;
+        }
+    }
+
+    // Age proximity (15%)
+    if (currentUser.age && match.age) {
+        maxScore += 15;
+        const ageDiff = Math.abs(currentUser.age - match.age);
+        if (ageDiff <= 2) score += 15;
+        else if (ageDiff <= 4) score += 10;
+        else if (ageDiff <= 6) score += 5;
+    }
+
+    // Language preference (10%)
+    if (currentUser.language && match.language) {
+        maxScore += 10;
+        if (currentUser.language === match.language) {
+            score += 10;
+        }
+    }
+
+    // Gender preference (5%)
+    if (currentUser.gender && match.gender) {
+        maxScore += 5;
+        if (currentUser.gender === match.gender) {
+            score += 5;
+        }
+    }
+
+    return maxScore > 0 ? (score / maxScore) * 100 : 0;
+}
+
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function toRad(value: number): number {
+    return value * Math.PI / 180;
+}
 
 export default app

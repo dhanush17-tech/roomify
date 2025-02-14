@@ -225,7 +225,7 @@ class PropertyProvider extends ChangeNotifier {
 
   Future<Listing> updateProperty(
     Listing listing, {
-    List<File> images = const [],
+    List<File> newImages = const [],
     List<String> deletedImageUrls = const [],
   }) async {
     try {
@@ -236,7 +236,7 @@ class PropertyProvider extends ChangeNotifier {
       // Pass both the listing and new images to repository
       final updatedListing = await _repository.updateProperty(
         listing,
-        images: images,
+        newImages: newImages,
         deletedImageUrls: deletedImageUrls,
       );
 

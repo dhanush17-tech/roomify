@@ -9,40 +9,11 @@ interface User {
     profileImageUrl?: string;
 }
 
-interface ChatMessage {
-    id: string;
-    type: 'message' | 'document_request' | 'document_submission';
-    content: string;
-    createdAt: Date;
-    roomId: string;
-    senderId: string;
-    isDeleted: boolean;
-    sender?: User;
-    documentRequest?: DocumentRequest;
-    documentSubmission?: DocumentSubmission;
-}
-
-interface DocumentRequest {
-    id: string;
-    type: 'document_request';
-    recipientId: string;
-    documents: string[];
-    customDocumentName?: string;
-    status: 'PENDING' | 'COMPLETED' | 'REJECTED';
-}
-
-interface DocumentSubmission {
-    id: string;
-    type: 'document_submission';
-    requestId: string;
-    documentUrls: string[];
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
-}
 
 interface PrismaUser {
     id: string;
     displayName: string;
-    profileImageUrl?: string;
+    profileImageUrl: string | null;
 }
 
 interface PrismaChatMessage {
@@ -52,28 +23,15 @@ interface PrismaChatMessage {
     createdAt: Date;
     roomId: string;
     senderId: string;
+    recipientId: string | null;
     isDeleted: boolean;
     sender: PrismaUser;
-    documentRequest?: {
-        id: string;
-        messageId: string;
-        recipientId: string;
-        requestedDocuments: string;
-        status: 'PENDING' | 'COMPLETED' | 'REJECTED';
-        customDocumentName?: string;
-    };
-    documentSubmission?: {
-        id: string;
-        messageId: string;
-        requestId: string;
-        documents: string;
-        status: 'PENDING' | 'APPROVED' | 'REJECTED';
-    };
+    documentRequest?: any;
+    documentSubmission?: any;
 }
 
 export class ChatRoom {
     private sessions: Map<string, WebSocket>;
-    private pingIntervals: Map<string, any>;
     private state: DurableObjectState;
     private env: Env;
 
@@ -81,244 +39,193 @@ export class ChatRoom {
         this.state = state;
         this.env = env;
         this.sessions = new Map();
-        this.pingIntervals = new Map();
-    }
-
-    private getRoomId(): string {
-        return this.state.id.toString();
-    }
-
-    private async handleWebSocketMessage(ws: WebSocket, userId: string, data: any) {
-        try {
-            switch (data.type) {
-                case 'ping':
-                    ws.send(JSON.stringify({ type: 'pong', roomId: data.roomId }));
-                    break;
-                case 'pong':
-                    // Reset connection timeout on pong
-                    break;
-                case 'message':
-                    await this.handleChatMessage(data, userId);
-                    break;
-                case 'document_request':
-                    await this.handleDocumentRequest(data, userId);
-                    break;
-                case 'document_submission':
-                    await this.handleDocumentSubmission(data, userId);
-                    break;
-                default:
-                    console.error('Unknown message type:', data.type);
-            }
-        } catch (error) {
-            console.error('Error handling WebSocket message:', error);
-            ws.send(JSON.stringify({ type: 'error', error: 'Failed to process message' }));
-        }
     }
 
     async fetch(request: Request) {
-        const url = new URL(request.url);
-        const path = url.pathname;
-
-        if (request.headers.get('Upgrade') === 'websocket') {
-            const pair = new WebSocketPair();
-            const [client, server] = Object.values(pair);
-
-            const token = request.headers.get('Authorization')?.split(' ')[1];
-            if (!token) {
-                server.close(1008, 'Unauthorized');
-                return new Response('Unauthorized', { status: 401 });
-            }
-
-            try {
-                const payload = await verify(token, this.env.JWT_SECRET);
-                const userId = payload.sub as string;
-
-                // Close any existing connection for this user
-                const existingConnection = this.sessions.get(userId);
-                if (existingConnection) {
-                    existingConnection.close(1000, 'New connection established');
-                    this.sessions.delete(userId);
-                }
-
-                // Set up the new connection
-                server.accept();
-                this.sessions.set(userId, server);
-
-                // Set up keep-alive ping
-                const pingInterval = setInterval(() => {
-                    if (server.readyState === WebSocket.OPEN) {
-                        try {
-                            server.send(JSON.stringify({ type: 'ping' }));
-                        } catch (error) {
-                            clearInterval(pingInterval);
-                            this.pingIntervals.delete(userId);
-                            this.sessions.delete(userId);
-                        }
-                    }
-                }, 15000); // Send ping every 15 seconds
-
-                this.pingIntervals.set(userId, pingInterval);
-                this.sessions.set(userId, server);
-
-                // Send initial state
-                await this.sendInitialState(server, userId);
-
-                // Handle incoming messages
-                server.addEventListener('message', async (msg) => {
-                    try {
-                        const data = JSON.parse(msg.data as string);
-                        await this.handleWebSocketMessage(server, userId, data);
-                    } catch (error) {
-                        console.error('Error parsing message:', error);
-                    }
-                });
-
-                server.addEventListener('close', () => {
-                    clearInterval(this.pingIntervals.get(userId));
-                    this.pingIntervals.delete(userId);
-                    this.sessions.delete(userId);
-                });
-
-                server.addEventListener('error', () => {
-                    this.sessions.delete(userId);
-                });
-
-                return new Response(null, { status: 101, webSocket: client });
-            } catch (error) {
-                server.close(1008, 'Invalid token');
-                return new Response('Unauthorized', { status: 401 });
-            }
+        if (request.headers.get('Upgrade') !== 'websocket') {
+            return new Response('Expected WebSocket', { status: 400 });
         }
 
-        // Handle other HTTP requests
-        if (path.includes('/broadcast-delete')) {
-            const data = await request.json() as { messageId: string; roomId: string };
-            this.broadcast({
-                type: 'message_deleted',
-                messageId: data.messageId,
-                roomId: data.roomId
-            });
-            return new Response('OK');
+        const pair = new WebSocketPair();
+        const [client, server] = Object.values(pair);
+
+        // Verify JWT before accepting connection
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response('Unauthorized', { status: 401 });
         }
 
-        return new Response('Not found', { status: 404 });
-    }
-
-    private async sendInitialState(ws: WebSocket, userId: string) {
         try {
-            const adapter = new PrismaD1(this.env.DB);
-            const prisma = new PrismaClient({ adapter });
+            const token = authHeader.split(' ')[1];
+            const decoded = await verify(token, this.env.JWT_SECRET);
+            const userId = decoded.sub as string;
+            if (!userId) {
+                throw new Error('Invalid user ID');
+            }
 
-            const messages = await prisma.chatMessage.findMany({
-                where: {
-                    roomId: this.getRoomId(),
-                    isDeleted: false
-                },
-                orderBy: { createdAt: 'desc' },
-                take: 50,
-                include: {
-                    sender: true,
-                    documentRequest: true,
-                    documentSubmission: true
+            // Accept the WebSocket
+            server.accept();
+
+            // Set up keep-alive
+            const keepAliveInterval = setInterval(() => {
+                if (server.readyState === WebSocket.OPEN) {
+                    server.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
+
+            server.addEventListener('close', () => {
+                clearInterval(keepAliveInterval);
+                this.sessions.delete(userId);
+            });
+
+            server.addEventListener('error', (error) => {
+                console.error('WebSocket error:', error);
+                clearInterval(keepAliveInterval);
+                this.sessions.delete(userId);
+            });
+
+            this.sessions.set(userId, server);
+
+            // Add message handler
+            server.addEventListener('message', async (msg) => {
+                try {
+                    const data = JSON.parse(msg.data as string);
+                    if (data.type === 'pong') return;
+
+                    const adapter = new PrismaD1(this.env.DB);
+                    const prisma = new PrismaClient({ adapter });
+
+                    switch (data.type) {
+                        case 'document_request':
+                            console.log('Received document request:', data);
+                            await this.handleDocumentRequest(prisma, data, userId);
+                            break;
+
+                        case 'document_submission':
+                            console.log('Received document submission:', data);
+                            await this.handleDocumentSubmission(prisma, data, userId);
+                            break;
+
+                        case 'message_deleted':
+                            console.log('Received message deletion:', data);
+                            await this.handleMessageDeleted(data);
+                            break;
+
+                        default:
+                            console.log('Received chat message:', data);
+                            await this.handleChatMessage(prisma, data, userId);
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Message handling error:', error);
                 }
             });
 
-            const typedMessages = messages.map(msg => ({
-                ...msg,
-                documentRequest: msg.documentRequest ? {
-                    ...msg.documentRequest,
-                    status: msg.documentRequest.status as 'PENDING' | 'COMPLETED' | 'REJECTED'
-                } : undefined,
-                documentSubmission: msg.documentSubmission ? {
-                    ...msg.documentSubmission,
-                    documents: msg.documentSubmission.documents,
-                    status: 'PENDING' // Default status for existing submissions
-                } : undefined
-            })) as PrismaChatMessage[];
-
-            ws.send(JSON.stringify({
-                type: 'initial_state',
-                messages: typedMessages
-            }));
+            return new Response(null, {
+                status: 101,
+                webSocket: client,
+                headers: {
+                    'Upgrade': 'websocket',
+                    'Connection': 'Upgrade'
+                }
+            });
         } catch (error) {
-            console.error('Error sending initial state:', error);
-            ws.send(JSON.stringify({
-                type: 'error',
-                error: 'Failed to load messages'
-            }));
+            return new Response('Unauthorized', { status: 401 });
         }
     }
 
-    private broadcast(message: any, excludeUserId?: string) {
-        this.sessions.forEach((ws, userId) => {
-            if (userId !== excludeUserId && ws.readyState === WebSocket.OPEN) {
-                try {
-                    ws.send(JSON.stringify(message));
-                } catch (error) {
-                    console.error(`Failed to send to ${userId}:`, error);
-                    this.sessions.delete(userId);
-                }
+    private broadcast(message: any) {
+        this.sessions.forEach((ws) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(message));
             }
         });
     }
+    private async handleChatMessage(prisma: PrismaClient, data: any, senderId: string) {
+        const message = await prisma.chatMessage.create({
+            data: {
+                content: data.content,
+                roomId: data.roomId,
+                senderId,
+            },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        profileImageUrl: true,
+                        email: true,
 
-    private async handleChatMessage(data: ChatMessage, senderId: string) {
-        const adapter = new PrismaD1(this.env.DB);
-        const prisma = new PrismaClient({ adapter });
-
-        try {
-            const message = await prisma.chatMessage.create({
-                data: {
-                    type: 'TEXT',
-                    content: data.content,
-                    roomId: this.getRoomId(),
-                    senderId: senderId,
-                },
-                include: {
-                    sender: true
-                }
-            }) as PrismaChatMessage;
-
-            this.broadcast({
-                type: 'message',
-                message
-            });
-
-            // Create unread message records for other participants
-            const participants = await prisma.chatParticipant.findMany({
-                where: {
-                    roomId: this.getRoomId(),
-                    NOT: {
-                        userId: senderId
+                        fcmToken: true,
                     }
                 }
-            });
+            }
+        });
 
-            await Promise.all(participants.map(participant =>
-                prisma.unreadMessage.create({
-                    data: {
-                        roomId: this.getRoomId(),
-                        messageId: message.id,
-                        recipientId: participant.userId
+        const room = await prisma.chatRoom.findUnique({
+            where: { id: data.roomId },
+            include: {
+                participants: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fcmToken: true,
+                                email: true,
+                                displayName: true,
+                                profileImageUrl: true
+                            }
+                        }
                     }
-                })
-            ));
+                }
+            }
+        });
 
-        } catch (error) {
-            console.error('Error creating message:', error);
-            throw error;
+        if (room) {
+            for (const participant of room.participants) {
+                if (participant.user.id !== senderId && participant.user.fcmToken) {
+                    await sendNotification(participant.user.fcmToken, {
+                        type: 'chat',
+                        message: {
+                            id: message.id,
+                            content: message.content,
+                            roomId: message.roomId,
+                            createdAt: message.createdAt,
+                        },
+                        recipient: {
+                            id: message.sender.id,
+                            displayName: message.sender.displayName,
+                            profileImageUrl: message.sender.profileImageUrl === null ? '' : message.sender.profileImageUrl
+                        },
+                        sender: {
+                            id: message.sender.id,
+                            displayName: message.sender.displayName,
+                            profileImageUrl: message.sender.profileImageUrl === null ? '' : message.sender.profileImageUrl
+                        }
+                    });
+                }
+            }
         }
+
+        this.broadcast(JSON.stringify({
+            type: 'message',
+            message: {
+                id: message.id,
+                content: message.content,
+                createdAt: message.createdAt,
+                senderId: message.senderId,
+                roomId: message.roomId,
+                sender: message.sender,
+            }
+        }));
     }
 
-    private async handleDocumentRequest(data: any, senderId: string) {
-        const adapter = new PrismaD1(this.env.DB);
-        const prisma = new PrismaClient({ adapter });
-
+    private async handleDocumentRequest(prisma: PrismaClient, data: any, senderId: string) {
         const message = await prisma.chatMessage.create({
             data: {
                 type: 'DOCUMENT_REQUEST',
                 content: 'Document Request',
-                roomId: this.getRoomId(),
+                roomId: data.roomId,
                 senderId,
                 documentRequest: {
                     create: {
@@ -337,25 +244,33 @@ export class ChatRoom {
                         profileImageUrl: true
                     }
                 },
-                documentRequest: {
-                    include: {
-                        recipient: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                profileImageUrl: true
-                            }
-                        }
-                    }
-                }
+                documentRequest: true
             }
         });
 
-        const senderInfo: User = {
-            id: message.sender.id,
-            displayName: message.sender.displayName,
-            profileImageUrl: message.sender.profileImageUrl || undefined
-        };
+        const recipient = await prisma.user.findUnique({
+            where: { id: data.recipientId },
+            select: { fcmToken: true }
+        });
+
+        if (recipient?.fcmToken) {
+            await sendNotification(recipient.fcmToken, {
+                type: 'document_request',
+                sender: {
+                    id: message.sender.id,
+                    displayName: message.sender.displayName,
+                    profilePic: message.sender.profileImageUrl
+                },
+                recipient: {
+                    id: message.sender.id,
+                    displayName: message.sender.displayName,
+                    profilePic: message.sender.profileImageUrl
+                },
+                documents: data.documents,
+                roomId: data.roomId,
+                requestId: message.id
+            });
+        }
 
         this.broadcast({
             type: 'document_request',
@@ -367,42 +282,20 @@ export class ChatRoom {
                 roomId: message.roomId,
                 senderId: message.senderId,
                 documentRequest: message.documentRequest,
-                sender: senderInfo
+                sender: message.sender
             }
         });
-
-        // Send notification to recipient
-        const recipient = await prisma.user.findUnique({
-            where: { id: data.recipientId },
-            select: { fcmToken: true, email: true }
-        });
-
-        if (recipient?.fcmToken) {
-            await sendNotification(recipient.fcmToken, {
-                type: 'document_request',
-                recipientFCMToken: recipient.fcmToken,
-                message: {
-                    content: `Document Request from ${message.sender.displayName}`,
-                    roomId: message.roomId,
-                    id: message.id,
-                    recipientEmail: recipient.email
-                },
-                sender: senderInfo
-            });
-        }
-
-        return message;
     }
-
-    private async handleDocumentSubmission(data: any, senderId: string) {
-        const adapter = new PrismaD1(this.env.DB);
-        const prisma = new PrismaClient({ adapter });
-
-        // First find the document request message
-        console.log('Handling document submission:', data);
-
+    private async handleDocumentSubmission(prisma: PrismaClient, data: any, senderId: string) {
         const documentRequest = await prisma.documentRequest.findUnique({
-            where: { messageId: data.requestId }
+            where: { messageId: data.requestId },
+            include: {
+                message: {
+                    include: {
+                        sender: true
+                    }
+                }
+            }
         });
 
         if (!documentRequest) {
@@ -413,19 +306,21 @@ export class ChatRoom {
             throw new Error('Unauthorized to submit documents for this request');
         }
 
-        // Update the original message with submission and status
+        // Ensure documents is properly formatted as an array
+        const documents = Array.isArray(data.documents) ? data.documents : [data.documents];
+
         const message = await prisma.chatMessage.update({
             where: { id: data.requestId },
             data: {
-                documentRequest: {
-                    update: {
-                        status: 'FULFILLED'
-                    }
-                },
                 documentSubmission: {
                     create: {
                         requestId: documentRequest.id,
-                        documents: JSON.stringify(data.documents)
+                        documents: JSON.stringify(documents),
+                    }
+                },
+                documentRequest: {
+                    update: {
+                        status: 'FULFILLED'
                     }
                 }
             },
@@ -442,66 +337,87 @@ export class ChatRoom {
             }
         });
 
-        const senderInfo: User = {
+
+        const senderInfo = {
             id: message.sender.id,
             displayName: message.sender.displayName,
             profileImageUrl: message.sender.profileImageUrl || undefined
         };
 
+        // Send notification to the original document requester
+        const originalRequester = await prisma.user.findUnique({
+            where: { id: documentRequest.message.sender.id },
+            select: { fcmToken: true }
+        });
+
+        if (originalRequester?.fcmToken) {
+            await sendNotification(originalRequester.fcmToken, {
+                type: 'document_submission',
+                sender: senderInfo,
+                recipient: {
+                    id: documentRequest.message.sender.id
+                },
+                documents: data.documents,
+                roomId: data.roomId,
+                requestId: data.requestId
+            });
+        }
+
         this.broadcast({
             type: 'document_submission',
             message: {
                 id: message.id,
-                type: message.type,
+                type: 'DOCUMENT_REQUEST',
                 content: message.content,
                 createdAt: message.createdAt,
-                roomId: message.roomId,
+                roomId: data.roomId,
                 senderId: message.senderId,
+                documentSubmission: {
+                    ...message.documentSubmission,
+                    originalRequestMessageId: data.requestId,
+                    documents: data.documents
+                },
                 documentRequest: message.documentRequest,
-                documentSubmission: message.documentSubmission,
-                sender: senderInfo
+                sender: message.sender
             }
         });
 
-        console.log('Document submission broadcasted:', message);
+ 
     }
+
+    private async handleMessageDeleted(data: any) {
+        this.broadcast({
+            type: 'message_deleted',
+            roomId: data.roomId,
+
+            messageId: data.messageId,
+        });
+    }
+
 }
 
 async function sendNotification(recipientFCMToken: string, data: any) {
     try {
         if (recipientFCMToken) {
             await fetch(
+                // 'http://localhost:3000/send-notification',
                 'https://notification-service-delicate-field-6176.fly.dev/send-notification',
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
+                    body: JSON.stringify({
+                        recipientFCMToken,
+                        type: data.type,
+                        ...data
+                    }),
                 }
             );
         }
     } catch (error) {
         console.error('Send notification error:', error);
     }
+
 }
 
-async function sendChatNotification(recipientFCMToken: string, message: any, sender: any, recipient: any) {
-    const notificationData = {
-        recipientFCMToken,
-        type: 'chat',
-        message: {
-            content: `[${recipient.email}]: ${message.content}`,
-            roomId: message.roomId,
-            id: message.id,
-            recipientEmail: recipient.email
-        },
-        sender: {
-            id: sender.id,
-            displayName: sender.displayName,
-            profilePic: sender.profileImageUrl
-        }
-    };
 
-    await sendNotification(recipientFCMToken, notificationData);
-}
-
-export { sendNotification, sendChatNotification };
+export { sendNotification };

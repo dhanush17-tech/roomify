@@ -6,6 +6,17 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { verify } from "hono/jwt";
 
+
+//getAdressfromLatLong
+async function getAddressFromLatLong(latitude: number, longitude: number, c: Context): Promise<string> {
+    const apiKey = c.env.MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.features[0].place_name;
+}
+
+
 export async function hashPassword(password: string,): Promise<string> {
     const salt = 'roomify_password_salt';
     
@@ -167,4 +178,4 @@ async function deleteFromR2(fileName: string, uploadType: string, c: Context): P
 }
 
 
-export { uploadToR2, hashToken, signAndStoreToken, verifyPassword, deleteFromR2 }
+export { uploadToR2, hashToken, signAndStoreToken, verifyPassword, deleteFromR2, getAddressFromLatLong }

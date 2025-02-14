@@ -43,15 +43,16 @@ class LocationButton extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
-              Icon(Icons.location_on, color: Colors.grey[600], size: 16),
+              Icon(Icons.location_on, color: Colors.blue, size: 16),
               SizedBox(width: 4),
               Expanded(
                 child: Text(
                   location ?? '',
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: Colors.blue,
                     fontSize: 14,
                     height: 1.2,
+                    fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -252,7 +253,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
           children: [
             Positioned(
               top: 8,
-              left: 0,
+              left: 16,
               right: 0,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -411,6 +412,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                             ),
                           ),
                         ],
+                        SizedBox(width: 10),
                       ],
                     ),
                   ],
@@ -494,6 +496,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                           onTap: () => provider.toggleFavorite(widget.listing),
                         ),
                       ),
+                      SizedBox(width: 10),
                     ],
                     flexibleSpace: FlexibleSpaceBar(
                       background: Hero(
@@ -502,7 +505,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                           children: [
                             // Main image carousel
                             PageView.builder(
-                              scrollDirection: Axis.vertical,
+                              scrollDirection: Axis.horizontal,
                               controller: _pageController,
                               onPageChanged: (index) {
                                 setState(() {
@@ -518,21 +521,39 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                         ? widget.listing.imageUrls![index]
                                         : widget.listing.property!
                                             .imageUrls![index];
-                                return CachedNetworkImage(
-                                  imageUrl: imageUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  placeholder: (context, url) => Container(
-                                    color: Colors.grey[200],
-                                    child: Icon(Icons.home_outlined,
-                                        color: Colors.grey[400], size: 50),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: Colors.grey[200],
-                                    child: Icon(Icons.home_outlined,
-                                        color: Colors.grey[400], size: 50),
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.only(
+                                      bottomLeft: Radius.circular(20),
+                                      bottomRight: Radius.circular(20)),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        (context),
+                                        MaterialPageRoute(
+                                          builder: (context) => PhotoView(
+                                            imageProvider:
+                                                NetworkImage(imageUrl),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      placeholder: (context, url) => Container(
+                                        color: Colors.grey[200],
+                                        child: Icon(Icons.home_outlined,
+                                            color: Colors.grey[400], size: 50),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                        color: Colors.grey[200],
+                                        child: Icon(Icons.home_outlined,
+                                            color: Colors.grey[400], size: 50),
+                                      ),
+                                    ),
                                   ),
                                 );
                               },
@@ -658,7 +679,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (_getTotalImages() > 2)
+                                    if (_getTotalImages() > 1)
                                       Container(
                                         height: 80,
                                         width: 80,
@@ -698,7 +719,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                                 child: Text(
-                                                  '+${_getTotalImages().toString()}',
+                                                  '+${(_getTotalImages() - 1).toString()}',
                                                 ),
                                               ),
                                             ),

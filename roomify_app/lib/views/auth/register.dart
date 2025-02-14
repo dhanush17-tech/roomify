@@ -28,7 +28,7 @@ class _RegisterState extends State<Register> {
   double? _longitude;
   final _signupFormKey = GlobalKey<FormState>();
   bool _isLocationLoading = false;
-  bool _isPhoneLoading = false;
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -37,6 +37,9 @@ class _RegisterState extends State<Register> {
   final _loginEmailController = TextEditingController();
   final _loginPasswordController = TextEditingController();
   final _ageController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   bool _isProfessionalUser = false;
 
@@ -50,6 +53,7 @@ class _RegisterState extends State<Register> {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
     _ageController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -90,11 +94,6 @@ class _RegisterState extends State<Register> {
               '${position.latitude}, ${position.longitude}';
         });
       }
-
-      // Handle phone permission separately
-      if (await Permission.phone.request().isGranted) {
-        await _getPhoneNumber();
-      }
     } catch (e) {
       print('Error getting location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,29 +104,8 @@ class _RegisterState extends State<Register> {
     }
   }
 
-  Future<void> _getPhoneNumber() async {
-    setState(() => _isPhoneLoading = true);
-    try {
-      final phoneHint = PhoneNumberHint();
-      final phoneNumber = await phoneHint.requestHint();
-      if (phoneNumber != null && mounted) {
-        // Extract country code and national number
-        String formattedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-        setState(() {
-          _phoneNumber = formattedNumber;
-          _isPhoneLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error getting phone number: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isPhoneLoading = false);
-      }
-    }
-  }
-
   @override
+
   /// Builds the sign up form with the following fields:
   ///
   /// * Full name
@@ -188,14 +166,61 @@ class _RegisterState extends State<Register> {
                 decoration: getInputDecoration(
                   hintText: "Password",
                   icon: Icons.lock_outline,
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
+                obscureText: _obscurePassword,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Password is required';
                   }
                   if (value.length < 6) {
                     return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+              ),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPasswordController,
+                decoration: getInputDecoration(
+                  hintText: "Confirm Password",
+                  icon: Icons.lock_outline,
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                ),
+                obscureText: _obscureConfirmPassword,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your password';
+                  }
+                  if (value != _passwordController.text) {
+                    return 'Passwords do not match';
                   }
                   return null;
                 },
@@ -338,28 +363,11 @@ class _RegisterState extends State<Register> {
                 Stack(
                   children: [
                     IntlPhoneField(
-                      enabled: !_isPhoneLoading,
-                      initialValue:
-                          _phoneNumber.replaceAll(RegExp(r'^\+\d{1,2}'), ''),
-                      controller: TextEditingController(
-                          text: _phoneNumber.replaceAll(
-                              RegExp(r'^\+\d{1,2}'), '')),
-                      pickerDialogStyle: PickerDialogStyle(
-                        padding: EdgeInsets.all(16),
-                        searchFieldInputDecoration: InputDecoration(
-                          hintText: 'Search for a country',
-                          prefixIcon: Icon(Icons.search_outlined,
-                              color: Colors.grey[600]),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30)),
-                        ),
-                      ),
                       decoration: InputDecoration(
-                        labelText: _isPhoneLoading
-                            ? 'Loading phone number...'
-                            : 'Phone Number',
+                        labelText: 'Phone Number',
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       initialCountryCode: 'US',
                       onChanged: (phone) {
@@ -368,15 +376,6 @@ class _RegisterState extends State<Register> {
                         });
                       },
                     ),
-                    if (_isPhoneLoading)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.white.withOpacity(0.7),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],

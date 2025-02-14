@@ -1,7 +1,7 @@
 import { Context, Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import * as crypto from "crypto";
-import { signAndStoreToken, uploadToR2, deleteFromR2, verifyPassword } from '../helper/helper';
+import { signAndStoreToken, uploadToR2, deleteFromR2, verifyPassword, getAddressFromLatLong } from '../helper/helper';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 import { sendNotification } from '../chat/durable_objects';
@@ -32,14 +32,6 @@ const app = new Hono<{
     }
 }>();
 
-//getAdressfromLatLong
-async function getAddressFromLatLong(latitude: number, longitude: number, c: Context): Promise<string> {
-    const apiKey = c.env.MAPBOX_TOKEN;
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.features[0].place_name;
-}
 
 app.post('/', async (c) => {
     try {
@@ -1145,19 +1137,16 @@ app.put('/:id', async (c) => {
         const listingId = parseInt(c.req.param('id'));
         const formData = await c.req.formData();
         const listingData = JSON.parse(formData.get('listing') as string);
+
         const deletedImageUrls = JSON.parse(formData.get('deletedImageUrls') as string || '[]');
         const images = formData.getAll('images') as File[];
         console.log("this is the images", images);
+
         console.log("this is the deletedImageUrls", deletedImageUrls);
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // Upload new images to R2
-        const imageUrls: string[] = [];
-        for (const image of images) {
-            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
-            imageUrls.push(fileUrl);
-        }
+
 
         // Check if listing exists
         const existingListing = await prisma.listing.findUnique({
@@ -1178,6 +1167,11 @@ app.put('/:id', async (c) => {
 
         // If listing doesn't exist, create new one
         if (!existingListing) {
+            const imageUrls: string[] = [];
+            for (const image of images) {
+                const { fileUrl } = await uploadToR2(image, "propertyImages", c);
+                imageUrls.push(fileUrl);
+            }
             const address = await getAddressFromLatLong(listingData.latitude, listingData.longitude, c);
             const newListing = await prisma.listing.create({
                 data: {
@@ -1264,91 +1258,94 @@ app.put('/:id', async (c) => {
             }
         }
 
-        // Prepare all database operations
-        const transactions = [
-            // Delete specified images from database
-            prisma.propertyImage.deleteMany({
+        //Upload new images to R2
+        const imageUrls: string[] = [];
+        for (const image of images) {
+            const { fileUrl } = await uploadToR2(image, "propertyImages", c);
+            imageUrls.push(fileUrl);
+        }
+
+        if (deletedImageUrls.length > 0) {
+            await prisma.propertyImage.deleteMany({
                 where: {
                     propertyId: listingId,
                     imageUrl: {
                         in: deletedImageUrls
                     }
                 }
-            }),
+            });
+        }
 
-            // Delete other relations that need to be recreated
-            prisma.propertyAmenity.deleteMany({
-                where: { propertyId: listingId }
-            }),
-            prisma.propertyCategory.deleteMany({
-                where: { propertyId: listingId }
-            }),
+        // Delete and recreate amenities
+        await prisma.propertyAmenity.deleteMany({
+            where: { propertyId: listingId }
+        });
 
-            // Update basic listing info
-            prisma.listing.update({
-                where: { id: listingId },
-                data: {
-                    title: listingData.title,
-                    description: listingData.description,
-                    price: listingData.price,
-                    location: listingData.location,
-                    latitude: listingData.latitude,
-                    longitude: listingData.longitude
-                }
-            }),
+        // Delete and recreate categories
+        await prisma.propertyCategory.deleteMany({
+            where: { propertyId: listingId }
+        });
 
-            // Update property
-            prisma.property.update({
-                where: { listingId },
-                data: {
-                    moveInDate: listingData.property.moveInDate,
-                    moveOutDate: listingData.property.moveOutDate,
-                    numberOfBedrooms: listingData.property.numberOfBedrooms,
-                    numberOfBathrooms: listingData.property.numberOfBathrooms,
-                    maxOccupancy: listingData.property.maxOccupancy,
-                    isLookingForRoomate: listingData.property.isLookingForRoomate
-                }
-            })
-        ];
+        // Update basic listing info
+        await prisma.listing.update({
+            where: { id: listingId },
+            data: {
+                title: listingData.title,
+                description: listingData.description,
+                price: listingData.price,
+                location: listingData.location,
+                latitude: listingData.latitude,
+                longitude: listingData.longitude
+            }
+        });
 
-        // Execute all delete operations first
-        await prisma.$transaction(transactions);
+        // Update property
+        await prisma.property.update({
+            where: { listingId },
+            data: {
+                moveInDate: listingData.property.moveInDate,
+                moveOutDate: listingData.property.moveOutDate,
+                numberOfBedrooms: listingData.property.numberOfBedrooms,
+                numberOfBathrooms: listingData.property.numberOfBathrooms,
+                maxOccupancy: listingData.property.maxOccupancy,
+                isLookingForRoomate: listingData.property.isLookingForRoomate
+            }
+        });
 
-        // Create new relations in separate transactions
-        const amenityCreations = listingData.property.amenities.map((amenity: string) =>
-            prisma.propertyAmenity.create({
+        // Create new amenities
+        for (const amenity of listingData.property.amenities) {
+            await prisma.propertyAmenity.create({
                 data: {
                     propertyId: listingId,
                     amenity
                 }
-            })
-        );
+            });
+        }
 
-        const categoryCreations = listingData.property.categories.map((category: string) =>
-            prisma.propertyCategory.create({
+        // Create new categories
+        for (const category of listingData.property.categories) {
+            await prisma.propertyCategory.create({
                 data: {
                     propertyId: listingId,
                     category
                 }
-            })
-        );
+            });
+        }
 
-        // Create new image entries only for new images
-        const imageCreations = imageUrls.map(url =>
-            prisma.propertyImage.create({
+        //delete the offers 
+        await prisma.propertyOffer.deleteMany({
+            where: { propertyId: listingId }
+        });
+
+        // Create new image entries
+        for (const url of imageUrls) {
+            await prisma.propertyImage.create({
                 data: {
                     propertyId: listingId,
                     imageUrl: url
                 }
-            })
-        );
-
-        // Execute all creation operations
-        await prisma.$transaction([
-            ...amenityCreations,
-            ...categoryCreations,
-            ...imageCreations
-        ]);
+            });
+        }
 
         // Fetch updated listing
         const updatedListing = await prisma.listing.findUnique({

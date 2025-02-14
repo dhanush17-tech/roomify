@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { uploadToR2, deleteFromR2 } from '../helper/helper';
+import { uploadToR2, deleteFromR2, getAddressFromLatLong } from '../helper/helper';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -32,7 +32,8 @@ app.get('/', async (c) => {
                                 categories: true,
                                 amenities: true,
                                 floorPlans: true,
-                                images: true
+                                images: true,
+                                offers: true
                             }
                         }
                     }
@@ -226,6 +227,7 @@ app.get('/listings', async (c) => {
 
                         categories: true,
                         images: true,
+                        offers: true,
 
                     }
                 },
@@ -266,7 +268,8 @@ app.get('/listings', async (c) => {
                 categories: listing.property.categories,
                 amenities: listing.property.amenities,
                 tags: listing.property.tags,
-                images: listing.property.images
+                images: listing.property.images,
+                offers: listing.property.offers
             } : null,
             marketplace: listing.marketplace ? {
                 ...listing.marketplace,
@@ -471,11 +474,14 @@ app.put('/location', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
+        const address = await getAddressFromLatLong(latitude, longitude, c);
+
         await prisma.user.update({
             where: { id: userId },
             data: {
                 latitude,
                 longitude,
+                location: address
             }
         });
 

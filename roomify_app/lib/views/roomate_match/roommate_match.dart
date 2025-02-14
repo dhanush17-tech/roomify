@@ -438,106 +438,102 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
 
   Widget _buildProfileCard(User profile) {
     final screenHeight = MediaQuery.of(context).size.height;
-    return Container(
-      height: screenHeight -
-          screenHeight *
-              0.24, // 30px top + 30px bottom + app bar/status bar space
-      child: Listener(
-        onPointerDown: (details) {
-          setState(() {
-            isSwiping = true;
-            currentDirection = null;
-          });
-        },
-        onPointerMove: (details) {
-          double screenWidth = MediaQuery.of(context).size.width;
-          double progress = details.localPosition.dx / screenWidth;
+    return Listener(
+      onPointerDown: (details) {
+        setState(() {
+          isSwiping = true;
+          currentDirection = null;
+        });
+      },
+      onPointerMove: (details) {
+        double screenWidth = MediaQuery.of(context).size.width;
+        double progress = details.localPosition.dx / screenWidth;
 
-          setState(() {
-            swipeProgress = progress.abs();
-            currentDirection = details.localPosition.dx > screenWidth / 2
-                ? CardSwiperDirection.right
-                : CardSwiperDirection.left;
+        setState(() {
+          swipeProgress = progress.abs();
+          currentDirection = details.localPosition.dx > screenWidth / 2
+              ? CardSwiperDirection.right
+              : CardSwiperDirection.left;
 
-            if (!_overlayController.isAnimating) {
-              _overlayController.forward();
+          if (!_overlayController.isAnimating) {
+            _overlayController.forward();
+          }
+        });
+      },
+      onPointerUp: (details) {
+        setState(() {
+          isSwiping = false;
+          _overlayController.reverse();
+
+          Future.delayed(Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                swipeProgress = 0.0;
+                currentDirection = null;
+              });
             }
           });
-        },
-        onPointerUp: (details) {
-          setState(() {
-            isSwiping = false;
-            _overlayController.reverse();
-
-            Future.delayed(Duration(milliseconds: 300), () {
-              if (mounted) {
-                setState(() {
-                  swipeProgress = 0.0;
-                  currentDirection = null;
-                });
-              }
-            });
-          });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Stack(
-              children: [
-                // Background Image
-                Container(
-                  height: double.infinity,
-                  width: double.infinity,
-                  child: CachedNetworkImage(
-                    imageUrl: profile.profilePhotoUrl ?? '',
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: orangeColor,
-                        ),
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Background Image
+              Container(
+                height: double.infinity,
+                width: double.infinity,
+                child: CachedNetworkImage(
+                  imageUrl: profile.profilePhotoUrl ?? '',
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey[200],
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: orangeColor,
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child:
-                          Icon(Icons.person, size: 50, color: Colors.grey[400]),
-                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey[200],
+                    child:
+                        Icon(Icons.person, size: 50, color: Colors.grey[400]),
                   ),
                 ),
-                // Gradient Overlay
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.2),
-                        Colors.black.withOpacity(0.6),
-                      ],
-                    ),
+              ),
+              // Gradient Overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.2),
+                      Colors.black.withOpacity(0.6),
+                    ],
                   ),
                 ),
-                // User Info and Listings
-                SingleChildScrollView(
+              ),
+              // User Info and Listings
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.3),
                       Container(
                         padding: EdgeInsets.all(20),
                         child: Column(
@@ -546,12 +542,15 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  '${profile.displayName.capitalize()} · ${profile.age}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                                Expanded(
+                                  child: Text(
+                                    '${profile.displayName.capitalize()} · ${profile.age}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 if (profile.status == 'Looking for a Roommate')
@@ -964,8 +963,8 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -995,123 +994,114 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: SafeArea(
-                  child: SingleChildScrollView(
-                    controller: _mainScrollController,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(
-                              top: MediaQuery.of(context).padding.top,
-                              left: 16,
-                              right: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                           children: [
-                              RichText(
-                                text: TextSpan(
-                                  text: 'Roomate ',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.bold,
-                                    color: orangeColor,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(left: 16, right: 16, top: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                text: 'Roomate ',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.bold,
+                                  color: orangeColor,
+                                ),
+                                children: <TextSpan>[
+                                  TextSpan(
+                                    text: 'Drama?\nNah, we\'ll find you a ',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black,
+                                    ),
                                   ),
-                                  children: <TextSpan>[
-                                    TextSpan(
-                                      text: 'Drama?\nNah, we\'ll find you a ',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 21,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black,
-                                      ),
+                                  TextSpan(
+                                    text: 'bestie!',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.bold,
+                                      color: orangeColor,
                                     ),
-                                    TextSpan(
-                                      text: 'bestie!',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 21,
-                                        fontWeight: FontWeight.bold,
-                                        color: orangeColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          height: MediaQuery.of(context).size.height -
-                              190, // Matches card height
-                          child: provider.matches.isEmpty || isExhausted
-                              ? _buildNoMoreMatches()
-                              : Stack(
-                                  children: [
-                                    CardSwiper(
-                                      maxAngle: 25,
-                                      isLoop: false,
-                                      controller: controller,
-                                      cardsCount: provider.matches.length,
-                                      numberOfCardsDisplayed:
-                                          provider.matches.length >= 2 ? 2 : 1,
-                                      backCardOffset: const Offset(0, 20),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 24,
-                                      ),
-                                      allowedSwipeDirection:
-                                          AllowedSwipeDirection.only(
-                                        left: true,
-                                        right: true,
-                                      ),
-                                      onSwipe: (previousIndex, currentIndex,
-                                          direction) async {
-                                        if (previousIndex <
-                                            provider.matches.length) {
-                                          final match =
-                                              provider.matches[previousIndex];
-                                          if (direction ==
-                                              CardSwiperDirection.left) {
-                                            provider.swipeLeft(match.id);
-                                          } else if (direction ==
-                                              CardSwiperDirection.right) {
-                                            final isMutualSwipe = await provider
-                                                .swipeRight(match.id);
-                                            if (isMutualSwipe) {
-                                              _matchAnimationController
-                                                  .forward();
-                                            }
-                                          }
-
-                                          if (currentIndex == null) {
-                                            setState(() {
-                                              isExhausted = true;
-                                            });
-                                          }
-                                        }
-                                        return true;
-                                      },
-                                      onSwipeDirectionChange:
-                                          (direction, swipeP) {
-                                        setState(() {
-                                          currentDirection = direction;
-                                        });
-                                      },
-                                      cardBuilder: (context,
-                                          index,
-                                          horizontalThresholdPercentage,
-                                          verticalThresholdPercentage) {
-                                        if (index >= provider.matches.length) {
-                                          return Container();
-                                        }
-                                        return _buildProfileCard(
-                                            provider.matches[index]);
-                                      },
+                      ),
+                      Expanded(
+                        child: provider.matches.isEmpty || isExhausted
+                            ? _buildNoMoreMatches()
+                            : Stack(
+                                children: [
+                                  CardSwiper(
+                                    maxAngle: 25,
+                                    isLoop: false,
+                                    controller: controller,
+                                    cardsCount: provider.matches.length,
+                                    numberOfCardsDisplayed:
+                                        provider.matches.length >= 2 ? 2 : 1,
+                                    backCardOffset: const Offset(0, 20),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 24,
                                     ),
-                                    _buildSwipeOverlay(),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
+                                    allowedSwipeDirection:
+                                        AllowedSwipeDirection.only(
+                                      left: true,
+                                      right: true,
+                                    ),
+                                    onSwipe: (previousIndex, currentIndex,
+                                        direction) async {
+                                      if (previousIndex <
+                                          provider.matches.length) {
+                                        final match =
+                                            provider.matches[previousIndex];
+                                        if (direction ==
+                                            CardSwiperDirection.left) {
+                                          provider.swipeLeft(match.id);
+                                        } else if (direction ==
+                                            CardSwiperDirection.right) {
+                                          final isMutualSwipe = await provider
+                                              .swipeRight(match.id);
+                                          if (isMutualSwipe) {
+                                            _matchAnimationController.forward();
+                                          }
+                                        }
+
+                                        if (currentIndex == null) {
+                                          setState(() {
+                                            isExhausted = true;
+                                          });
+                                        }
+                                      }
+                                      return true;
+                                    },
+                                    onSwipeDirectionChange:
+                                        (direction, swipeP) {
+                                      setState(() {
+                                        currentDirection = direction;
+                                      });
+                                    },
+                                    cardBuilder: (context,
+                                        index,
+                                        horizontalThresholdPercentage,
+                                        verticalThresholdPercentage) {
+                                      if (index >= provider.matches.length) {
+                                        return Container();
+                                      }
+                                      return _buildProfileCard(
+                                          provider.matches[index]);
+                                    },
+                                  ),
+                                  _buildSwipeOverlay(),
+                                ],
+                              ),
+                      ),
+                    ],
                   ),
                 ),
               ),

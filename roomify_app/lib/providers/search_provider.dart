@@ -65,7 +65,7 @@ class SearchProvider with ChangeNotifier {
     if (query.isEmpty && filterOptions == null) {
       return;
     }
-
+    _currentFilters = filterOptions;
     _isLoading = true;
     notifyListeners();
 

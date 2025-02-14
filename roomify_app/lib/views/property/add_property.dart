@@ -180,15 +180,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   Future<void> _handleSubmit(User user) async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validation checks
-    if (_selectedImages.isEmpty && _existingImageUrls.isEmpty) {
-      _showErrorSnackBar('Please add at least one image');
-      return;
-    }
-    // if (_selectedCategory == null) {
-    //   _showErrorSnackBar('Please select a category');
-    //   return;
-    // }
     if (latitude == null || longitude == null) {
       _showErrorSnackBar('Please select a valid address');
       return;
@@ -205,22 +196,20 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     setState(() => _isLoading = true);
 
     try {
-      List<File> allImages = [];
-      allImages.addAll(_selectedImages);
+      List<File> newImages = [];
+      List<String> deletedImageUrls = [];
 
-      // Convert existing image URLs to files
-      for (String imageUrl in _existingImageUrls) {
-        try {
-          final response = await http.get(Uri.parse(imageUrl));
-          if (response.statusCode == 200) {
-            final tempDir = await getTemporaryDirectory();
-            final fileName = imageUrl.split('/').last;
-            final tempFile = File('${tempDir.path}/$fileName');
-            await tempFile.writeAsBytes(response.bodyBytes);
-            allImages.add(tempFile);
-          }
-        } catch (e) {
-          print('Error downloading existing image: $e');
+      // Track which existing images were deleted
+      for (String url in widget.existingListing?.property?.imageUrls ?? []) {
+        if (!_existingImageUrls.contains(url)) {
+          deletedImageUrls.add(url);
+        }
+      }
+
+      // Add only new images that were selected
+      for (File image in _selectedImages) {
+        if (!_existingImageUrls.contains(image.path)) {
+          newImages.add(image);
         }
       }
 
@@ -255,13 +244,16 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         type: ListingType.Property,
         user: user,
         isFavorite: widget.existingListing?.isFavorite ?? false,
-         imageUrls: [], // Clear existing URLs as we're sending all images
+        imageUrls: [], // Clear existing URLs as we're sending all images
       );
 
       if (widget.existingListing != null) {
-        final updatedListing = await context
-            .read<PropertyProvider>()
-            .updateProperty(listing, images: allImages);
+        final updatedListing =
+            await context.read<PropertyProvider>().updateProperty(
+                  listing,
+                  newImages: newImages,
+                  deletedImageUrls: deletedImageUrls,
+                );
         _showSuccessSnackBar('Property updated successfully');
         if (mounted) {
           Navigator.of(context).pop(updatedListing);
@@ -269,7 +261,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       } else {
         final createdListing = await context
             .read<PropertyProvider>()
-            .createProperty(listing, images: allImages);
+            .createProperty(listing, images: newImages);
         _showSuccessSnackBar('Property added successfully');
         if (mounted) {
           Navigator.of(context).pop(createdListing);
@@ -632,7 +624,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
               SizedBox(height: 12),
               _buildFeatureCounter('Bathroom', _bathroomsController),
               SizedBox(height: 12),
-              _buildFeatureCounter('Max Occupancy', _maxOccController),
+              _buildFeatureCounter('Number of Occupants', _maxOccController),
               SizedBox(height: 24),
               Text(
                 'Environment / Facilities',

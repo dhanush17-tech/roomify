@@ -69,83 +69,91 @@ class ChatProvider extends ChangeNotifier {
     try {
       var data = jsonDecode(message);
 
-      // Step 1: Check if the message is a JSON object
       if (data is! Map<String, dynamic>) {
         data = jsonDecode(data);
       }
 
-      // Step 2: Decode the actual JSON object
       final messageType = data['type'];
 
-      // Handle ping/pong without roomId/content requirements
       if (messageType == 'ping') {
         _handlePing(data, roomId);
         return;
       }
 
-      // For all other message types, ensure roomId is present
       if (!data.containsKey('roomId')) {
         data['roomId'] = roomId;
       }
-
-      // Ensure content field is present for regular messages
-      if (messageType == 'message' && !data.containsKey('content')) {
-        print('Warning: Message received without content');
-        return;
-      }
-
-      final messageData = data['message'];
-      if (messageType == 'message_deleted') {
-        final roomId = data['roomId'];
-        final messageId = data['messageId'];
-
-        final roomMessages = _messages[roomId];
-        if (roomMessages != null) {
-          final messageIndex =
-              roomMessages.indexWhere((m) => m.id == messageId);
-          if (messageIndex != -1) {
-            roomMessages.removeAt(messageIndex);
+      switch (messageType) {
+        case 'message':
+          final messageData = data['message'];
+          if (messageData != null && messageData['content'] != null) {
+            final chatMessage = ChatMessage.fromJson(messageData);
+            _addMessage(roomId, chatMessage);
             notifyListeners();
           }
-        }
-        return;
-      }
+          break;
 
-      if (messageData != null) {
-        final chatMessage = ChatMessage.fromJson(messageData);
-        final roomId = chatMessage.roomId;
+        case 'document_request':
+          final messageData = data['message'];
+          if (messageData != null) {
+            final chatMessage = ChatMessage.fromJson(messageData);
+            _addMessage(roomId, chatMessage);
+            notifyListeners();
+          }
+          break;
 
-        // Replace temporary message if it exists
-        if (messageType == 'message') {
-          final roomMessages = _messages[roomId];
-          if (roomMessages != null) {
-            final tempIndex = roomMessages.indexWhere((m) =>
-                m.content == chatMessage.content &&
-                m.senderId == chatMessage.senderId &&
-                m.id.startsWith('temp_'));
-            if (tempIndex != -1) {
-              roomMessages[tempIndex] = chatMessage;
-              notifyListeners();
-              return;
+        case 'document_submission':
+          final messageData = data['message'];
+          if (messageData != null) {
+            final originalRequestId = messageData['id'];
+            final roomMessages = _messages[roomId];
+
+            if (roomMessages != null) {
+              final requestIndex =
+                  roomMessages.indexWhere((m) => m.id == originalRequestId);
+              if (requestIndex != -1) {
+                // Create new document submission object
+                final documentSubmission = DocumentSubmission(
+                  id: messageData['documentSubmission']['id'],
+                  messageId: originalRequestId,
+                  requestId: messageData['documentSubmission']['requestId'],
+                  documents: jsonEncode(
+                      messageData['documentSubmission']['documents']),
+                  createdAt: DateTime.parse(messageData['createdAt']),
+                );
+
+                // Update the existing message
+                final updatedMessage = roomMessages[requestIndex].copyWith(
+                  type: 'DOCUMENT_REQUEST',
+                  documentRequest: DocumentRequest(
+                    id: roomMessages[requestIndex].documentRequest!.id,
+                    messageId: originalRequestId,
+                    requestedDocuments: roomMessages[requestIndex]
+                        .documentRequest!
+                        .requestedDocuments,
+                    status: 'FULFILLED',
+                    recipientId:
+                        roomMessages[requestIndex].documentRequest!.recipientId,
+                    createdAt:
+                        roomMessages[requestIndex].documentRequest!.createdAt,
+                    customDocumentName: roomMessages[requestIndex]
+                        .documentRequest!
+                        .customDocumentName,
+                  ),
+                  documentSubmission: documentSubmission,
+                );
+
+                roomMessages[requestIndex] = updatedMessage;
+                _updateRequestMessage(roomId, updatedMessage);
+                notifyListeners();
+              }
             }
           }
-          roomMessages?.add(chatMessage);
-          notifyListeners();
-          return;
-        }
-
-        switch (messageType) {
-          case 'document_request':
-            _addMessage(roomId, chatMessage);
-            break;
-          case 'document_submission':
-            _addMessage(roomId, chatMessage);
-            break;
-        }
+          break;
       }
     } catch (e) {
       print('Error parsing message: $e');
-      _error = 'Error parsing message: $e';
+      _error = e.toString();
       notifyListeners();
     }
   }
@@ -174,7 +182,10 @@ class ChatProvider extends ChangeNotifier {
       _socketChannels[roomId] = channel;
 
       channel.stream.listen(
-        (message) => _handleWebSocketMessage(message, roomId),
+        (message) {
+          print("This is the messageeeeee $message");
+          _handleWebSocketMessage(message, roomId);
+        },
         onError: (error) {
           print('WebSocket error: $error');
           _error = 'Connection error: $error';
@@ -223,21 +234,6 @@ class ChatProvider extends ChangeNotifier {
       final channel = _socketChannels[roomId];
       if (channel == null) {
         throw Exception('Not connected to room');
-      }
-
-      // Add temporary message immediately
-      final currentUser = _authProvider.user;
-      if (currentUser != null) {
-        final tempMessage = ChatMessage(
-          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-          type: 'TEXT',
-          content: content,
-          createdAt: DateTime.now(),
-          roomId: roomId,
-          senderId: currentUser.id,
-          sender: currentUser,
-        );
-        _addMessage(roomId, tempMessage);
       }
 
       // Send the actual message through WebSocket with the correct data structure
@@ -529,6 +525,20 @@ class ChatProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+    }
+  }
+
+  void _updateRequestMessage(String roomId, ChatMessage updatedMessage) {
+    if (_messages.containsKey(roomId)) {
+      final roomMessages = _messages[roomId]!;
+      final messageIndex =
+          roomMessages.indexWhere((m) => m.id == updatedMessage.id);
+      if (messageIndex != -1) {
+        roomMessages[messageIndex] = updatedMessage;
+        // Sort messages by creation time
+        roomMessages.sort((a, b) => a.compareTo(b));
+        notifyListeners();
+      }
     }
   }
 }
