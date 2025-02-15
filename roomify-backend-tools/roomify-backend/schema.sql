@@ -83,19 +83,19 @@
 
 --Delete all ChatRooms
 
--- DELETE FROM UnreadMessage;
+DELETE FROM UnreadMessage;
 
--- -- Delete all document submissions as they reference chat messages
--- DELETE FROM DocumentSubmission;
+-- Delete all document submissions as they reference chat messages
+DELETE FROM DocumentSubmission;
 
--- -- Delete all document requests as they reference chat messages
--- DELETE FROM DocumentRequest;
+-- Delete all document requests as they reference chat messages
+DELETE FROM DocumentRequest;
 
--- -- Delete all chat messages as they reference chat rooms
--- DELETE FROM ChatMessage;
+-- Delete all chat messages as they reference chat rooms
+DELETE FROM ChatMessage;
 
--- -- Delete all chat participants as they reference chat rooms
--- DELETE FROM ChatParticipant;
+-- Delete all chat participants as they reference chat rooms
+DELETE FROM ChatParticipant;
 
--- -- Finally delete all chat rooms
--- DELETE FROM ChatRoom;
+-- Finally delete all chat rooms
+DELETE FROM ChatRoom;

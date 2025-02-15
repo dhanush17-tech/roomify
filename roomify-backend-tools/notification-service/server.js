@@ -24,7 +24,6 @@ initializeApp({
   ),
 });
 
-
 const app = express();
 app.use(express.json());
 
@@ -54,7 +53,12 @@ const createNotificationConfig = (token, notification, data) => ({
   },
 });
 
-const handleChatNotification = (message,recipient, sender, recipientFCMToken) =>{
+const handleChatNotification = (
+  message,
+  recipient,
+  sender,
+  recipientFCMToken
+) => {
   console.log(recipient);
   return createNotificationConfig(
     recipientFCMToken,
@@ -71,7 +75,7 @@ const handleChatNotification = (message,recipient, sender, recipientFCMToken) =>
       senderName: sender.displayName,
       profileImageUrl: sender.profileImageUrl,
     }
-  )
+  );
 };
 
 const handleListingReportedNotification = (
@@ -159,7 +163,7 @@ const handleDocumentSubmissionNotification = (
     }
   );
 
-  app.post("/send-notification", async (req, res) => {
+app.post("/send-notification", async (req, res) => {
   const { recipientFCMToken, type } = req.body;
 
   try {
@@ -168,7 +172,7 @@ const handleDocumentSubmissionNotification = (
       console.log("Recipient FCM token is required");
       return res.status(400).json({
         success: false,
-        error: "Recipient FCM token is required"
+        error: "Recipient FCM token is required",
       });
     }
 
@@ -176,7 +180,7 @@ const handleDocumentSubmissionNotification = (
       console.log("Invalid notification type:", type);
       return res.status(400).json({
         success: false,
-        error: "Invalid notification type"
+        error: "Invalid notification type",
       });
     }
 
@@ -186,16 +190,20 @@ const handleDocumentSubmissionNotification = (
 
     // Create notification payload based on type
     switch (type) {
-      
       case NOTIFICATION_TYPES.CHAT: {
         const { message, sender, recipient } = req.body;
         if (!message || !sender) {
           return res.status(400).json({
             success: false,
-            error: "Message and sender are required for chat notifications"
+            error: "Message and sender are required for chat notifications",
           });
         }
-        notificationPayload = handleChatNotification(message, recipient, sender, recipientFCMToken);
+        notificationPayload = handleChatNotification(
+          message,
+          recipient,
+          sender,
+          recipientFCMToken
+        );
         break;
       }
 
@@ -204,31 +212,49 @@ const handleDocumentSubmissionNotification = (
         if (!notification || !data) {
           return res.status(400).json({
             success: false,
-            error: "Notification and data are required for listing reported notifications"
+            error:
+              "Notification and data are required for listing reported notifications",
           });
         }
-        notificationPayload = handleListingReportedNotification(notification, data, recipient, recipientFCMToken);
+        notificationPayload = handleListingReportedNotification(
+          notification,
+          data,
+          recipient,
+          recipientFCMToken
+        );
         break;
       }
 
       case NOTIFICATION_TYPES.LISTING_REMOVED: {
-        const { listing , recipient} = req.body;
+        const { listing, recipient } = req.body;
         if (!listing) {
           return res.status(400).json({
             success: false,
-            error: "Listing is required for listing removed notifications"
+            error: "Listing is required for listing removed notifications",
           });
         }
-        notificationPayload = handleListingRemovedNotification(listing, recipientFCMToken, recipient);
+        notificationPayload = handleListingRemovedNotification(
+          listing,
+          recipientFCMToken,
+          recipient
+        );
         break;
       }
 
       case NOTIFICATION_TYPES.DOCUMENT_SUBMISSION: {
-        const { sender, documents, roomId, requestId, recipient, recipientFCMToken } = req.body;
+        const {
+          sender,
+          documents,
+          roomId,
+          requestId,
+          recipient,
+          recipientFCMToken,
+        } = req.body;
         if (!sender || !documents || !roomId || !requestId) {
           return res.status(400).json({
             success: false,
-            error: "Sender, documents, roomId, and requestId are required for document submission notifications"
+            error:
+              "Sender, documents, roomId, and requestId are required for document submission notifications",
           });
         }
         notificationPayload = handleDocumentSubmissionNotification(
@@ -243,11 +269,19 @@ const handleDocumentSubmissionNotification = (
       }
 
       case NOTIFICATION_TYPES.DOCUMENT_REQUEST: {
-        const { sender, documents, roomId, requestId, recipient, recipientFCMToken } = req.body;
+        const {
+          sender,
+          documents,
+          roomId,
+          requestId,
+          recipient,
+          recipientFCMToken,
+        } = req.body;
         if (!sender || !documents || !roomId || !requestId) {
           return res.status(400).json({
             success: false,
-            error: "Sender, documents, roomId, and requestId are required for document request notifications"
+            error:
+              "Sender, documents, roomId, and requestId are required for document request notifications",
           });
         }
         notificationPayload = handleDocumentRequestNotification(
@@ -264,7 +298,7 @@ const handleDocumentSubmissionNotification = (
       default:
         return res.status(400).json({
           success: false,
-          error: "Unsupported notification type"
+          error: "Unsupported notification type",
         });
     }
 
@@ -276,7 +310,7 @@ const handleDocumentSubmissionNotification = (
 
     while (retries > 0) {
       try {
-        response = await getMessaging().send(notificationPayload);
+         response = await getMessaging().send(notificationPayload);
         console.log("Notification sent successfully", {
           type,
           recipient: recipientFCMToken,
@@ -284,9 +318,9 @@ const handleDocumentSubmissionNotification = (
         });
         break;
       } catch (error) {
-        if (error.code === 'messaging/server-unavailable' && retries > 1) {
+        if (error.code === "messaging/server-unavailable" && retries > 1) {
           retries--;
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retry
           continue;
         }
         throw error;
@@ -297,40 +331,39 @@ const handleDocumentSubmissionNotification = (
       type,
       recipient: recipientFCMToken,
       response,
-    })
+    });
     return res.status(200).json({
       success: true,
       message: "Notification sent successfully",
-      messageId: response
+      messageId: response,
     });
-
   } catch (error) {
     console.error("Send notification error:", error);
 
     // Handle specific FCM errors
-    if (error.code === 'messaging/invalid-registration-token') {
+    if (error.code === "messaging/invalid-registration-token") {
       return res.status(400).json({
         success: false,
         error: "Invalid FCM token",
-        details: error.message
+        details: error.message,
       });
     }
 
-    if (error.code === 'messaging/registration-token-not-registered') {
+    if (error.code === "messaging/registration-token-not-registered") {
       return res.status(400).json({
         success: false,
         error: "FCM token is no longer valid",
-        details: error.message
+        details: error.message,
       });
     }
 
     return res.status(500).json({
       success: false,
       error: "Error sending notification",
-      details: error.message
+      details: error.message,
     });
   }
-  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

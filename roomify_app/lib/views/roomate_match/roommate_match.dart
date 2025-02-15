@@ -946,15 +946,19 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                   color: orangeColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Text(
-                                  'Contact',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: context.read<ChatProvider>().isLoading
+                                    ? CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : Text(
+                                        'Contact',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],

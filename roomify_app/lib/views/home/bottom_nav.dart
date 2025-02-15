@@ -39,6 +39,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _showChatNotification(RemoteMessage message) async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Extract chat data from message
     final senderId = message.data['senderId'];
@@ -49,16 +50,23 @@ class _MainScreenState extends State<MainScreen> {
 
     // Check if current route is ChatMessageScreen with the same room
     bool isInChatScreen = false;
-    Navigator.popUntil(context, (route) {
-      if (route.settings.name == 'ChatMessageScreen') {
-        final ChatMessageScreen screen =
-            route.settings.arguments as ChatMessageScreen;
-        isInChatScreen = screen.room.id == roomId;
+    if (message.data['recipientId'] != authProvider.user?.id) {
+      Navigator.popUntil(context, (route) {
+        if (route.settings.name == 'ChatMessageScreen') {
+          final ChatMessageScreen screen =
+              route.settings.arguments as ChatMessageScreen;
+          isInChatScreen = screen.room.id == roomId;
+          return true;
+        }
         return true;
-      }
-      return true;
-    });
-
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Switch accounts to chat"),
+        ),
+      );
+    }
     // Don't show notification if user is already in chat with sender
     if (isInChatScreen) return;
 

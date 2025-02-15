@@ -70,6 +70,7 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
   bool _isLogin = true;
   bool _isProfessionalUser = false;
   bool _rememberMe = true;
+  bool _obscurePassword = true;
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
 
@@ -344,10 +345,24 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                   }
                   return null;
                 },
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: getInputDecoration(
                   hintText: "Password",
                   icon: Icons.lock_outline,
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                 ),
               ),
               SizedBox(height: 16),

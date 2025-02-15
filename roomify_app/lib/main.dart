@@ -52,23 +52,6 @@ void main() async {
   );
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  const DarwinInitializationSettings initializationSettingsIOS =
-      DarwinInitializationSettings();
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsIOS,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      handleNotificationTap(response.payload, navigatorKey);
-    },
-  );
-
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
@@ -86,7 +69,7 @@ void main() async {
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    handleNotificationTap(message.data.toString(), navigatorKey);
+    handleNotificationTap(message.data, navigatorKey);
   });
 
   MapboxOptions.setAccessToken(mapboxToken);
@@ -150,28 +133,11 @@ void showNotification(RemoteMessage message) async {
   }
 }
 
-Future<void> handleNotificationTap(
-    String? payload, GlobalKey<NavigatorState> navigatorKey) async {
+Future<void> handleNotificationTap(Map<String, dynamic> payload,
+    GlobalKey<NavigatorState> navigatorKey) async {
   if (payload != null) {
     try {
-      final fixedPayload = payload
-          .replaceAllMapped(
-            RegExp(r'(\w+):'), // Match keys
-            (match) => '"${match[1]}":', // Enclose keys in double quotes
-          )
-          .replaceAllMapped(
-            RegExp(r':\s?([^",{}]+)'), // Match values not enclosed in quotes
-            (match) => match[1]!.startsWith('"')
-                ? ': ${match[1]}' // Value already quoted, keep it as is
-                : ': "${match[1]}"', // Enclose unquoted values in double quotes
-          )
-          .replaceAllMapped(
-              RegExp(r'"""'), // Remove excessive triple quotes
-              (_) => '"');
-
-      final data = Map<String, dynamic>.from(
-        json.decode(fixedPayload),
-      );
+      final data = payload;
 
       if (data['type'] == 'chat' && data['roomId'] != null) {
         final chatProvider = navigatorKey.currentContext?.read<ChatProvider>();
@@ -199,7 +165,7 @@ Future<void> handleNotificationTap(
             // Optional: Show a message that you can't chat with yourself
             ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
               const SnackBar(
-                content: Text("You cannot start a chat with yourself"),
+                content: Text("Switch accounts to chat"),
               ),
             );
           }

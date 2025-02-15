@@ -788,43 +788,50 @@ class PropertyCard extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 20),
-                  Row(
+                  Wrap(
+                    direction: Axis.horizontal,
+                    alignment: WrapAlignment.start,
+                    runAlignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(Icons.bed_outlined,
-                                color: Colors.grey[600], size: 20),
-                            SizedBox(width: 4),
-                            Text(
-                              listing.user?.isProfessional == true
-                                  ? '${filteredFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms} beds'
-                                  : '${listing.property?.numberOfBedrooms} beds',
-                              style: TextStyle(
-                                color: Colors.grey[800],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bed_outlined,
+                              color: Colors.grey[600], size: 20),
+                          SizedBox(width: 4),
+                          Text(
+                            listing.user?.isProfessional == true
+                                ? '${filteredFloorPlan?.bedrooms ?? listing.property?.numberOfBedrooms} beds'
+                                : '${listing.property?.numberOfBedrooms} beds',
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
-                            SizedBox(width: 16),
-                            Icon(Icons.bathtub_outlined,
-                                color: Colors.grey[600], size: 20),
-                            SizedBox(width: 4),
-                            Text(
-                              listing.user?.isProfessional == true
-                                  ? '${filteredFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms} baths'
-                                  : '${listing.property?.numberOfBathrooms} baths',
-                              style: TextStyle(
-                                color: Colors.grey[800],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          SizedBox(width: 16),
+                          Icon(Icons.bathtub_outlined,
+                              color: Colors.grey[600], size: 20),
+                          SizedBox(width: 4),
+                          Text(
+                            listing.user?.isProfessional == true
+                                ? '${filteredFloorPlan?.bathrooms ?? listing.property?.numberOfBathrooms} baths'
+                                : '${listing.property?.numberOfBathrooms} baths',
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      SizedBox(width: 16),
                       if (!listing.user!.isProfessional &&
-                          !listing.property!.isRoomifyChoice)
+                          !listing.property!.isRoomifyChoice &&
+                          listing.property!.maxOccupancy != 0)
                         RoomateTag(
                           noOfOccupants:
                               listing.property!.maxOccupancy.toString(),

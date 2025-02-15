@@ -1881,13 +1881,17 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 12.0, horizontal: 12.0),
                                   child: Center(
-                                    child: Text(
-                                      'Contact',
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold),
-                                    ),
+                                    child: context.read<ChatProvider>().isLoading
+                                        ? CircularProgressIndicator(
+                                            color: Colors.white,
+                                          )
+                                        : Text(
+                                            'Contact',
+                                            style: TextStyle(
+                                                fontSize: 20,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold),
+                                          ),
                                   ),
                                 ),
                               ),
@@ -2030,7 +2034,13 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 12.0, horizontal: 12.0),
-                                          child: Center(
+                                          child:  context
+                                                  .read<ChatProvider>()
+                                                  .isLoading
+                                              ? CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                )
+                                              : Center(
                                             child: Text(
                                               'Contact',
                                               style: TextStyle(
