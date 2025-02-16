@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
+import 'package:roomify_app/providers/properties_provider.dart';
 import 'package:roomify_app/views/home/map_location_picker.dart';
 
 class LocationPickerWrapper extends StatefulWidget {
@@ -44,6 +45,7 @@ class _LocationPickerWrapperState extends State<LocationPickerWrapper> {
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
     final authProvider = context.read<AuthProvider>();
+    final propertiesProvider = context.read<PropertyProvider>();
 
     return GestureDetector(
       onTap: () {
@@ -59,6 +61,9 @@ class _LocationPickerWrapperState extends State<LocationPickerWrapper> {
                 await profileProvider.updateLocation(lat, lng, context);
                 await authProvider.loadUserProfile();
 
+                await profileProvider.getAddressFromCoordinates(lat, lng);
+                await _updateDisplayLocation();
+                await propertiesProvider.fetchRecommendations(lat, lng);
                 if (bottomSheetContext.mounted) {
                   Navigator.pop(bottomSheetContext);
                   ScaffoldMessenger.of(context).showSnackBar(

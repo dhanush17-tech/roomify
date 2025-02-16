@@ -50,6 +50,7 @@ dependencies:
   timeago: ^3.7.0
   url_launcher: ^6.2.4
   mapbox_maps_flutter: ^2.4.1
+  flutter_mapbox_animarker:
   auto_size_text: ^3.0.0
   device_info_plus: ^9.1.2
   phone_number_hint: ^0.0.6

@@ -9,9 +9,10 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:roomify_app/providers/auth_provider.dart';
-
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/utils.dart';
+import 'package:roomify_app/utils/colors.dart';
+import 'package:screenshot/screenshot.dart';
 
 class LocationPickerSheet extends StatefulWidget {
   final double lat;
@@ -28,74 +29,248 @@ class LocationPickerSheet extends StatefulWidget {
   _LocationPickerSheetState createState() => _LocationPickerSheetState();
 }
 
-class _LocationPickerSheetState extends State<LocationPickerSheet> {
+class _LocationPickerSheetState extends State<LocationPickerSheet>
+    with TickerProviderStateMixin {
   late MapboxMap mapboxMap;
   PointAnnotationManager? pointAnnotationManager;
   PointAnnotation? currentMarker;
   Point? selectedPoint;
-  Uint8List? markerImageBytes;
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false;
   bool _isLoadingLocation = false;
   bool _isUpdatingLocation = false;
+  final GlobalKey markerKey = GlobalKey();
+
+  static const double MARKER_SIZE = 80;
+  late AnimationController _markerAnimationController;
+  late Animation<double> _markerAnimation;
+  bool _isSearching = false;
+
+  // Add this variable to track center position
+  Point? mapCenter;
 
   @override
   void initState() {
     super.initState();
-    loadMarkerImage();
-    selectedPoint = Point(
-      coordinates: Position(
-        widget.lng,
-        widget.lat,
-      ),
+    _markerAnimationController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _markerAnimation = CurvedAnimation(
+      parent: _markerAnimationController,
+      curve: Curves.bounceOut,
+    );
+    mapCenter = Point(
+      coordinates: Position(widget.lng, widget.lat),
     );
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<Uint8List> loadMarkerImage() async {
+    final screenshotController = ScreenshotController();
+    final markerWidget = Container(
+      height: 200,
+      width: 200,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Title container
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: Text(
+              "You are here",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          // Location icon
+          Icon(
+            Icons.location_on_rounded,
+            color: orangeColor,
+            size: 56,
+          ),
+          // Price container
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Wait for the screenshot to complete and return the image data
+    final Uint8List imageBytes = await screenshotController.captureFromWidget(
+      markerWidget,
+      pixelRatio: 0.7,
+    );
+
+    return imageBytes;
+  }
+
+  Future<void> _addMarker(Point point) async {
+    if (currentMarker != null) {
+      await pointAnnotationManager?.delete(currentMarker!);
+    }
+
+    // Get the marker image bytes
+    final Uint8List imageBytes = await loadMarkerImage();
+
+    final options = PointAnnotationOptions(
+      geometry: point,
+      image: imageBytes,
+      iconSize: 0.7,
+      // Adjusted icon size
+    );
+
+    currentMarker = await pointAnnotationManager?.create(options);
+    _markerAnimationController.forward(from: 0.0);
+  }
+
+  // Update _onMapTap to move the map instead of the marker
+  void _onMapTap(MapContentGestureContext context) async {
+    final coordinate = context.point.coordinates;
+    final newCenter = Point(
+      coordinates: Position(
+        coordinate.lng,
+        coordinate.lat,
+      ),
+    );
+
+    await mapboxMap.flyTo(
+      CameraOptions(
+        center: newCenter,
+        zoom: 14.0,
+      ),
+      MapAnimationOptions(duration: 500),
+    );
+
+    setState(() {
+      mapCenter = newCenter;
+    });
+  }
+
+  void _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
-
     try {
-      final position = await geo.Geolocator.getCurrentPosition(
-        desiredAccuracy: geo.LocationAccuracy.high,
+      final position = await geo.Geolocator.getCurrentPosition();
+      final newCenter = Point(
+        coordinates: Position(position.longitude, position.latitude),
       );
 
-      final point = Point(
-        coordinates: Position(
-          position.longitude,
-          position.latitude,
-        ),
-      );
-
-      setState(() {
-        selectedPoint = point;
-        _isLoadingLocation = false;
-      });
-
-      // Update map camera and marker
+      // Animate the camera to the new center
       await mapboxMap.flyTo(
         CameraOptions(
-          center: point,
-          zoom: 14,
+          center: newCenter,
+          zoom: 14.0,
         ),
-        MapAnimationOptions(duration: 1000),
+        MapAnimationOptions(duration: 1000, startDelay: 0),
       );
-      _addMarker(point);
+
+      setState(() => mapCenter = newCenter);
     } catch (e) {
       print('Error getting location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get current location')),
-      );
+    } finally {
       setState(() => _isLoadingLocation = false);
     }
   }
 
-  Future<void> loadMarkerImage() async {
-    final ByteData bytes =
-        await rootBundle.load('assets/icons/location_marker.png');
+  Future<void> _searchPlaces(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://api.mapbox.com/geocoding/v5/mapbox.places/$query.json'
+            '?access_token=$mapboxToken'
+            '&types=address'
+            '&limit=5'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _searchResults = List<Map<String, dynamic>>.from(data['features']);
+        });
+      }
+    } catch (e) {
+      print('Error searching places: $e');
+    }
+
+    setState(() => _isSearching = false);
+  }
+
+  // Update _selectPlace
+  void _selectPlace(Map<String, dynamic> place) {
+    final coordinates = List<double>.from(place['center']);
+    final newCenter = Point(
+      coordinates: Position(coordinates[0], coordinates[1]),
+    );
+
     setState(() {
-      markerImageBytes = bytes.buffer.asUint8List();
+      mapCenter = newCenter;
+      _searchResults = [];
+      _searchController.text = place['place_name'];
     });
+
+    mapboxMap.flyTo(
+      CameraOptions(
+        center: newCenter,
+        zoom: 14,
+      ),
+      MapAnimationOptions(duration: 500),
+    );
+  }
+
+  void _onMapCreated(MapboxMap map) async {
+    setState(() {
+      mapboxMap = map;
+    });
+
+    await mapboxMap.gestures.updateSettings(
+      GesturesSettings(
+        rotateEnabled: false,
+        scrollEnabled: true,
+        doubleTapToZoomInEnabled: true,
+        doubleTouchToZoomOutEnabled: true,
+        pinchToZoomEnabled: true,
+        pitchEnabled: false,
+        scrollMode: ScrollMode.HORIZONTAL_AND_VERTICAL,
+      ),
+    );
+
+    pointAnnotationManager =
+        await mapboxMap.annotations.createPointAnnotationManager();
+
+    _addMarker(selectedPoint!);
   }
 
   @override
@@ -171,18 +346,75 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               ),
             ),
             Expanded(
-              child: MapWidget(
-                cameraOptions: CameraOptions(
-                  center: selectedPoint,
-                  zoom: 14,
-                ),
-                onMapCreated: _onMapCreated,
-                gestureRecognizers: {
-                  Factory<OneSequenceGestureRecognizer>(
-                    () => EagerGestureRecognizer(),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  MapWidget(
+                    cameraOptions: CameraOptions(
+                      center: mapCenter,
+                      zoom: 14,
+                    ),
+                    onMapCreated: _onMapCreated,
+                    gestureRecognizers: {
+                      Factory<OneSequenceGestureRecognizer>(
+                        () => EagerGestureRecognizer(),
+                      ),
+                    },
+                    onTapListener: _onMapTap,
+                    onCameraChangeListener: (data) {
+                      final newCenter = data.cameraState.center;
+
+                      setState(() {
+                        mapCenter = Point(
+                          coordinates: Position(
+                            newCenter.coordinates.lng,
+                            newCenter.coordinates.lat,
+                          ),
+                        );
+                      });
+                    },
                   ),
-                },
-                onTapListener: _onMapTap,
+                  // Add static centered marker
+                  if (mapCenter != null)
+                    Container(
+                      height: 200,
+                      width: 200,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Title container
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              "You are here",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          // Location icon
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: orangeColor,
+                            size: 56,
+                          ),
+                        ],
+                      ),
+                    )
+                ],
               ),
             ),
             Padding(
@@ -190,15 +422,13 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: selectedPoint != null && !_isUpdatingLocation
+                  onPressed: mapCenter != null && !_isUpdatingLocation
                       ? () async {
-                          if (selectedPoint != null) {
+                          if (mapCenter != null) {
                             setState(() => _isUpdatingLocation = true);
                             try {
-                              final lat =
-                                  selectedPoint!.coordinates.lat.toDouble();
-                              final lng =
-                                  selectedPoint!.coordinates.lng.toDouble();
+                              final lat = mapCenter!.coordinates.lat.toDouble();
+                              final lng = mapCenter!.coordinates.lng.toDouble();
                               await widget.onLocationSelected(lat, lng);
                             } finally {
                               if (mounted) {
@@ -239,114 +469,5 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
         ),
       ),
     );
-  }
-
-  void _onMapCreated(MapboxMap map) async {
-    mapboxMap = map;
-
-    await mapboxMap.gestures.updateSettings(
-      GesturesSettings(
-        rotateEnabled: false,
-        scrollEnabled: true,
-        doubleTapToZoomInEnabled: true,
-        doubleTouchToZoomOutEnabled: true,
-        pinchToZoomEnabled: true,
-        pitchEnabled: false,
-        scrollMode: ScrollMode.HORIZONTAL_AND_VERTICAL,
-      ),
-    );
-
-    pointAnnotationManager =
-        await mapboxMap.annotations.createPointAnnotationManager();
-
-    if (markerImageBytes != null) {
-      _addMarker(selectedPoint!);
-    }
-  }
-
-  void _addMarker(Point point) async {
-    if (markerImageBytes == null) return;
-
-    if (currentMarker != null) {
-      await pointAnnotationManager?.delete(currentMarker!);
-    }
-
-    final options = PointAnnotationOptions(
-      geometry: point,
-      image: markerImageBytes!,
-      iconColor: 4294150523,
-      iconSize: 0.06,
-    );
-
-    currentMarker = await pointAnnotationManager?.create(options);
-  }
-
-  Future<void> _searchPlaces(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-      });
-      return;
-    }
-
-    setState(() => _isSearching = true);
-
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'https://api.mapbox.com/geocoding/v5/mapbox.places/$query.json'
-            '?access_token=$mapboxToken'
-            '&types=address'
-            '&limit=5'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          _searchResults = List<Map<String, dynamic>>.from(data['features']);
-        });
-      }
-    } catch (e) {
-      print('Error searching places: $e');
-    }
-
-    setState(() => _isSearching = false);
-  }
-
-  void _selectPlace(Map<String, dynamic> place) {
-    final coordinates = List<double>.from(place['center']);
-    final point = Point(
-      coordinates: Position(coordinates[0], coordinates[1]),
-    );
-
-    setState(() {
-      selectedPoint = point;
-      _searchResults = [];
-      _searchController.text = place['place_name'];
-    });
-
-    mapboxMap.flyTo(
-        CameraOptions(
-          center: point,
-          zoom: 14,
-        ),
-        MapAnimationOptions());
-
-    _addMarker(point);
-  }
-
-  void _onMapTap(MapContentGestureContext context) async {
-    final coordinate = context.point.coordinates;
-    setState(() {
-      selectedPoint = Point(
-        coordinates: Position(
-          coordinate.lng,
-          coordinate.lat,
-        ),
-      );
-    });
-
-    _addMarker(selectedPoint!);
   }
 }

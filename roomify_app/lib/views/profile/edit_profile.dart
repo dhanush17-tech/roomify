@@ -754,6 +754,22 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                     _buildAmenityChip('Park'),
                                     _buildAmenityChip('Home theatre'),
                                     _buildAmenityChip("Kid's Friendly"),
+                                    ..._listing!.property!.amenities!
+                                        .map((amenity) {
+                                      if (amenity != 'Parking Lot' &&
+                                          amenity != 'Pet Allowed' &&
+                                          amenity != 'Garden' &&
+                                          amenity != 'Gym' &&
+                                          amenity != 'Park' &&
+                                          amenity != 'Home theatre' &&
+                                          amenity != "Kid's Friendly") {
+                                        return _buildAmenityChip(amenity);
+                                      }
+                                      return Container(
+                                        width: 0,
+                                        height: 0,
+                                      );
+                                    }),
                                     ..._customFeatures.map((feature) =>
                                         _buildAmenityChip(feature)),
                                     InkWell(
@@ -1425,6 +1441,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               amenities: _listing!.property!.amenities,
               floorPlans: _listing!.property!.floorPlans,
               isLookingForRoomate: _listing!.property!.isLookingForRoomate,
+              offers: _listing!.property!.offers,
             );
 
             _listing = Listing(
@@ -1772,6 +1789,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           );
         }
       });
+      print(_listing!.property!.offers);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Offer added successfully')),

@@ -204,7 +204,8 @@ class PropertyRepository {
       );
 
       request.headers.addAll(_headers);
-      request.fields['listing'] = jsonEncode(listing.toJson());
+      final jsonLisiting = listing.toJson();
+      request.fields['listing'] = jsonEncode(jsonLisiting);
       request.fields['deletedImageUrls'] = jsonEncode(deletedImageUrls);
 
       // Add new property images
@@ -464,6 +465,23 @@ class PropertyRepository {
       }
     } catch (e) {
       throw Exception('Failed to delete offer: $e');
+    }
+  }
+
+  Future<List<Listing>> getSimilarProperties(int propertyId) async {
+    try {
+      final response = await _dio.get(
+        '/api/properties/$propertyId/similar',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['properties'];
+        return (data as List).map((p) => Listing.fromJson(p)).toList();
+      } else {
+        throw Exception('Failed to load similar properties');
+      }
+    } catch (e) {
+      throw Exception('Failed to load similar properties: $e');
     }
   }
 }

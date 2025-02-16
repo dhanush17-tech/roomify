@@ -130,6 +130,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
     try {
       final provider = Provider.of<PropertyProvider>(context, listen: false);
       final details = await provider.getLocationDetails(widget.listing.id);
+      context.read<PropertyProvider>().loadSimilarProperties(widget.listing.id);
 
       if (mounted) {
         setState(() {
@@ -246,7 +247,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: Stack(
@@ -834,96 +834,97 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 5),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          width: 2,
-                                          color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(Icons.bed_outlined),
-                                          onPressed: () {},
-                                        ),
-                                        Text(
-                                          _getBedroomText(),
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 20,
+                                  alignment: WrapAlignment.spaceBetween,
+                                  runAlignment: WrapAlignment.spaceBetween,
+                                  direction: Axis.horizontal,
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            width: 2,
+                                            color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.bed_outlined),
+                                            onPressed: () {},
                                           ),
-                                        ),
-                                        SizedBox(width: 10),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          width: 2,
-                                          color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(Icons.bathtub_outlined),
-                                          onPressed: () {},
-                                        ),
-                                        Text(
-                                          _getBathroomText(),
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        SizedBox(width: 10),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          width: 2,
-                                          color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12.0, horizontal: 12.0),
-                                      child: RichText(
-                                        text: TextSpan(
-                                          text: "Max occupancy ",
-                                          style: TextStyle(
+                                          Text(
+                                            _getBedroomText(),
+                                            style: TextStyle(
                                               fontSize: 16,
-                                              color: blackTextColor),
-                                          children: <TextSpan>[
-                                            TextSpan(
-                                              text: _getMaxOccupancyText(),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 10),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              width: 2,
+                                              color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon:
+                                                  Icon(Icons.bathtub_outlined),
+                                              onPressed: () {},
+                                            ),
+                                            Text(
+                                              _getBathroomText(),
                                               style: TextStyle(
+                                                fontSize: 16,
                                                 fontWeight: FontWeight.bold,
-                                                color: blackTextColor,
                                               ),
                                             ),
+                                            SizedBox(width: 10),
                                           ],
+                                        )),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            width: 2,
+                                            color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12.0, horizontal: 12.0),
+                                        child: RichText(
+                                          text: TextSpan(
+                                            text: "Max occupancy ",
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                color: blackTextColor),
+                                            children: <TextSpan>[
+                                              TextSpan(
+                                                text: _getMaxOccupancyText(),
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: blackTextColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -1525,6 +1526,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
               ],
             ),
           ),
+          _buildSimilarProperties(),
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 100),
         ],
       ],
     );
@@ -1555,28 +1558,52 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen>
             ]));
   }
 
-  Widget _buildFeatureIndicator(IconData icon, String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: Colors.grey[600]),
-          SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
+  Widget _buildSimilarProperties() {
+    return Consumer<PropertyProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoadingSimilar) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final similarProperties = provider.similarProperties;
+
+        if (similarProperties.isEmpty) {
+          return SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 24),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Similar Properties',
+                style: AppTextStyles.title(fontSize: 15, color: orangeColor),
+              ),
             ),
-          ),
-        ],
-      ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: similarProperties
+                    .map(
+                      (listing) => Container(
+                        width: 280,
+                        margin: EdgeInsets.only(right: 16),
+                        child: PropertyCard(
+                          listing,
+                          widget.latitude,
+                          widget.longitude,
+                          isShadow: false,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1881,7 +1908,9 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 12.0, horizontal: 12.0),
                                   child: Center(
-                                    child: context.read<ChatProvider>().isLoading
+                                    child: context
+                                            .read<ChatProvider>()
+                                            .isLoading
                                         ? CircularProgressIndicator(
                                             color: Colors.white,
                                           )
@@ -2034,21 +2063,22 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 12.0, horizontal: 12.0),
-                                          child:  context
+                                          child: context
                                                   .read<ChatProvider>()
                                                   .isLoading
                                               ? CircularProgressIndicator(
                                                   color: Colors.white,
                                                 )
                                               : Center(
-                                            child: Text(
-                                              'Contact',
-                                              style: TextStyle(
-                                                  fontSize: 20,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
+                                                  child: Text(
+                                                    'Contact',
+                                                    style: TextStyle(
+                                                        fontSize: 20,
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                                  ),
+                                                ),
                                         ),
                                       ),
                                     ),

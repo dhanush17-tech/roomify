@@ -110,7 +110,8 @@ class ChatRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['room'];
-        return ChatRoom.fromJson(data);
+        final room = ChatRoom.fromJson(data);
+        return room;
       } else {
         throw Exception('Failed to create chat room: ${response.statusCode}');
       }

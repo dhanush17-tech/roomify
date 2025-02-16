@@ -15,6 +15,7 @@ import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/views/onboarding/main_onboarding.dart';
 import 'package:provider/provider.dart';
 import 'package:roomify_app/widgets/chat_notification.dart';
+import 'dart:ui' as ui;
 
 class MainScreen extends StatefulWidget {
   double latitude;
@@ -183,7 +184,31 @@ class _MainScreenState extends State<MainScreen> {
           ];
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: Stack(
+        children: [
+        
+          _screens[_currentIndex],
+          Positioned(
+            top: -280,
+            // a orange glow effect
+            child: Container(
+              width: MediaQuery.of(context).size.width * 1,
+              height: 80,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    offset: Offset(0, 10),
+                    color: const ui.Color.fromARGB(90, 250, 119, 5)
+                        .withOpacity(0.7),
+                    blurRadius: 200,
+                    spreadRadius: MediaQuery.of(context).size.width * 0.3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,

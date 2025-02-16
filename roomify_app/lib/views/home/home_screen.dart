@@ -469,9 +469,10 @@ class PropertyCard extends StatelessWidget {
   final double latitude;
   final double longitude;
   final FilterOptions? filterOptions;
+  final bool isShadow;
 
   const PropertyCard(this.listing, this.latitude, this.longitude,
-      {this.filterOptions});
+      {this.filterOptions, this.isShadow = true});
 
   // Helper method to get minimum floor plan details
 
@@ -538,17 +539,19 @@ class PropertyCard extends StatelessWidget {
         );
       },
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 100,
-              offset: Offset(-2, 8),
-            ),
-          ],
+          boxShadow: isShadow
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 100,
+                    offset: Offset(-2, 8),
+                  ),
+                ]
+              : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

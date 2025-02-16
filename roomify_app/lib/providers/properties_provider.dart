@@ -21,6 +21,8 @@ class PropertyProvider extends ChangeNotifier {
   List<Listing> _favorites = [];
   bool _isInitialized = false;
   bool _isLoadingReccomendations = false;
+  List<Listing> _similarProperties = [];
+  bool _isLoadingSimilar = false;
 
   PropertyProvider(this._repository, this.context) {
     // Delay initialization to avoid build phase issues
@@ -35,6 +37,9 @@ class PropertyProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   List<Listing> get recommendations => _recommendations;
+
+  List<Listing> get similarProperties => _similarProperties;
+  bool get isLoadingSimilar => _isLoadingSimilar;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -100,7 +105,7 @@ class PropertyProvider extends ChangeNotifier {
 
     try {
       _isLoadingReccomendations = true;
-      if (_isInitialized) notifyListeners();
+    notifyListeners();
 
       _recommendations = await SearchRepository()
           .getRecommendedProperties(latitude, longitude);
@@ -470,6 +475,22 @@ class PropertyProvider extends ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       throw e;
+    }
+  }
+
+  Future<void> loadSimilarProperties(int propertyId) async {
+    try {
+      _isLoadingSimilar = true;
+      notifyListeners();
+
+      _similarProperties = await _repository.getSimilarProperties(propertyId);
+
+      _isLoadingSimilar = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoadingSimilar = false;
+      notifyListeners();
+      rethrow;
     }
   }
 }

@@ -1159,7 +1159,8 @@ app.put('/:id', async (c) => {
                         amenities: true,
                         tags: true,
                         categories: true,
-                        floorPlans: true
+                        floorPlans: true,
+                        offers: true
                     }
                 }
             }
@@ -1276,6 +1277,7 @@ app.put('/:id', async (c) => {
             });
         }
 
+        console.log("this is the amenities", existingListing.property?.amenities);
         // Delete and recreate amenities
         await prisma.propertyAmenity.deleteMany({
             where: { propertyId: listingId }
@@ -1285,6 +1287,12 @@ app.put('/:id', async (c) => {
         await prisma.propertyCategory.deleteMany({
             where: { propertyId: listingId }
         });
+
+        // Delete and recreate offers
+        await prisma.propertyOffer.deleteMany({
+            where: { propertyId: listingId }
+        });
+
 
         // Update basic listing info
         await prisma.listing.update({
@@ -1308,19 +1316,22 @@ app.put('/:id', async (c) => {
                 numberOfBedrooms: listingData.property.numberOfBedrooms,
                 numberOfBathrooms: listingData.property.numberOfBathrooms,
                 maxOccupancy: listingData.property.maxOccupancy,
-                isLookingForRoomate: listingData.property.isLookingForRoomate
+                isLookingForRoomate: listingData.property.isLookingForRoomate,
+                offers: {
+                    create: listingData.property.offers?.map((offer: any) => ({
+                        title: offer.title,
+                        description: offer.description,
+                        validUntil: new Date(offer.validUntil),
+                    })) || []
+                },
+                amenities: {
+                    create: listingData.property.amenities?.map((amenity: string) => ({
+                        amenity
+                    })) || []
+                },
             }
         });
 
-        // Create new amenities
-        for (const amenity of listingData.property.amenities) {
-            await prisma.propertyAmenity.create({
-                data: {
-                    propertyId: listingId,
-                    amenity
-                }
-            });
-        }
 
         // Create new categories
         for (const category of listingData.property.categories) {
@@ -1331,11 +1342,6 @@ app.put('/:id', async (c) => {
                 }
             });
         }
-
-        //delete the offers 
-        await prisma.propertyOffer.deleteMany({
-            where: { propertyId: listingId }
-        });
 
         // Create new image entries
         for (const url of imageUrls) {
@@ -1357,7 +1363,9 @@ app.put('/:id', async (c) => {
                         amenities: true,
                         categories: true,
                         images: true,
-                        floorPlans: true
+                        floorPlans: true,
+                        offers: true,
+
                     }
                 }
             }
@@ -1366,6 +1374,7 @@ app.put('/:id', async (c) => {
         if (!updatedListing || !updatedListing.property) {
             throw new Error('Failed to fetch updated listing');
         }
+        console.log("this is the updated listing", updatedListing);
 
         return c.json({
             success: true,
@@ -2095,6 +2104,168 @@ app.delete('/:listingId/offers/:offerId', async (c) => {
         return c.json({ error: 'Failed to delete offer' }, 500);
     }
 });
+
+app.get('/:id/similar', async (c) => {
+    try {
+        const propertyId = parseInt(c.req.param('id'));
+        if (isNaN(propertyId)) {
+            return c.json({ error: 'Invalid property ID' }, 400);
+        }
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Get the reference property first
+        const referenceProperty = await prisma.listing.findUnique({
+            where: { id: propertyId },
+            include: {
+                property: {
+                    include: {
+                        amenities: true,
+                        images: true,
+                        floorPlans: true
+                    }
+                }
+            }
+        });
+
+        if (!referenceProperty) {
+            return c.json({ error: 'Property not found' }, 404);
+        }
+
+        // Calculate bounding box for location-based search (5km radius)
+        const lat = referenceProperty.latitude;
+        const lng = referenceProperty.longitude;
+        const radius = 5; // km
+        const latRange = radius / 111.0; // Convert km to degrees (roughly)
+        const lngRange = radius / (111.0 * Math.cos(lat * Math.PI / 180));
+
+        // Get similar properties
+        const similarProperties = await prisma.listing.findMany({
+            where: {
+                id: { not: propertyId }, // Exclude the reference property
+                type: 'Property',
+                reported: false,
+                OR: [
+                    // Similar by title
+                    {
+                        title: {
+                            contains: referenceProperty.title?.split(' ')[0] // Match first word
+                        }
+                    },
+                    // Similar by location
+                    {
+                        AND: [
+                            {
+                                latitude: {
+                                    gte: lat - latRange,
+                                    lte: lat + latRange
+                                }
+                            },
+                            {
+                                longitude: {
+                                    gte: lng - lngRange,
+                                    lte: lng + lngRange
+                                }
+                            }
+                        ]
+                    },
+                    // Similar by price range (±20%)
+                    {
+                        price: {
+                            gte: referenceProperty.price * 0.8,
+                            lte: referenceProperty.price * 1.2
+                        }
+                    },
+                    {
+                        property: {
+                            floorPlans: {
+                                some: {
+                                    price: {
+                                        gt: referenceProperty.price * 0.8,
+                                        lt: referenceProperty.price * 1.2
+                                    }
+                                }
+                            }
+                        },
+                    },
+
+                    // Similar by bedrooms/bathrooms
+                    {
+                        property: {
+                            AND: [
+                                {
+                                    numberOfBedrooms: referenceProperty.property?.numberOfBedrooms
+                                },
+                                {
+                                    numberOfBathrooms: referenceProperty.property?.numberOfBathrooms
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            include: {
+                property: {
+                    include: {
+                        amenities: true,
+                        images: true,
+                        floorPlans: true
+                    }
+                },
+                user: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        profileImageUrl: true,
+                        isProfessional: true
+                    }
+                }
+            },
+            take: 10 // Limit results
+        });
+
+        // Calculate similarity score for better sorting
+        const scoredProperties = similarProperties.map(property => {
+            let score = 0;
+
+            // Location similarity (max 40 points)
+            if (property.latitude && property.longitude) {
+                const distance = calculateDistance(
+                    lat!, lng!,
+                    property.latitude, property.longitude
+                );
+                score += Math.max(0, 40 - (distance * 8)); // Decrease score with distance
+            }
+
+            // Price similarity (max 30 points)
+            const priceDiff = Math.abs(property.price - referenceProperty.price) / referenceProperty.price;
+            score += Math.max(0, 30 - (priceDiff * 100));
+
+            // Bedroom/bathroom match (max 30 points)
+            if (property.property?.numberOfBedrooms === referenceProperty.property?.numberOfBedrooms) {
+                score += 15;
+            }
+            if (property.property?.numberOfBathrooms === referenceProperty.property?.numberOfBathrooms) {
+                score += 15;
+            }
+
+            return {
+                ...property,
+                similarityScore: score
+            };
+        });
+
+        // Sort by similarity score
+        scoredProperties.sort((a, b) => b.similarityScore - a.similarityScore);
+
+        return c.json({ properties: scoredProperties });
+    } catch (error) {
+        console.error('Error getting similar properties:', error);
+        return c.json({ error: 'Failed to get similar properties' }, 500);
+    }
+});
+
 
 
 export default app;
