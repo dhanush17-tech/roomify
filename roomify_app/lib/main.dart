@@ -35,6 +35,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:app_links/app_links.dart';
 import 'package:roomify_app/views/auth/reset_password.dart';
 import 'package:roomify_app/utils/location_manager.dart';
+import 'dart:ui' as ui;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -237,118 +238,166 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-        providers: [
-          // Base repositories first
-          Provider<AuthRepository>(
-            create: (_) => AuthRepository(),
-          ),
-          Provider<PropertyRepository>(
-            create: (_) => PropertyRepository(),
-          ),
-          Provider<MarketplaceRepository>(
-            create: (_) => MarketplaceRepository(),
-          ),
-          Provider<ProfileUpdateRepo>(
-            create: (_) => ProfileUpdateRepo(),
-          ),
-          Provider<SearchRepository>(
-            create: (_) => SearchRepository(),
-          ),
-          Provider<RoommateMatchRepository>(
-            create: (_) => RoommateMatchRepository(),
-          ),
-          Provider<ChatRepository>(
-            create: (_) => ChatRepository(),
-          ),
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        MultiProvider(
+            providers: [
+              // Base repositories first
+              Provider<AuthRepository>(
+                create: (_) => AuthRepository(),
+              ),
+              Provider<PropertyRepository>(
+                create: (_) => PropertyRepository(),
+              ),
+              Provider<MarketplaceRepository>(
+                create: (_) => MarketplaceRepository(),
+              ),
+              Provider<ProfileUpdateRepo>(
+                create: (_) => ProfileUpdateRepo(),
+              ),
+              Provider<SearchRepository>(
+                create: (_) => SearchRepository(),
+              ),
+              Provider<RoommateMatchRepository>(
+                create: (_) => RoommateMatchRepository(),
+              ),
+              Provider<ChatRepository>(
+                create: (_) => ChatRepository(),
+              ),
 
-          // Then providers that depend on repositories
-          ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
-            create: (context) => AuthProvider(
-              context.read<AuthRepository>(),
-            ),
-            update: (context, authRepo, previous) =>
-                previous ?? AuthProvider(authRepo),
-          ),
-          ChangeNotifierProxyProvider2<SearchRepository, AuthRepository,
-              SearchProvider>(
-            create: (context) => SearchProvider(
-              context.read<SearchRepository>(),
-              context,
-            ),
-            update: (context, searchRepo, authRepo, previous) =>
-                previous ?? SearchProvider(searchRepo, context),
-          ),
-          ChangeNotifierProxyProvider2<ProfileUpdateRepo, AuthRepository,
-              ProfileProvider>(
-            create: (context) => ProfileProvider(
-              context.read<ProfileUpdateRepo>(),
-              context,
-            ),
-            update: (context, profileRepo, authRepo, previous) =>
-                previous ?? ProfileProvider(profileRepo, context),
-          ),
-          ChangeNotifierProxyProvider2<PropertyRepository, AuthRepository,
-              PropertyProvider>(
-            create: (context) => PropertyProvider(
-              context.read<PropertyRepository>(),
-              context,
-            ),
-            update: (context, propRepo, authRepo, previous) =>
-                previous ?? PropertyProvider(propRepo, context),
-          ),
-          ChangeNotifierProxyProvider2<MarketplaceRepository, AuthRepository,
-              MarketplaceProvider>(
-            create: (context) => MarketplaceProvider(
-              context.read<MarketplaceRepository>(),
-              context,
-            ),
-            update: (context, marketRepo, authRepo, previous) =>
-                previous ?? MarketplaceProvider(marketRepo, context),
-          ),
-          ChangeNotifierProxyProvider<RoommateMatchRepository,
-              RoommateMatchProvider>(
-            create: (context) => RoommateMatchProvider(
-              context.read<RoommateMatchRepository>(),
-            ),
-            update: (context, repository, previous) =>
-                previous ?? RoommateMatchProvider(repository),
-          ),
-          ChangeNotifierProxyProvider2<ChatRepository, AuthProvider,
-              ChatProvider>(
-            create: (context) => ChatProvider(
-              context.read<ChatRepository>(),
-              context.read<AuthProvider>(),
-            ),
-            update: (context, chatRepo, authProvider, previous) =>
-                previous ??
-                ChatProvider(
-                  chatRepo,
-                  authProvider,
+              // Then providers that depend on repositories
+              ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
+                create: (context) => AuthProvider(
+                  context.read<AuthRepository>(),
                 ),
-          ),
-        ],
-        child: Builder(
-          builder: (context) => MaterialApp(
-            navigatorKey: navigatorKey,
-            theme: ThemeData.from(
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: orangeColor,
-              ).copyWith(
-                secondary: Colors.orange,
-                primary: Colors.orange,
+                update: (context, authRepo, previous) =>
+                    previous ?? AuthProvider(authRepo),
               ),
-              textTheme: GoogleFonts.rubikTextTheme(),
-            ),
-            debugShowCheckedModeBanner: false,
-            home: Material(
-              color: Color(4294375672),
-              child: SplashScreen(
-                latitude: latitude,
-                longitude: longitude,
+              ChangeNotifierProxyProvider2<SearchRepository, AuthRepository,
+                  SearchProvider>(
+                create: (context) => SearchProvider(
+                  context.read<SearchRepository>(),
+                  context,
+                ),
+                update: (context, searchRepo, authRepo, previous) =>
+                    previous ?? SearchProvider(searchRepo, context),
               ),
+              ChangeNotifierProxyProvider2<ProfileUpdateRepo, AuthRepository,
+                  ProfileProvider>(
+                create: (context) => ProfileProvider(
+                  context.read<ProfileUpdateRepo>(),
+                  context,
+                ),
+                update: (context, profileRepo, authRepo, previous) =>
+                    previous ?? ProfileProvider(profileRepo, context),
+              ),
+              ChangeNotifierProxyProvider2<PropertyRepository, AuthRepository,
+                  PropertyProvider>(
+                create: (context) => PropertyProvider(
+                  context.read<PropertyRepository>(),
+                  context,
+                ),
+                update: (context, propRepo, authRepo, previous) =>
+                    previous ?? PropertyProvider(propRepo, context),
+              ),
+              ChangeNotifierProxyProvider2<MarketplaceRepository,
+                  AuthRepository, MarketplaceProvider>(
+                create: (context) => MarketplaceProvider(
+                  context.read<MarketplaceRepository>(),
+                  context,
+                ),
+                update: (context, marketRepo, authRepo, previous) =>
+                    previous ?? MarketplaceProvider(marketRepo, context),
+              ),
+              ChangeNotifierProxyProvider<RoommateMatchRepository,
+                  RoommateMatchProvider>(
+                create: (context) => RoommateMatchProvider(
+                  context.read<RoommateMatchRepository>(),
+                ),
+                update: (context, repository, previous) =>
+                    previous ?? RoommateMatchProvider(repository),
+              ),
+              ChangeNotifierProxyProvider2<ChatRepository, AuthProvider,
+                  ChatProvider>(
+                create: (context) => ChatProvider(
+                  context.read<ChatRepository>(),
+                  context.read<AuthProvider>(),
+                ),
+                update: (context, chatRepo, authProvider, previous) =>
+                    previous ??
+                    ChatProvider(
+                      chatRepo,
+                      authProvider,
+                    ),
+              ),
+            ],
+            child: Builder(
+              builder: (context) => MaterialApp(
+                navigatorKey: navigatorKey,
+                theme: ThemeData.from(
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: orangeColor,
+                  ).copyWith(
+                    secondary: Colors.orange,
+                    primary: Colors.orange,
+                  ),
+                  textTheme: GoogleFonts.rubikTextTheme(),
+                ),
+                debugShowCheckedModeBanner: false,
+                home: Material(
+                  color: Color(4294375672),
+                  child: Stack(
+                    children: [
+                      SplashScreen(
+                        latitude: latitude,
+                        longitude: longitude,
+                      ),
+                      Positioned(
+                        top: -280,
+                        // a orange glow effect
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 1,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                offset: Offset(0, 10),
+                                color: const ui.Color.fromARGB(90, 250, 119, 5)
+                                    .withOpacity(0.7),
+                                blurRadius: 200,
+                                spreadRadius:
+                                    MediaQuery.of(context).size.width * 0.3,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )),
+        Positioned(
+          top: -280,
+          // a orange glow effect
+          child: Container(
+            width: MediaQuery.of(context).size.width * 1,
+            height: 80,
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  offset: Offset(0, 10),
+                  color:
+                      const ui.Color.fromARGB(90, 250, 119, 5).withOpacity(0.7),
+                  blurRadius: 200,
+                  spreadRadius: MediaQuery.of(context).size.width * 0.3,
+                ),
+              ],
             ),
           ),
-        ));
+        ),
+      ],
+    );
   }
 }

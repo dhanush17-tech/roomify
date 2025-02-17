@@ -175,12 +175,13 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
         _initializeWebSocket();
         return;
       }
-
-      _chatProvider.sendMessage(
-        widget.room.id,
-        _messageController.text,
-      );
-      _messageController.clear();
+      if (_messageController.text.isNotEmpty) {
+        _chatProvider.sendMessage(
+          widget.room.id,
+          _messageController.text,
+        );
+        _messageController.clear();
+      }
     }
   }
 
@@ -260,12 +261,16 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          otherUser.displayName,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        Container(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          child: Text(
+                            otherUser.displayName,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         Text(
@@ -408,9 +413,12 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                   SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.orange),
+                      ),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -692,7 +700,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
 
   Widget _buildMessageInput() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
@@ -706,65 +714,55 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
           ),
         ],
       ),
-      child: Row(
-        children: [
-          PopupMenuButton<String>(
-            icon: Icon(Icons.attach_file),
-            onSelected: (value) {
-              if (value == 'request_documents') {
+      child: SafeArea(
+        bottom: true,
+        top: false,
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () {
                 _showRequestDocumentDialog();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'request_documents',
-                child: Row(
-                  children: [
-                    Icon(Icons.description),
-                    SizedBox(width: 8),
-                    Text('Request Documents'),
-                  ],
+              },
+              icon: Icon(Icons.attach_file),
+            ),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Color(0xFFF8F8F8),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: TextField(
+                  controller: _messageController,
+                  decoration: InputDecoration(
+                    hintText: 'Say something...',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: InputBorder.none,
+                  ),
+                  maxLines: null,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendMessage(),
                 ),
               ),
-            ],
-          ),
-          Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Color(0xFFF8F8F8),
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Say something...',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  border: InputBorder.none,
+            ),
+            SizedBox(width: 12),
+            InkWell(
+              onTap: _sendMessage,
+              child: Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: orangeColor,
                 ),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
-          ),
-          SizedBox(width: 12),
-          InkWell(
-            onTap: _sendMessage,
-            child: Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: orangeColor,
-              ),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

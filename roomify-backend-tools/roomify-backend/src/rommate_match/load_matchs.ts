@@ -48,7 +48,17 @@ app.get('/', async (c) => {
                     {
                         isProfessional: false,
                     },
-
+                    {
+                        // Exclude users who have been left-swiped or right-swiped by the current user
+                        swipesReceived: {
+                            none: {
+                                swiperId: currentUserId,
+                                direction: {
+                                    in: ['left', 'right'],
+                                },
+                            },
+                        },
+                    },
                 ]
             },
             include: {

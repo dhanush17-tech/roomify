@@ -312,6 +312,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       final room = await _repository.createOrGetChatRoom(otherUserId);
       final existingRoomIndex = _rooms.indexWhere((r) => r.id == room.id);
+
       if (existingRoomIndex == -1) {
         _rooms.add(room);
         // Initialize WebSocket connection for new room
@@ -320,6 +321,7 @@ class ChatProvider extends ChangeNotifier {
         await loadMessages(room.id);
         notifyListeners();
       }
+
       _isLoading = false;
       notifyListeners();
       return room;

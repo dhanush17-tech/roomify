@@ -17,6 +17,7 @@ class SearchProvider with ChangeNotifier {
   final BuildContext context;
 
   List<Listing> _searchResults = [];
+  List<Listing> _recommendedProperties = [];
   List<Listing> _originalProperties = [];
   bool _isLoading = false;
   Timer? _debounceTimer;
@@ -182,7 +183,21 @@ class SearchProvider with ChangeNotifier {
   // Helper methods for initial load and recommendations
   Future<void> fetchRecommendations(double latitude, double longitude) async {
     _searchQuery = '';
-    await loadInitialProperties(latitude, longitude);
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final results = await _repository.getRecommendedProperties(
+        latitude,
+        longitude,
+      );
+      _recommendedProperties = results;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      print('Error fetching recommendations: $e');
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> loadInitialProperties(double latitude, double longitude) async {
@@ -191,8 +206,11 @@ class SearchProvider with ChangeNotifier {
       _noResults = false;
       notifyListeners();
 
-      final properties =
-          await _repository.getRecommendedProperties(latitude, longitude);
+      final properties = await _repository.search(
+        query: '',
+        searchLatitude: latitude,
+        searchLongitude: longitude,
+      );
       _searchResults = properties;
       _originalProperties = List.from(properties);
 

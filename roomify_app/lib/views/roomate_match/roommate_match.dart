@@ -48,6 +48,8 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
   late Animation<double> _profileScaleAnimation;
   late Animation<double> _profileOpacityAnimation;
 
+  bool isBioExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -436,543 +438,575 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     );
   }
 
-  Widget _buildProfileCard(User profile) {
+  Widget _buildProfileCard(User profile, RoommateMatchProvider provider) {
     final screenHeight = MediaQuery.of(context).size.height;
-    return Listener(
-      onPointerDown: (details) {
-        setState(() {
-          isSwiping = true;
-          currentDirection = null;
-        });
-      },
-      onPointerMove: (details) {
-        double screenWidth = MediaQuery.of(context).size.width;
-        double progress = details.localPosition.dx / screenWidth;
+    return Consumer<ChatProvider>(builder: (context, chatProvider, child) {
+      return Listener(
+        onPointerDown: (details) {
+          setState(() {
+            isSwiping = true;
+            currentDirection = null;
+          });
+        },
+        onPointerMove: (details) {
+          double screenWidth = MediaQuery.of(context).size.width;
+          double progress = details.localPosition.dx / screenWidth;
 
-        setState(() {
-          swipeProgress = progress.abs();
-          currentDirection = details.localPosition.dx > screenWidth / 2
-              ? CardSwiperDirection.right
-              : CardSwiperDirection.left;
+          setState(() {
+            swipeProgress = progress.abs();
+            currentDirection = details.localPosition.dx > screenWidth / 2
+                ? CardSwiperDirection.right
+                : CardSwiperDirection.left;
 
-          if (!_overlayController.isAnimating) {
-            _overlayController.forward();
-          }
-        });
-      },
-      onPointerUp: (details) {
-        setState(() {
-          isSwiping = false;
-          _overlayController.reverse();
-
-          Future.delayed(Duration(milliseconds: 300), () {
-            if (mounted) {
-              setState(() {
-                swipeProgress = 0.0;
-                currentDirection = null;
-              });
+            if (!_overlayController.isAnimating) {
+              _overlayController.forward();
             }
           });
-        });
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              // Background Image
-              Container(
-                height: double.infinity,
-                width: double.infinity,
-                child: CachedNetworkImage(
-                  imageUrl: profile.profilePhotoUrl ?? '',
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[200],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: orangeColor,
+        },
+        onPointerUp: (details) {
+          setState(() {
+            isSwiping = false;
+            _overlayController.reverse();
+
+            Future.delayed(Duration(milliseconds: 300), () {
+              if (mounted) {
+                setState(() {
+                  swipeProgress = 0.0;
+                  currentDirection = null;
+                });
+              }
+            });
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                // Background Image
+                Container(
+                  height: double.infinity,
+                  width: double.infinity,
+                  child: CachedNetworkImage(
+                    imageUrl: profile.profilePhotoUrl ?? '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: orangeColor,
+                        ),
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
-                    child:
-                        Icon(Icons.person, size: 50, color: Colors.grey[400]),
-                  ),
-                ),
-              ),
-              // Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.2),
-                      Colors.black.withOpacity(0.6),
-                    ],
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child:
+                          Icon(Icons.person, size: 50, color: Colors.grey[400]),
+                    ),
                   ),
                 ),
-              ),
-              // User Info and Listings
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${profile.displayName.capitalize()} · ${profile.age}',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                if (profile.status == 'Looking for a Roommate')
-                                  Container(
-                                    margin: EdgeInsets.only(left: 8),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: orangeColor.withOpacity(0.9),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                // Gradient Overlay
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.2),
+                        Colors.black.withOpacity(0.6),
+                      ],
+                    ),
+                  ),
+                ),
+                // User Info and Listings
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
                                     child: Text(
-                                      '🔍 Looking',
+                                      '${profile.displayName.capitalize()} · ${profile.age}',
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 12,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.school,
-                                    color: Colors.white70, size: 16),
-                                SizedBox(width: 4),
-                                Text(
-                                  profile.university ?? '',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            if (profile.bio != null) ...[
-                              Text(
-                                profile.bio!,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                            if (profile.preferences.isNotEmpty) ...[
-                              SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: profile.preferences.map((pref) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.3),
+                                  if (profile.status ==
+                                      'Looking for a Roommate')
+                                    Container(
+                                      margin: EdgeInsets.only(left: 8),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: orangeColor.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '🔍 Looking',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                    child: Text(
-                                      pref.preference,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                ],
                               ),
-                            ],
-
-                            // Listings Section
-                            if (profile.listings
-                                .where((listing) =>
-                                    listing.type == ListingType.Property)
-                                .isNotEmpty) ...[
-                              SizedBox(height: 20),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              SizedBox(height: 4),
+                              Row(
                                 children: [
+                                  Icon(Icons.school,
+                                      color: Colors.white70, size: 16),
+                                  SizedBox(width: 4),
                                   Text(
-                                    'Properties',
+                                    profile.university ?? '',
                                     style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12),
-                                  Container(
-                                    height: 300,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: profile.listings
-                                          .where((listing) =>
-                                              listing.type ==
-                                              ListingType.Property)
-                                          .length,
-                                      itemBuilder: (context, index) {
-                                        final listing = profile.listings
-                                            .where((listing) =>
-                                                listing.type ==
-                                                ListingType.Property)
-                                            .toList()[index];
-                                        return GestureDetector(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    PropertyDetailsScreen(
-                                                  listing,
-                                                  0,
-                                                  0,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          child: Container(
-                                            width: 340,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.1),
-                                                  blurRadius: 8,
-                                                  offset: Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                  child: AspectRatio(
-                                                    aspectRatio: 16 / 9,
-                                                    child: CachedNetworkImage(
-                                                      imageUrl: listing
-                                                              .property
-                                                              ?.imageUrls
-                                                              .first ??
-                                                          listing
-                                                              .imageUrls!.first,
-                                                      fit: BoxFit.cover,
-                                                      placeholder:
-                                                          (context, url) =>
-                                                              Container(
-                                                        color: Colors.grey[200],
-                                                        child: Icon(
-                                                            Icons.home_outlined,
-                                                            color: Colors
-                                                                .grey[400],
-                                                            size: 40),
-                                                      ),
-                                                      errorWidget: (context,
-                                                              url, error) =>
-                                                          Container(
-                                                        color: Colors.grey[200],
-                                                        child: Icon(
-                                                            Icons.home_outlined,
-                                                            color: Colors
-                                                                .grey[400],
-                                                            size: 40),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding: EdgeInsets.all(12),
-                                                  child: Row(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      // Left Column
-                                                      Expanded(
-                                                        flex: 2,
-                                                        child: Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            Text(
-                                                              listing.title
-                                                                  .trim()
-                                                                  .capitalize(),
-                                                              style: TextStyle(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                            ),
-                                                            SizedBox(height: 4),
-                                                            Row(
-                                                              children: [
-                                                                Icon(
-                                                                    Icons
-                                                                        .location_on,
-                                                                    color: Colors
-                                                                            .grey[
-                                                                        600],
-                                                                    size: 14),
-                                                                SizedBox(
-                                                                    width: 4),
-                                                                Expanded(
-                                                                  child: Text(
-                                                                    listing.location ??
-                                                                        '',
-                                                                    style:
-                                                                        TextStyle(
-                                                                      color: Colors
-                                                                              .grey[
-                                                                          600],
-                                                                      fontSize:
-                                                                          12,
-                                                                    ),
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            SizedBox(height: 8),
-                                                            Row(
-                                                              children: [
-                                                                Icon(
-                                                                    Icons
-                                                                        .bed_outlined,
-                                                                    color: Colors
-                                                                            .grey[
-                                                                        600],
-                                                                    size: 16),
-                                                                SizedBox(
-                                                                    width: 4),
-                                                                Text(
-                                                                  '${listing.property?.numberOfBedrooms} beds',
-                                                                  style:
-                                                                      TextStyle(
-                                                                    color: Colors
-                                                                            .grey[
-                                                                        800],
-                                                                    fontSize:
-                                                                        12,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                    width: 16),
-                                                                Icon(
-                                                                    Icons
-                                                                        .bathtub_outlined,
-                                                                    color: Colors
-                                                                            .grey[
-                                                                        600],
-                                                                    size: 16),
-                                                                SizedBox(
-                                                                    width: 4),
-                                                                Text(
-                                                                  '${listing.property?.numberOfBathrooms} baths',
-                                                                  style:
-                                                                      TextStyle(
-                                                                    color: Colors
-                                                                            .grey[
-                                                                        800],
-                                                                    fontSize:
-                                                                        12,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      // Right Column
-                                                      Container(
-                                                        width: 130,
-                                                        height: 80,
-                                                        child: Column(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            Text(
-                                                              '\$${listing.price}/month',
-                                                              style: TextStyle(
-                                                                fontSize: 16,
-                                                                color: Colors
-                                                                    .orange,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                            ),
-                                                            Spacer(),
-                                                            Container(
-                                                                padding: EdgeInsets
-                                                                    .symmetric(
-                                                                        horizontal:
-                                                                            10,
-                                                                        vertical:
-                                                                            4),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: Colors
-                                                                      .blue
-                                                                      .withOpacity(
-                                                                          0.1),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              10),
-                                                                ),
-                                                                child: Text(
-                                                                  'need ${listing.property?.maxOccupancy}\n${listing.property?.maxOccupancy == 1 ? 'roomate' : 'roomates'}',
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .center,
-                                                                  style:
-                                                                      TextStyle(
-                                                                    color: Colors
-                                                                        .blue,
-                                                                    fontSize:
-                                                                        12,
-                                                                  ),
-                                                                )),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                      color: Colors.white70,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                            SizedBox(height: 30),
-                            // Contact Button
-                            GestureDetector(
-                              onTap: () async {
-                                final chatRoom = await context
-                                    .read<ChatProvider>()
-                                    .createOrGetChatRoom(profile.id);
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        ChatMessageScreen(room: chatRoom),
-                                    settings: RouteSettings(
-                                      name: 'ChatMessageScreen',
-                                      arguments:
-                                          ChatMessageScreen(room: chatRoom),
+                              SizedBox(height: 12),
+                              if (profile.bio != null) ...[
+                                Text(
+                                  profile.bio!,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: isBioExpanded ? null : 3,
+                                  overflow: isBioExpanded
+                                      ? TextOverflow.visible
+                                      : TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      isBioExpanded = !isBioExpanded;
+                                    });
+                                  },
+                                  child: Text(
+                                    isBioExpanded ? 'View Less' : 'View More',
+                                    style: TextStyle(
+                                      color: Colors.orangeAccent,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                );
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 20,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: orangeColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: context.read<ChatProvider>().isLoading
-                                    ? CircularProgressIndicator(
-                                        color: Colors.white,
-                                      )
-                                    : Text(
-                                        'Contact',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                              ],
+                              if (profile.preferences.isNotEmpty) ...[
+                                SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: profile.preferences.map((pref) {
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.3),
                                         ),
                                       ),
+                                      child: Text(
+                                        pref.preference,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+
+                              // Listings Section
+                              if (profile.listings
+                                  .where((listing) =>
+                                      listing.type == ListingType.Property)
+                                  .isNotEmpty) ...[
+                                SizedBox(height: 20),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Properties',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    Container(
+                                      height: 300,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: profile.listings
+                                            .where((listing) =>
+                                                listing.type ==
+                                                ListingType.Property)
+                                            .length,
+                                        itemBuilder: (context, index) {
+                                          final listing = profile.listings
+                                              .where((listing) =>
+                                                  listing.type ==
+                                                  ListingType.Property)
+                                              .toList()[index];
+                                          return GestureDetector(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      PropertyDetailsScreen(
+                                                    listing,
+                                                    0,
+                                                    0,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              width: 340,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withOpacity(0.1),
+                                                    blurRadius: 8,
+                                                    offset: Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            16),
+                                                    child: AspectRatio(
+                                                      aspectRatio: 16 / 9,
+                                                      child: CachedNetworkImage(
+                                                        imageUrl: listing
+                                                                .property
+                                                                ?.imageUrls
+                                                                .first ??
+                                                            listing.imageUrls!
+                                                                .first,
+                                                        fit: BoxFit.cover,
+                                                        placeholder:
+                                                            (context, url) =>
+                                                                Container(
+                                                          color:
+                                                              Colors.grey[200],
+                                                          child: Icon(
+                                                              Icons
+                                                                  .home_outlined,
+                                                              color: Colors
+                                                                  .grey[400],
+                                                              size: 40),
+                                                        ),
+                                                        errorWidget: (context,
+                                                                url, error) =>
+                                                            Container(
+                                                          color:
+                                                              Colors.grey[200],
+                                                          child: Icon(
+                                                              Icons
+                                                                  .home_outlined,
+                                                              color: Colors
+                                                                  .grey[400],
+                                                              size: 40),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.all(12),
+                                                    child: Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        // Left Column
+                                                        Expanded(
+                                                          flex: 2,
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                listing.title
+                                                                    .trim()
+                                                                    .capitalize(),
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 4),
+                                                              Row(
+                                                                children: [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .location_on,
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600],
+                                                                      size: 14),
+                                                                  SizedBox(
+                                                                      width: 4),
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      listing.location ??
+                                                                          '',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        color: Colors
+                                                                            .grey[600],
+                                                                        fontSize:
+                                                                            12,
+                                                                      ),
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 8),
+                                                              Row(
+                                                                children: [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .bed_outlined,
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600],
+                                                                      size: 16),
+                                                                  SizedBox(
+                                                                      width: 4),
+                                                                  Text(
+                                                                    '${listing.property?.numberOfBedrooms} beds',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          800],
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
+                                                                  ),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          16),
+                                                                  Icon(
+                                                                      Icons
+                                                                          .bathtub_outlined,
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          600],
+                                                                      size: 16),
+                                                                  SizedBox(
+                                                                      width: 4),
+                                                                  Text(
+                                                                    '${listing.property?.numberOfBathrooms} baths',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          800],
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        // Right Column
+                                                        Container(
+                                                          width: 130,
+                                                          height: 80,
+                                                          child: Column(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .spaceBetween,
+                                                            children: [
+                                                              Text(
+                                                                '\$${listing.price}/month',
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 16,
+                                                                  color: Colors
+                                                                      .orange,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                              Spacer(),
+                                                              Container(
+                                                                  padding: EdgeInsets
+                                                                      .symmetric(
+                                                                          horizontal:
+                                                                              10,
+                                                                          vertical:
+                                                                              4),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: Colors
+                                                                        .blue
+                                                                        .withOpacity(
+                                                                            0.1),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            10),
+                                                                  ),
+                                                                  child: Text(
+                                                                    'need ${listing.property?.maxOccupancy}\n${listing.property?.maxOccupancy == 1 ? 'roomate' : 'roomates'}',
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .center,
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: Colors
+                                                                          .blue,
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
+                                                                  )),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              SizedBox(height: 30),
+                              // Contact Button
+                              GestureDetector(
+                                onTap: () async {
+                                  final chatRoom = await context
+                                      .read<ChatProvider>()
+                                      .createOrGetChatRoom(profile.id);
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ChatMessageScreen(room: chatRoom),
+                                      settings: RouteSettings(
+                                        name: 'ChatMessageScreen',
+                                        arguments:
+                                            ChatMessageScreen(room: chatRoom),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 20,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: orangeColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: chatProvider.isLoading
+                                      ? Center(
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          'Contact',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   bool isExhausted = false;
@@ -1098,7 +1132,7 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                                         return Container();
                                       }
                                       return _buildProfileCard(
-                                          provider.matches[index]);
+                                          provider.matches[index], provider);
                                     },
                                   ),
                                   _buildSwipeOverlay(),

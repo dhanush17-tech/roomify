@@ -207,7 +207,9 @@ app.get('/', async (c) => {
 
         const userId = c.get('jwtPayload')?.sub;
 
-        const listings = await prisma.listing.findMany({
+        const listings =
+        
+            await prisma.listing.findMany({
             where: {
                 type: 'Property',
                 reported: false,

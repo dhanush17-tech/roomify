@@ -2066,9 +2066,11 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                           child: context
                                                   .read<ChatProvider>()
                                                   .isLoading
-                                              ? CircularProgressIndicator(
-                                                  color: Colors.white,
-                                                )
+                                              ? Center(
+                                                child: CircularProgressIndicator(
+                                                    color: Colors.white,
+                                                  ),
+                                              )
                                               : Center(
                                                   child: Text(
                                                     'Contact',

@@ -703,7 +703,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     ),
                   ),
                   child: _isLoading
-                      ? CircularProgressIndicator()
+                      ? Center(child: CircularProgressIndicator())
                       : Text(
                           widget.existingListing != null
                               ? "Edit Lisiting"

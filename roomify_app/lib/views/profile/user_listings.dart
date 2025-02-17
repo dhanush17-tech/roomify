@@ -150,7 +150,7 @@ class _UserListingScreenState extends State<UserListingScreen>
                   ),
                   SizedBox(height: 10),
                   if (provider.isLoading)
-                    CircularProgressIndicator()
+                    Center(child: CircularProgressIndicator())
                   else
                     Expanded(
                       child: TabBarView(

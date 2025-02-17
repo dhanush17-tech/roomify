@@ -836,7 +836,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                 ),
                               ),
                               child: _isLoading
-                                  ? CircularProgressIndicator()
+                                  ? Center(child: CircularProgressIndicator())
                                   : Text(
                                       'Save Changes',
                                       style: TextStyle(

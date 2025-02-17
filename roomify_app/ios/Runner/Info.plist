@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<key>io.flutter.embedded_views_preview</key>
-<true/>
-<key>NSCameraUsageDescription</key>
-<string>$(PRODUCT_NAME) camera usage description</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -37,12 +33,8 @@
 			</array>
 		</dict>
 	</array>
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:roomify.app</string>
-	</array>
 	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
@@ -54,20 +46,22 @@
 	</dict>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>We need notification permissions to keep you updated about new messages and property updates.</string>
-	<key>NSDocumentDirectoryUsageDescription</key>
-	<string>Roomify needs access to your documents to pick files.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Roomify needs access to location to find properties and roommates near you and provide accurate search results.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Roomify needs location access to provide you with real-time updates about nearby properties and roommate matches.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Roomify needs location access to help you find nearby properties, get directions, and receive relevant recommendations.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Roomify needs access to your photo library to upload files.</string>
-	<key>NSPhoneUsageDescription</key>
-	<string>We need access to your phone number to auto-fill the registration form.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>$(PRODUCT_NAME) camera usage description</string>
 	<key>NSContactsUsageDescription</key>
 	<string>We need access to your contacts to help you find your phone number.</string>
+	<key>NSDocumentDirectoryUsageDescription</key>
+	<string>Roomify needs access to your documents to pick files.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Roomify needs location access to help you find nearby properties, get directions, and receive relevant recommendations.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Roomify needs location access to provide you with real-time updates about nearby properties and roommate matches.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Roomify needs access to location to find properties and roommates near you and provide accurate search results.</string>
+	<key>NSPhoneUsageDescription</key>
+	<string>We need access to your phone number to auto-fill the registration form.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Roomify needs access to your photo library to upload files.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
@@ -84,10 +78,20 @@
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:roomify.app</string>
+	</array>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

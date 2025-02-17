@@ -194,20 +194,28 @@ app.post('/create', async (c) => {
             }
         });
 
-        if (existingRoom) {
+        if (existingRoom  ) {
             // Return the existing room with unread count
             console.log('Existing room found');
             console.log(existingRoom);
-            return c.json({
-                room: {
-                    ...existingRoom,
-                    unreadCount: existingRoom.unreadMessages.length
-                }
-            });
+
+            if (existingRoom.participants.length === 0) {
+                // delete the room
+                await prisma.chatRoom.delete({
+                    where: { id: existingRoom.id }
+                });
+            }
+            else if (existingRoom.participants.length === 2) {
+                return c.json({
+                    room: {
+                        ...existingRoom,
+                        unreadCount: existingRoom.unreadMessages.length
+                    }
+                });
+            }
         }
 
-
-        // If no existing room, create a new one
+ 
         const newRoom = await prisma.chatRoom.create({
             data: {
                 participants: {

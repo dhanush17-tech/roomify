@@ -169,9 +169,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                 ),
                               ),
                               child: provider.isLoading
-                                  ? CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
+                                  ? Center(
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                  )
                                   : Text(
                                       "Recover Password",
                                       style: TextStyle(
@@ -302,7 +304,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ),
                 ),
                 child: _isLoading
-                    ? CircularProgressIndicator(color: Colors.white)
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : Text(
                         "Reset Password",
                         style: TextStyle(

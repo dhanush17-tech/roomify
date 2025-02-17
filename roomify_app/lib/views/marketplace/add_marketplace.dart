@@ -533,7 +533,7 @@ class _AddMarketplaceScreenState extends State<AddMarketplaceScreen> {
                     ),
                   ),
                   child: _isLoading
-                      ? CircularProgressIndicator()
+                      ? Center(child: CircularProgressIndicator())
                       : Text(
                           widget.existingListing != null
                               ? 'Update Item'

@@ -286,7 +286,7 @@ app.get('/', async (c) => {
         });
 
         // Sort listings by query relevance and distance
-        const sortedListings = filteredListings.sort((a, b) => {
+        const sortedListings = originalQuery.length < 0 ? filteredListings : filteredListings.sort((a, b) => {
             if (originalQuery) {
                 // If there's a search query, prioritize title matches
                 const titleA = normalizeText(a.title);

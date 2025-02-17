@@ -1,32 +1,32 @@
 allprojects {
-    repositories {
-        google()
-        mavenCentral()
-         
-        maven { url "https://jitpack.io" }
-        maven {
-            url "https://api.mapbox.com/downloads/v2/releases/maven"
-            url "https://api.mapbox.com/downloads/v2/releases/maven"
-            authentication {
-                basic(BasicAuthentication)
-            }
-            credentials {
-                username = "mapbox"
-                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") ?: ""
-            }
+repositories {
+    google()
+    mavenCentral()
+        
+    maven { url "https://jitpack.io" }
+    maven {
+        url "https://api.mapbox.com/downloads/v2/releases/maven"
+        url "https://api.mapbox.com/downloads/v2/releases/maven"
+        authentication {
+            basic(BasicAuthentication)
         }
-    
+        credentials {
+            username = "mapbox"
+            password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") ?: ""
+        }
     }
+
+}
 }
 
 rootProject.buildDir = "../build"
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
+project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
-    project.evaluationDependsOn(":app")
+project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+delete rootProject.buildDir
 }

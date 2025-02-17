@@ -78,7 +78,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
             if (isUploading)
               Padding(
                 padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
+                child: Center(child: CircularProgressIndicator()),
               )
             else
               Padding(

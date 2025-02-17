@@ -103,7 +103,7 @@ class ItemDetailsScreen extends StatelessWidget {
                                 width: double.infinity,
                                 height: double.infinity,
                                 placeholder: (context, url) => Center(
-                                  child: CircularProgressIndicator(),
+                                  child: Center(child: CircularProgressIndicator()),
                                 ),
                                 errorWidget: (context, url, error) =>
                                     Icon(Icons.error),
