@@ -438,6 +438,77 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
     );
   }
 
+  Widget _buildProfileCompletion(User user) {
+    double completion = user.getProfileCompletion();
+    bool isComplete = user.isProfileComplete();
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isComplete
+            ? Colors.green.withOpacity(0.1)
+            : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Profile Completion',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              if (!isComplete)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Required',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: completion / 100,
+            backgroundColor: Colors.grey[300],
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isComplete ? Colors.green : Colors.orange,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '${completion.toStringAsFixed(0)}% Complete',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileCard(User profile, RoommateMatchProvider provider) {
     final screenHeight = MediaQuery.of(context).size.height;
     return Consumer<ChatProvider>(builder: (context, chatProvider, child) {
@@ -1144,6 +1215,97 @@ class _RoommateMatchScreenState extends State<RoommateMatchScreen>
                 ),
               ),
               _buildMatchOverlay(provider.matchedUser),
+              if (user != null && !user.isProfileComplete()) ...[
+                // Blurred background with animation
+                AnimatedBuilder(
+                  animation: _profileOverlayController,
+                  builder: (context, child) {
+                    _profileOverlayController.forward(); // Start the animation
+                    return FadeTransition(
+                      opacity: _profileOpacityAnimation,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          color: blackTextColor.withOpacity(0.5),
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _profileOverlayController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _profileScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _profileOpacityAnimation,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 40),
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Complete Your Profile',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+
+                                // Profile completion indicator
+                                _buildProfileCompletion(user),
+
+                                SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EditProfileScreen(
+                                          latitude: user.latitude,
+                                          longitude: user.longitude,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Edit Profile',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ]
             ],
           ),
         );

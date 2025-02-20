@@ -215,6 +215,7 @@ class _ReportScreenState extends State<ReportScreen> {
       "It's a scam",
       "It's a duplicate listing",
       "The host is asking for more money than listed",
+      'Nudity or inappropriate content',
     ];
 
     return Column(

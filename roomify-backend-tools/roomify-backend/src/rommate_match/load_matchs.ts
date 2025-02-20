@@ -39,25 +39,20 @@ app.get('/', async (c) => {
         const potentialMatches = await prisma.user.findMany({
             where: {
                 id: { not: currentUserId },
-                NOT: {
-                    // exclude current user from the list and the matches should not be professional
-                    id: currentUserId,
-                },
+
                 isProfessional: false,
                 AND: [
                     {
                         isProfessional: false,
                     },
                     {
-                        // Exclude users who have been left-swiped or right-swiped by the current user
-                        swipesReceived: {
-                            none: {
-                                swiperId: currentUserId,
-                                direction: {
-                                    in: ['left', 'right'],
-                                },
-                            },
-                        },
+                        NOT: {
+                            swipesReceived: {
+                                some: {
+                                    swiperId: currentUserId
+                                }
+                            }
+                        }
                     },
                 ]
             },

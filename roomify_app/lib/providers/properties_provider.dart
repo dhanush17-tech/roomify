@@ -105,7 +105,7 @@ class PropertyProvider extends ChangeNotifier {
 
     try {
       _isLoadingReccomendations = true;
-    notifyListeners();
+      notifyListeners();
 
       _recommendations = await SearchRepository()
           .getRecommendedProperties(latitude, longitude);

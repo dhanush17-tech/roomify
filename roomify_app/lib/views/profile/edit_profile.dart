@@ -49,7 +49,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   late TextEditingController _statusController;
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  bool _isLoading = false;
   Listing? _listing;
   List<String> _originalImageUrls = [];
   String? _moveInDate;
@@ -70,6 +69,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   late Animation<double> _formOpacityAnimation;
 
   List<String> _selectedPreferences = [];
+
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -744,6 +745,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.start,
+                                  alignment: WrapAlignment.start,
                                   spacing: 12,
                                   runSpacing: 12,
                                   children: [
@@ -770,8 +773,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                         height: 0,
                                       );
                                     }),
-                                    ..._customFeatures.map((feature) =>
-                                        _buildAmenityChip(feature)),
                                     InkWell(
                                       onTap: _showAddFeatureDialog,
                                       child: Container(
@@ -878,8 +879,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Future<void> _handleProfileUpdate() async {
-    setState(() => _isLoading = true);
-
     try {
       // Start exit animation
       await _animationController.reverse();
@@ -1363,7 +1362,11 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             onPressed: () {
               if (_customFeatureController.text.isNotEmpty) {
                 setState(() {
-                  _customFeatures.add(_customFeatureController.text.trim());
+                  // Add directly to property amenities instead of _customFeatures
+                  if (_listing?.property != null) {
+                    _listing!.property!.amenities
+                        .add(_customFeatureController.text.trim());
+                  }
                   _customFeatureController.clear();
                 });
                 Navigator.pop(context);

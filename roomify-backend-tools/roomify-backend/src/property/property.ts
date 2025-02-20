@@ -1171,6 +1171,7 @@ app.put('/:id', async (c) => {
         // If listing doesn't exist, create new one
         if (!existingListing) {
             const imageUrls: string[] = [];
+            console.log("this is the images", images);
             for (const image of images) {
                 const { fileUrl } = await uploadToR2(image, "propertyImages", c);
                 imageUrls.push(fileUrl);

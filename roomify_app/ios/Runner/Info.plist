@@ -48,9 +48,7 @@
 	<string>We need notification permissions to keep you updated about new messages and property updates.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>$(PRODUCT_NAME) camera usage description</string>
-	<key>NSContactsUsageDescription</key>
-	<string>We need access to your contacts to help you find your phone number.</string>
-	<key>NSDocumentDirectoryUsageDescription</key>
+		<key>NSDocumentDirectoryUsageDescription</key>
 	<string>Roomify needs access to your documents to pick files.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Roomify needs location access to help you find nearby properties, get directions, and receive relevant recommendations.</string>
@@ -58,8 +56,6 @@
 	<string>Roomify needs location access to provide you with real-time updates about nearby properties and roommate matches.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Roomify needs access to location to find properties and roommates near you and provide accurate search results.</string>
-	<key>NSPhoneUsageDescription</key>
-	<string>We need access to your phone number to auto-fill the registration form.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Roomify needs access to your photo library to upload files.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
@@ -68,7 +64,6 @@
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
-		<string>nearby-interaction</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
