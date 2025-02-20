@@ -32,7 +32,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
@@ -67,6 +67,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   late Animation<double> _slideAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _formOpacityAnimation;
+  late AnimationController _loadingAnimationController;
+  late Animation<double> _loadingScaleAnimation;
+  late Animation<double> _loadingOpacityAnimation;
 
   List<String> _selectedPreferences = [];
 
@@ -113,6 +116,11 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       duration: Duration(milliseconds: 600),
     );
 
+    _loadingAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 400),
+    );
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -138,6 +146,20 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.3, 1.0, curve: Curves.easeInOut),
+      ),
+    );
+
+    _loadingScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _loadingAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _loadingOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _loadingAnimationController,
+        curve: Curves.easeIn,
       ),
     );
   }
@@ -857,16 +879,35 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           ),
           if (_isLoading)
             AnimatedBuilder(
-              animation: _animationController,
+              animation: _loadingAnimationController,
               builder: (context, child) {
-                return Opacity(
-                  opacity: 1 - _fadeAnimation.value,
+                return FadeTransition(
+                  opacity: _loadingOpacityAnimation,
                   child: Container(
                     color: Colors.black54,
+                    width: double.infinity,
+                    height: double.infinity,
                     child: Center(
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.orange),
+                      child: ScaleTransition(
+                        scale: _loadingScaleAnimation,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(orangeColor),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Saving changes...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -879,6 +920,15 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Future<void> _handleProfileUpdate() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Start loading animation
+    await _loadingAnimationController.forward();
+
     try {
       // Start exit animation
       await _animationController.reverse();
@@ -947,8 +997,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
       Navigator.pop(context);
     } catch (e) {
-      // Reset animation on error
+      // Reset animations on error
       await _animationController.forward();
+      await _loadingAnimationController.reverse();
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1840,6 +1891,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _loadingAnimationController.dispose();
     _displayNameController.dispose();
     _emailController.dispose();
     _bioController.dispose();

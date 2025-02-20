@@ -31,6 +31,7 @@ status               String?
 fcmToken             String?
 isAdmin              Boolean  @default(false)
 isProfessional       Boolean  @default(false)
+isAnonymous          Boolean  @default(false)
 phoneNumber          String?
 
 preferences      UserPreference[]

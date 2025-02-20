@@ -55,7 +55,7 @@ app.post('/login', async (c) => {
         const isValidPassword = await verifyPassword(password, user.passwordHash);
         if (!isValidPassword) {
             return c.json({ error: 'Invalid email or password' }, 401);
-        } 
+        }
 
         const token = await sign({ sub: user.id }, c.env.JWT_SECRET);
 
@@ -113,8 +113,50 @@ app.post('/signout', async (c) => {
         return c.json({
             error: 'Failed to sign out',
             //@ts-ignore
-
             details: error.message
+        }, 500);
+    }
+});
+
+app.post('/auth/anonymous', async (c) => {
+    try {
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Create an anonymous user with temporary data
+        const anonymousUser = await prisma.user.create({
+            data: {
+                email: `anonymous_${Date.now()}@temp.roomify.com`,
+                displayName: 'Guest User',
+                passwordHash: '', // Empty password hash for anonymous users
+                isAnonymous: true,
+            },
+            select: {
+                id: true,
+                email: true,
+                displayName: true,
+                profileImageUrl: true,
+                isProfessional: true,
+                isAnonymous: true,
+                preferences: true,
+            },
+        });
+
+        // Generate a temporary session token that expires in 24 hours
+        const token = await signAndStoreToken({
+            sub: anonymousUser.id,
+            exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+        }, c);
+
+        return c.json({
+            token,
+            user: anonymousUser,
+        });
+    } catch (error) {
+        console.error('Anonymous login error:', error);
+        return c.json({
+            error: 'Failed to create anonymous session',
+            details: error instanceof Error ? error.message : 'Unknown error',
         }, 500);
     }
 });

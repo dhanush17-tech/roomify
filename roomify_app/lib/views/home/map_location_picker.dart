@@ -289,10 +289,19 @@ class _LocationPickerSheetState extends State<LocationPickerSheet>
               child: Column(
                 children: [
                   Text(
-                    'Choose Location',
+                    'Choose Your Location',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Help us show you the most relevant properties in your area',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
                     ),
                   ),
                   SizedBox(height: 16),
@@ -397,7 +406,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet>
                               ],
                             ),
                             child: Text(
-                              "You are here",
+                              "Selected Location",
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -413,56 +422,98 @@ class _LocationPickerSheetState extends State<LocationPickerSheet>
                           ),
                         ],
                       ),
-                    )
+                    ),
+                  // Add helper text
+                  Positioned(
+                    top: 16,
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'Drag the map to set your location',
+                        style: TextStyle(
+                          color: Colors.grey[800],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: mapCenter != null && !_isUpdatingLocation
-                      ? () async {
-                          if (mapCenter != null) {
-                            setState(() => _isUpdatingLocation = true);
-                            try {
-                              final lat = mapCenter!.coordinates.lat.toDouble();
-                              final lng = mapCenter!.coordinates.lng.toDouble();
-                              await widget.onLocationSelected(lat, lng);
-                            } finally {
-                              if (mounted) {
-                                setState(() => _isUpdatingLocation = false);
+              child: Column(
+                children: [
+                  if (_isLoadingLocation)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Getting your location...',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: mapCenter != null && !_isUpdatingLocation
+                          ? () async {
+                              if (mapCenter != null) {
+                                setState(() => _isUpdatingLocation = true);
+                                try {
+                                  final lat =
+                                      mapCenter!.coordinates.lat.toDouble();
+                                  final lng =
+                                      mapCenter!.coordinates.lng.toDouble();
+                                  await widget.onLocationSelected(lat, lng);
+                                } finally {
+                                  if (mounted) {
+                                    setState(() => _isUpdatingLocation = false);
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isUpdatingLocation
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Confirm Location',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
-                  child: _isUpdatingLocation
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          'Confirm Location',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
+                ],
               ),
             ),
           ],

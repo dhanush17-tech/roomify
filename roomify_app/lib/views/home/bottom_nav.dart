@@ -145,6 +145,100 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  void _onTabTapped(int index) {
+    final authProvider = context.read<AuthProvider>();
+    final isAnonymous = authProvider.user?.isAnonymous ?? false;
+    final isProfessional = authProvider.user?.isProfessional ?? false;
+
+    // Check if trying to access profile or roommate match while anonymous
+    if (isAnonymous &&
+        ((!isProfessional && (index == 1 || index == 4)) ||
+            (isProfessional && index == 1))) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Sign in Required'),
+          content: Text(
+              'Please sign in or create an account to access this feature.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SignUpLoginScreen(
+                      widget.latitude,
+                      widget.longitude,
+                    ),
+                  ),
+                  (route) => false,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+              ),
+              child: Text(
+                'Sign in',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Handle add item button (index 2) for non-professional users
+    if (!isProfessional && index == 2) {
+      if (isAnonymous) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Sign in Required'),
+            content: Text('Please sign in or create an account to add items.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SignUpLoginScreen(
+                        widget.latitude,
+                        widget.longitude,
+                      ),
+                    ),
+                    (route) => false,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                ),
+                child: Text(
+                  'Sign in',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      _showAddItemDialog();
+    } else {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<AuthProvider>();
@@ -188,21 +282,7 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (isProfessional) {
-            setState(() {
-              _currentIndex = index;
-            });
-          } else {
-            if (index == 2) {
-              _showAddItemDialog();
-            } else {
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          }
-        },
+        onTap: _onTabTapped,
         items: isProfessional
             ? [
                 _buildBottomNavItem("assets/icons/home.png", 0),

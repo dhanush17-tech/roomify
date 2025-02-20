@@ -103,6 +103,40 @@ class AuthRepository {
     }
   }
 
+  Future<User> signInAnonymously() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/anonymous'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Custom-Auth-Key': 'roomify-secret',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        if (token == null || token.isEmpty) {
+          throw Exception('Invalid token received from server');
+        }
+
+        // Save token as a session token (temporary)
+        await saveToken(token, isSession: true);
+
+        final userProfile = await getUserProfile(token);
+        return User.fromJson(userProfile)..isAnonymous = true;
+      } else {
+        throw Exception('Failed to sign in anonymously');
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Network error. Please check your connection');
+    }
+  }
+
   Future<User> register({
     required String displayName,
     required String email,

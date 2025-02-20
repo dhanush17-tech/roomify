@@ -21,6 +21,7 @@ class User {
   String? status;
   bool isProfessional;
   String? phoneNumber;
+  bool isAnonymous;
 
   User({
     required this.id,
@@ -43,6 +44,7 @@ class User {
     this.status,
     this.isProfessional = false,
     this.phoneNumber,
+    this.isAnonymous = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -82,6 +84,7 @@ class User {
       status: json['status'] as String?,
       isProfessional: json['isProfessional'] ?? false,
       phoneNumber: json['phoneNumber'],
+      isAnonymous: json['isAnonymous'] ?? false,
     );
   }
 
@@ -106,6 +109,7 @@ class User {
       'profilePhoto': profilePhotoUrl,
       'status': status,
       'phoneNumber': phoneNumber,
+      'isAnonymous': isAnonymous,
     };
   }
 
@@ -127,6 +131,7 @@ class User {
     double? longitude,
     String? status,
     String? phoneNumber,
+    bool? isAnonymous,
   }) {
     return User(
       id: id ?? this.id,
@@ -146,6 +151,7 @@ class User {
       longitude: longitude ?? this.longitude,
       status: status ?? this.status,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 

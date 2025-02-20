@@ -17,12 +17,14 @@ import 'package:roomify_app/views/messaging/message_screen.dart';
 import 'package:roomify_app/views/property/property_details.dart';
 import 'package:roomify_app/views/roomate_match/roommate_match.dart';
 import 'package:roomify_app/widgets/location_picker.dart';
+import 'package:roomify_app/views/home/map_location_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:fade_shimmer/fade_shimmer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:roomify_app/providers/chat_provider.dart';
 import 'package:roomify_app/widgets/tags.dart';
+import 'package:roomify_app/views/auth/login.dart';
 
 class HomeScreen extends StatefulWidget {
   User user;
@@ -55,15 +57,36 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Check if user has location set
-      if (widget.user.latitude == 0.0 ||
+      // Check if user has location set or is anonymous
+      if (widget.user.isAnonymous ||
+          widget.user.latitude == 0.0 ||
           widget.user.longitude == 0.0 ||
           widget.user.latitude == null ||
           widget.user.longitude == null) {
         final profileProvider = context.read<ProfileProvider>();
-        // Update user location with current location
-        await profileProvider.updateUserLocation(
-            widget.latitude, widget.longitude);
+
+        // Show location picker for anonymous users
+        if (widget.user.isAnonymous) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => LocationPickerSheet(
+              lat: widget.latitude,
+              lng: widget.longitude,
+              onLocationSelected: (lat, lng) async {
+                await profileProvider.updateUserLocation(lat, lng);
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          );
+        } else {
+          // Update user location with current location for non-anonymous users
+          await profileProvider.updateUserLocation(
+              widget.latitude, widget.longitude);
+        }
       }
 
       context.read<PropertyProvider>().loadFavorites();
@@ -524,6 +547,46 @@ class PropertyCard extends StatelessWidget {
     print(filteredFloorPlan);
     return GestureDetector(
       onTap: () {
+        final authProvider = context.read<AuthProvider>();
+        if (authProvider.user?.isAnonymous == true) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Sign in Required'),
+              content: Text(
+                  'Please sign in or create an account to view property details.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SignUpLoginScreen(
+                          latitude,
+                          longitude,
+                        ),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: orangeColor,
+                  ),
+                  child: Text(
+                    'Sign in',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+
         // Track the property view
         context.read<PropertyProvider>().trackPropertyView(listing.id);
 
@@ -684,6 +747,8 @@ class PropertyCard extends StatelessWidget {
                       return FavoriteButton(
                         isFavorite: provider.isFavorite(listing.id),
                         onTap: () => provider.toggleFavorite(listing),
+                        latitude: latitude,
+                        longitude: longitude,
                       );
                     },
                   ),
@@ -854,10 +919,14 @@ class PropertyCard extends StatelessWidget {
 class FavoriteButton extends StatefulWidget {
   final bool isFavorite;
   final VoidCallback onTap;
+  final double latitude;
+  final double longitude;
 
   const FavoriteButton({
     required this.isFavorite,
     required this.onTap,
+    required this.latitude,
+    required this.longitude,
   });
 
   @override
@@ -901,6 +970,45 @@ class _FavoriteButtonState extends State<FavoriteButton>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        final authProvider = context.read<AuthProvider>();
+        if (authProvider.user?.isAnonymous == true) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Sign in Required'),
+              content: Text(
+                  'Please sign in or create an account to save properties to your favorites.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SignUpLoginScreen(
+                          widget.latitude,
+                          widget.longitude,
+                        ),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: orangeColor,
+                  ),
+                  child: Text(
+                    'Sign in',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         widget.onTap();
         _animateIconChange();
       },

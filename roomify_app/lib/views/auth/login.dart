@@ -495,6 +495,40 @@ class _SignUpLoginScreenState extends State<SignUpLoginScreen>
                   ),
                 ),
               ),
+              SizedBox(height: 24),
+              GestureDetector(
+                onTap: () async {
+                  try {
+                    await authViewModel.signInAnonymously(
+                      context,
+                      () => handleSuccessfulAuth(context),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Anonymous sign in failed: ${e.toString()}')),
+                    );
+                  }
+                },
+                child: Text(
+                  "Continue as Guest",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Guest users can only view listings and marketplace items",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ),

@@ -79,6 +79,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> signInAnonymously(
+      BuildContext context, Function onSuccess) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final user = await _authRepository.signInAnonymously();
+      _setUser(user);
+      onSuccess();
+
+      // Only load minimal data for anonymous users
+      await loadUserProfile();
+    } catch (e) {
+      _setError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   void updateUser(User newUser) {
     _user = newUser;
     notifyListeners();
