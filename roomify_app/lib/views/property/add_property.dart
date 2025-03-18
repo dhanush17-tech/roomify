@@ -178,10 +178,37 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }
 
   Future<void> _handleSubmit(User user) async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnackBar('Please fill out all required fields');
+      return;
+    }
 
-    if (latitude == null || longitude == null) {
-      _showErrorSnackBar('Please select a valid address');
+    if (_titleController.text.isEmpty) {
+      _showErrorSnackBar('Please enter a title');
+      return;
+    }
+    if (_descriptionController.text.isEmpty) {
+      _showErrorSnackBar('Please enter a description');
+      return;
+    }
+    if (_locationController.text.isEmpty) {
+      _showErrorSnackBar('Please enter a location');
+      return;
+    }
+    if (_priceController.text.isEmpty) {
+      _showErrorSnackBar('Please enter a price');
+      return;
+    }
+    if (_bedroomsController.text.isEmpty || _bedroomsController.text == '0') {
+      _showErrorSnackBar('Please enter the number of bedrooms');
+      return;
+    }
+    if (_bathroomsController.text.isEmpty || _bathroomsController.text == '0') {
+      _showErrorSnackBar('Please enter the number of bathrooms');
+      return;
+    }
+    if (_maxOccController.text.isEmpty || _maxOccController.text == '0') {
+      _showErrorSnackBar('Please enter the maximum occupancy');
       return;
     }
     if (_selectedAmenities.isEmpty) {
@@ -192,6 +219,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _showErrorSnackBar('Please select a move-in date');
       return;
     }
+    if (latitude == null || longitude == null) {
+      _showErrorSnackBar('Please select a valid address');
+      return;
+    }
+    if (_selectedImages.isEmpty && _existingImageUrls.isEmpty) {
+      _showErrorSnackBar('Please upload at least one image');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -199,7 +234,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       List<File> newImages = [];
       List<String> deletedImageUrls = [];
 
-      // Track which existing images were deleted
       for (String url in widget.existingListing?.property?.imageUrls ?? []) {
         if (!_existingImageUrls.contains(url)) {
           deletedImageUrls.add(url);
@@ -224,7 +258,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           walkScore: 0,
           transitScore: 0,
           transitDetails: {},
-
           numberOfBathrooms: int.parse(_bathroomsController.text),
           numberOfBedrooms: int.parse(_bedroomsController.text),
           amenities: _selectedAmenities,
@@ -259,9 +292,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           Navigator.of(context).pop(updatedListing);
         }
       } else {
-        final createdListing = await context
-            .read<PropertyProvider>()
-            .createProperty(listing, images: newImages);
+        final createdListing =
+            await context.read<PropertyProvider>().createProperty(
+                  listing,
+                  images: newImages,
+                );
         _showSuccessSnackBar('Property added successfully');
         if (mounted) {
           Navigator.of(context).pop(createdListing);

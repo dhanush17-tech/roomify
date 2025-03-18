@@ -7,6 +7,7 @@ import 'package:roomify_app/providers/auth_provider.dart';
 import 'package:roomify_app/providers/editProfile_provider.dart';
 import 'package:roomify_app/repository/properties_repo.dart';
 import 'package:roomify_app/repository/search_repo.dart';
+import 'package:roomify_app/helpers/calculat_distance.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -78,6 +79,27 @@ class SearchProvider with ChangeNotifier {
         searchLongitude: _searchLng,
         filterOptions: filterOptions,
       );
+
+      // Sort results by distance if user's location is available
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.latitude != null && authProvider.longitude != null) {
+        results.sort((a, b) {
+          double distanceA = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            a.latitude ?? 0,
+            a.longitude ?? 0,
+          );
+          double distanceB = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            b.latitude ?? 0,
+            b.longitude ?? 0,
+          );
+          return distanceA.compareTo(distanceB); // Sort by ascending distance
+        });
+      }
+
       _searchResults = results;
       _originalProperties = List.from(results);
     } catch (e) {
@@ -190,6 +212,27 @@ class SearchProvider with ChangeNotifier {
         latitude,
         longitude,
       );
+
+      // Sort results by distance if user's location is available
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.latitude != null && authProvider.longitude != null) {
+        results.sort((a, b) {
+          double distanceA = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            a.latitude ?? 0,
+            a.longitude ?? 0,
+          );
+          double distanceB = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            b.latitude ?? 0,
+            b.longitude ?? 0,
+          );
+          return distanceA.compareTo(distanceB); // Sort by ascending distance
+        });
+      }
+
       _recommendedProperties = results;
       _isLoading = false;
       notifyListeners();
@@ -211,6 +254,27 @@ class SearchProvider with ChangeNotifier {
         searchLatitude: latitude,
         searchLongitude: longitude,
       );
+
+      // Sort results by distance if user's location is available
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.latitude != null && authProvider.longitude != null) {
+        properties.sort((a, b) {
+          double distanceA = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            a.latitude ?? 0,
+            a.longitude ?? 0,
+          );
+          double distanceB = calculateDistance(
+            authProvider.latitude!,
+            authProvider.longitude!,
+            b.latitude ?? 0,
+            b.longitude ?? 0,
+          );
+          return distanceA.compareTo(distanceB); // Sort by ascending distance
+        });
+      }
+
       _searchResults = properties;
       _originalProperties = List.from(properties);
 

@@ -22,6 +22,9 @@ class RoommateMatchProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _matches = await _repository.getMatches();
+      _matches =
+          _matches.where((match) => match.profilePhotoUrl != null).toList();
+      _matches.shuffle();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -70,6 +73,11 @@ class RoommateMatchProvider extends ChangeNotifier {
 
   void _removeMatch(String userId) {
     _matches.removeWhere((match) => match.id == userId);
+    notifyListeners();
+  }
+
+  void clearMatches() {
+    _matches.clear();
     notifyListeners();
   }
 

@@ -27,7 +27,14 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  List<ChatRoom> get rooms => _rooms;
+  // List<ChatRoom> get rooms => _rooms;
+  List<ChatRoom> get rooms {
+    return _rooms
+        .where((room) =>
+            room.lastMessage != null && room.lastMessage!.content.isNotEmpty)
+        .toList();
+  }
+
   List<ChatMessage> getMessages(String roomId) => _messages[roomId] ?? [];
   bool get isLoading => _isLoading;
   String? get error => _error;
