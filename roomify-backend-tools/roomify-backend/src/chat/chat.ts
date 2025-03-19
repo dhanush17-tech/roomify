@@ -23,6 +23,7 @@ app.get('/', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
+        // Get all rooms with their participants
         const rooms = await prisma.chatRoom.findMany({
             where: {
                 participants: {
@@ -63,7 +64,36 @@ app.get('/', async (c) => {
             }
         });
 
-        const formattedRooms = rooms.map(room => ({
+        // Group rooms by participant pairs
+        const roomGroups = new Map();
+        for (const room of rooms) {
+            if (room.participants.length === 2) {
+                const participantIds = room.participants
+                    .map(p => p.user.id)
+                    .sort()
+                    .join('-');
+
+                // If this participant pair doesn't exist yet, or if this room is more recent
+                if (!roomGroups.has(participantIds) ||
+                    room.updatedAt > roomGroups.get(participantIds).updatedAt) {
+                    roomGroups.set(participantIds, room);
+                } else {
+                    // Delete duplicate room
+                    try {
+                        await prisma.chatRoom.delete({
+                            where: { id: room.id }
+                        });
+                    } catch (e) {
+                        console.error('Failed to delete duplicate room:', e);
+                    }
+                }
+            }
+        }
+
+        // Convert the map values back to an array
+        const uniqueRooms = Array.from(roomGroups.values());
+
+        const formattedRooms = uniqueRooms.map(room => ({
             ...room,
             unreadCount: room.unreadMessages.length
         }));
@@ -149,17 +179,21 @@ app.post('/create', async (c) => {
         const adapter = new PrismaD1(c.env.DB);
         const prisma = new PrismaClient({ adapter });
 
-        // First check if a chat room already exists between these users
-        const existingRoom = await prisma.chatRoom.findFirst({
+        // Find all rooms between these users
+        const existingRooms = await prisma.chatRoom.findMany({
             where: {
-                participants: {
-                    every: {
-                        userId: {
-                            in: [userId, otherUserId]
+                AND: [
+                    {
+                        participants: {
+                            some: { userId }
+                        }
+                    },
+                    {
+                        participants: {
+                            some: { userId: otherUserId }
                         }
                     }
-                }
-
+                ]
             },
             include: {
                 participants: {
@@ -191,31 +225,41 @@ app.post('/create', async (c) => {
                         isRead: false
                     }
                 }
+            },
+            orderBy: {
+                updatedAt: 'desc'
             }
         });
 
-        if (existingRoom  ) {
-            // Return the existing room with unread count
-            console.log('Existing room found');
-            console.log(existingRoom);
+        // If we have existing rooms
+        if (existingRooms.length > 0) {
+            // Keep the most recent valid room
+            const validRoom = existingRooms.find(room => room.participants.length === 2);
 
-            if (existingRoom.participants.length === 0) {
-                // delete the room
-                await prisma.chatRoom.delete({
-                    where: { id: existingRoom.id }
-                });
-            }
-            else if (existingRoom.participants.length === 2) {
+            if (validRoom) {
+                // Delete all other rooms
+                for (const room of existingRooms) {
+                    if (room.id !== validRoom.id) {
+                        try {
+                            await prisma.chatRoom.delete({
+                                where: { id: room.id }
+                            });
+                        } catch (e) {
+                            console.error('Failed to delete duplicate room:', e);
+                        }
+                    }
+                }
+
                 return c.json({
                     room: {
-                        ...existingRoom,
-                        unreadCount: existingRoom.unreadMessages.length
+                        ...validRoom,
+                        unreadCount: validRoom.unreadMessages.length
                     }
                 });
             }
         }
 
- 
+        // If no valid room exists, create a new one
         const newRoom = await prisma.chatRoom.create({
             data: {
                 participants: {
@@ -258,7 +302,6 @@ app.post('/create', async (c) => {
             }
         });
 
-        // Return the new room with unread count (which will be 0)
         return c.json({
             room: {
                 ...newRoom,

@@ -57,13 +57,14 @@ app.post('/', async (c) => {
             return c.json({ error: 'Professional users can only have one listing' }, 400);
         }
 
+        
         const formData = await c.req.formData();
         const listingData = JSON.parse(formData.get('listing') as string);
-
+        
         // Handle image uploads
         const images = formData.getAll('images') as File[];
         const imageUrls: string[] = [];
-
+ 
         // Upload each image to R2
         for (const image of images) {
             const { fileUrl } = await uploadToR2(image, "propertyImages", c);

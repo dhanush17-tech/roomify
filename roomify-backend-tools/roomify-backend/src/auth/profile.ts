@@ -517,9 +517,230 @@ app.put('/fcm-token', async (c) => {
     return c.json({ success: true });
 });
 
+app.get('/admin/users', async (c) => {
+    const payload = c.get('jwtPayload');
+    if (!payload) {
+        return c.json({ error: 'No authentication token provided' }, 401);
+    }
+
+    // Ensure payload has the required structure
+    if (typeof payload !== 'object' || !('isAdmin' in payload)) {
+        return c.json({ error: 'Invalid token structure' }, 401);
+    }
+
+    if (!payload.isAdmin) {
+        return c.json({ error: 'Unauthorized: Admin access required' }, 403);
+    }
+
+    const adapter = new PrismaD1(c.env.DB);
+    const prisma = new PrismaClient({ adapter });
+    const users = await prisma.user.findMany();
+    return c.json({ users });
+});
+
+app.delete('/admin/delete-account', async (c) => {
+    try {
+        const payload = c.get('jwtPayload');
+        if (!payload) {
+            return c.json({ error: 'No authentication token provided' }, 401);
+        }
+
+        // Ensure payload has the required structure
+        if (typeof payload !== 'object' || !('isAdmin' in payload)) {
+            return c.json({ error: 'Invalid token structure' }, 401);
+        }
+
+        if (!payload.isAdmin) {
+            return c.json({ error: 'Unauthorized: Admin access required' }, 403);
+        }
+        const userId = c.req.param('userId');
+
+        const adapter = new PrismaD1(c.env.DB);
+        const prisma = new PrismaClient({ adapter });
+
+        // Turn off foreign key constraints
+        await prisma.$executeRaw`PRAGMA foreign_keys = OFF`;
+
+        try {
+            // Get all listings for this user first
+            const listings = await prisma.listing.findMany({
+                where: { userId },
+                include: {
+                    property: true,
+                    marketplace: true,
+                }
+            });
+
+            // Delete all related data in the correct order
+            for (const listing of listings) {
+                if (listing.property) {
+                    // Delete property-related data first
+                    await prisma.propertyOffer.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.floorPlan.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.propertyImage.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.propertyAmenity.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.propertyTag.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.propertyCategory.deleteMany({
+                        where: { propertyId: listing.property.listingId }
+                    });
+
+                    await prisma.property.deleteMany({
+                        where: { listingId: listing.id }
+                    });
+                }
+
+                if (listing.marketplace) {
+                    // Delete marketplace-related data
+                    await prisma.marketplaceImage.deleteMany({
+                        where: { itemId: listing.marketplace.listingId }
+                    });
+
+                    await prisma.marketplaceCategory.deleteMany({
+                        where: { itemId: listing.marketplace.listingId }
+                    });
+
+                    await prisma.marketplaceItem.deleteMany({
+                        where: { listingId: listing.id }
+                    });
+                }
+
+                // Delete listing-related data
+                await prisma.propertyLead.deleteMany({
+                    where: { propertyId: listing.id }
+                });
+
+                await prisma.favorite.deleteMany({
+                    where: { listingId: listing.id }
+                });
+
+                await prisma.report.deleteMany({
+                    where: { listingId: listing.id }
+                });
+            }
+
+            // Delete all listings
+            await prisma.listing.deleteMany({
+                where: { userId }
+            });
+
+            // Delete chat-related data
+            const messages = await prisma.chatMessage.findMany({
+                where: { senderId: userId }
+            });
+
+            const messageIds = messages.map(m => m.id);
+
+            await prisma.unreadMessage.deleteMany({
+                where: {
+                    OR: [
+                        { messageId: { in: messageIds } },
+                        { recipientId: userId }
+                    ]
+                }
+            });
+
+            await prisma.documentSubmission.deleteMany({
+                where: { messageId: { in: messageIds } }
+            });
+
+            await prisma.documentRequest.deleteMany({
+                where: {
+                    OR: [
+                        { messageId: { in: messageIds } },
+                        { recipientId: userId }
+                    ]
+                }
+            });
+
+            await prisma.chatMessage.deleteMany({
+                where: { senderId: userId }
+            });
+
+            await prisma.chatParticipant.deleteMany({
+                where: { userId }
+            });
+
+            // Delete roommate-related data
+            await prisma.roommateSwipe.deleteMany({
+                where: {
+                    OR: [
+                        { swiperId: userId },
+                        { swipedId: userId }
+                    ]
+                }
+            });
+
+            await prisma.roommateMatch.deleteMany({
+                where: {
+                    OR: [
+                        { user1Id: userId },
+                        { user2Id: userId }
+                    ]
+                }
+            });
+
+            // Delete user preferences and social links
+            await prisma.userPreference.deleteMany({
+                where: { userId }
+            });
+
+            await prisma.userSocialLink.deleteMany({
+                where: { userId }
+            });
+
+            // Delete authentication related data
+            await prisma.activeToken.deleteMany({
+                where: { userId }
+            });
+
+            await prisma.passwordReset.deleteMany({
+                where: { userId }
+            });
+
+            // Finally delete the user
+            await prisma.user.delete({
+                where: { id: userId }
+            });
+
+            // Turn foreign key constraints back on
+            await prisma.$executeRaw`PRAGMA foreign_keys = ON`;
+
+            return c.json({ success: true, message: 'Account deleted successfully' });
+        } catch (innerError) {
+            console.error('Inner deletion error:', innerError);
+            // Turn foreign key constraints back on before throwing
+            await prisma.$executeRaw`PRAGMA foreign_keys = ON`;
+            throw innerError;
+        }
+    } catch (error) {
+        console.error('Delete account error:', error);
+        return c.json({
+            error: 'Failed to delete account',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+    }
+});
+
+
 app.delete('/delete-account', async (c) => {
     try {
         const payload = c.get('jwtPayload');
+
         if (!payload) return c.json({ error: 'Unauthorized' }, 401);
 
         const adapter = new PrismaD1(c.env.DB);

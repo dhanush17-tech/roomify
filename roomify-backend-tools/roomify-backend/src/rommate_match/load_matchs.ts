@@ -43,17 +43,25 @@ app.get('/', async (c) => {
                 isProfessional: false,
                 AND: [
                     {
-                        isProfessional: false,
-                    },
-                    {
-                        NOT: {
-                            swipesReceived: {
-                                some: {
-                                    swiperId: currentUserId
-                                }
+                        //name should not begin with Guest
+                        displayName: {
+                            not: {
+                                startsWith: "Guest"
                             }
                         }
                     },
+                    {
+                        isProfessional: false,
+                    },
+                    // {
+                    //     NOT: {
+                    //         swipesReceived: {
+                    //             some: {
+                    //                 swiperId: currentUserId
+                    //             }
+                    //         }
+                    //     }
+                    // },
                 ]
             },
             include: {

@@ -44,9 +44,9 @@ class HelpSupportScreen extends StatelessWidget {
             [
               _buildContactOption(
                 'Email Support',
-                'support@roomify.com',
+                'roomify.college@gmail.com',
                 Icons.email_outlined,
-                () => _launchEmail('support@roomify.com'),
+                () => _launchEmail('roomify.college@gmail.com'),
               ),
               _buildContactOption(
                 'Live Chat',
@@ -61,9 +61,9 @@ class HelpSupportScreen extends StatelessWidget {
               ),
               _buildContactOption(
                 'Phone Support',
-                '+1 (555) 123-4567',
+                '+1 (480) 468-8930',
                 Icons.phone_outlined,
-                () => _launchPhone('+15551234567'),
+                () => _launchPhone('+14804688930'),
               ),
             ],
           ),
