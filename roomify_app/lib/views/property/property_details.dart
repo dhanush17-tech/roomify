@@ -1812,6 +1812,23 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   bool isExpanded = false;
+  Widget buildPreferencesSection(List preferences) {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: List<Widget>.generate(preferences.length, (index) {
+        return Chip(
+          label: Text('${preferences[index]}'),
+          backgroundColor: Color(4293718257),
+          labelStyle: AppTextStyles.small(
+              color: Colors.grey, fontWeight: FontWeight.normal),
+          side: BorderSide.none,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        );
+      }),
+    );
+  }
 
   @override
   void initState() {
@@ -2067,10 +2084,11 @@ class _ExpandableUserCardState extends State<ExpandableUserCard>
                                                   .read<ChatProvider>()
                                                   .isLoading
                                               ? Center(
-                                                child: CircularProgressIndicator(
+                                                  child:
+                                                      CircularProgressIndicator(
                                                     color: Colors.white,
                                                   ),
-                                              )
+                                                )
                                               : Center(
                                                   child: Text(
                                                     'Contact',
