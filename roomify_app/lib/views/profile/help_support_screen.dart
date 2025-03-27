@@ -49,17 +49,6 @@ class HelpSupportScreen extends StatelessWidget {
                 () => _launchEmail('support@roomify.com'),
               ),
               _buildContactOption(
-                'Live Chat',
-                'Chat with our support team',
-                Icons.chat_bubble_outline,
-                () {
-                  // Implement live chat functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Live chat coming soon!')),
-                  );
-                },
-              ),
-              _buildContactOption(
                 'Phone Support',
                 '+1 (555) 123-4567',
                 Icons.phone_outlined,
@@ -186,4 +175,4 @@ class HelpSupportScreen extends StatelessWidget {
       await launchUrl(phoneUri);
     }
   }
-} 
+}

@@ -57,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Check if user has location set or is anonymous
       if (widget.user.isAnonymous ||
           widget.user.latitude == 0.0 ||
           widget.user.longitude == 0.0 ||
@@ -65,7 +64,6 @@ class _HomeScreenState extends State<HomeScreen>
           widget.user.longitude == null) {
         final profileProvider = context.read<ProfileProvider>();
 
-        // Show location picker for anonymous users
         if (widget.user.isAnonymous) {
           showModalBottomSheet(
             context: context,
@@ -83,7 +81,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         } else {
-          // Update user location with current location for non-anonymous users
           await profileProvider.updateUserLocation(
               widget.latitude, widget.longitude);
         }
@@ -110,14 +107,10 @@ class _HomeScreenState extends State<HomeScreen>
 
       print('User granted permission: ${settings.authorizationStatus}');
 
-      // Get FCM token for this device
       String? token = await messaging.getToken();
       if (token != null) {
-        // TODO: Send this token to your backend
-        print('FCM Token: $token');
         await context.read<ProfileProvider>().updateFcmToken(token);
         print('FCM Token updated to Database');
-        print('Subscribed to general topic');
         await FirebaseMessaging.instance.subscribeToTopic('general');
       }
     } catch (e) {
@@ -140,20 +133,16 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title and Profile
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      //an option to change the location
-
                       LocationPickerWrapper(
                         currentLat: widget.user.latitude ?? 0.0,
                         currentLng: widget.user.longitude ?? 0.0,
                       ),
-
                       SizedBox(height: 10),
                       Text(
                         'Find The Best',
@@ -162,7 +151,6 @@ class _HomeScreenState extends State<HomeScreen>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       RichText(
                         text: TextSpan(
                           children: <TextSpan>[
@@ -252,10 +240,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-
               SizedBox(height: 20),
-
-              // Search Bar
               Hero(
                 tag: 'home_search_field',
                 child: Material(
@@ -287,12 +272,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               ),
-
               SizedBox(height: 20),
-
-              // Property Type Filter
-
-              // Popular Section
               Text(
                 'Popular',
                 style: TextStyle(
@@ -300,10 +280,7 @@ class _HomeScreenState extends State<HomeScreen>
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               SizedBox(height: 16),
-
-              // Property Cards
               Consumer<PropertyProvider>(
                 builder: (context, provider, child) {
                   if (provider.isLoadingReccomendations) {
@@ -362,6 +339,7 @@ class _HomeScreenState extends State<HomeScreen>
                         itemCount: provider.recommendations.length,
                         itemBuilder: (BuildContext context, int index) {
                           final listing = provider.recommendations[index];
+
                           return AnimationConfiguration.staggeredList(
                             position: index,
                             delay: Duration(milliseconds: 00),
@@ -396,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen>
     return ListView.separated(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      itemCount: 5, // Number of shimmer items to show
+      itemCount: 5,
       separatorBuilder: (context, index) => SizedBox(height: 20),
       itemBuilder: (context, index) {
         return Container(
@@ -486,7 +464,6 @@ FloorPlan? getMaxPriceFloorPlan(Listing listing) {
       .reduce((a, b) => a.price > b.price ? a : b);
 }
 
-// New Property Card Widget
 class PropertyCard extends StatelessWidget {
   final Listing listing;
   final double latitude;
@@ -496,8 +473,6 @@ class PropertyCard extends StatelessWidget {
 
   const PropertyCard(this.listing, this.latitude, this.longitude,
       {this.filterOptions, this.isShadow = true});
-
-  // Helper method to get minimum floor plan details
 
   @override
   Widget build(BuildContext context) {
@@ -544,7 +519,6 @@ class PropertyCard extends StatelessWidget {
     }
 
     final filteredFloorPlan = getFilteredFloorPlan(listing);
-    print(filteredFloorPlan);
     return GestureDetector(
       onTap: () {
         final authProvider = context.read<AuthProvider>();
@@ -587,7 +561,6 @@ class PropertyCard extends StatelessWidget {
           return;
         }
 
-        // Track the property view
         context.read<PropertyProvider>().trackPropertyView(listing.id);
 
         Navigator.push(
@@ -687,6 +660,45 @@ class PropertyCard extends StatelessWidget {
                                 ),
                               ),
                             ),
+                    ),
+                  ),
+                ),
+                // Uploader type badge
+                // Replace the existing Positioned widget for the badge with this:
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: listing.user?.isProfessional == true
+                          ? Colors.blue[600]
+                          : Colors.green[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          listing.user?.isProfessional == true
+                              ? Icons.military_tech // Crown icon for Manager
+                              : Icons
+                                  .person_outline, // User icon for regular user
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          listing.user?.isProfessional == true
+                              ? 'MANAGER'
+                              : 'USER',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
